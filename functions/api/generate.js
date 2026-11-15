@@ -13,7 +13,7 @@ export async function onRequestPost({ request, env }) {
   try { input = await request.json(); } catch { return json({ error: "Invalid JSON body." }, 400); }
   const clean = v => String(v || "").slice(0, 12000);
   const prompt = `You are an editor for an independent underground extreme music magazine. Write in English. Produce accurate, original editorial copy using ONLY the supplied facts. Never invent release dates, track names, labels, quotes, tour dates, personnel, or claims. If information is missing, omit it or clearly flag it as unverified. Avoid promotional hype and generic filler. Return ONLY valid JSON with keys title, excerpt, content. The content should be 450-650 words in Markdown, with a clear editorial angle, useful context, and no fabricated citations.\n\nBand/artist: ${clean(input.band)}\nRelease/topic: ${clean(input.album)}\nGenre: ${clean(input.genre)}\nCategory: ${clean(input.category)}\nVerified source notes: ${clean(input.notes)}`;
-  const aiRes = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + encodeURIComponent(env.GEMINI_API_KEY), {
+  const aiRes = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=" + encodeURIComponent(env.GEMINI_API_KEY), {
     method: "POST", headers: { "content-type": "application/json" },
     body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.55, responseMimeType: "application/json" } })
   });
