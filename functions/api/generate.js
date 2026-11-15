@@ -51,7 +51,7 @@ Verified source notes: ${clean(input.notes)}`;
         const r = await fetch("https://api.anthropic.com/v1/messages", {
           method: "POST",
           headers: { "content-type": "application/json", "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
-          signal: AbortSignal.timeout(10000),
+          signal: AbortSignal.timeout(60000),
           body: JSON.stringify({ model: env.CLAUDE_MODEL || "claude-sonnet-5-5", max_tokens: 1600, temperature: 0.45, messages: [{ role: "user", content: prompt }] })
         });
         const data = await r.json();
@@ -64,7 +64,7 @@ Verified source notes: ${clean(input.notes)}`;
       model: env.GEMINI_MODEL || "gemini-3.8-flash",
       run: async () => {
         const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(env.GEMINI_MODEL || "gemini-3.8-flash")}:generateContent?key=" + encodeURIComponent(env.GEMINI_API_KEY), {
-          method: "POST", headers: { "content-type": "application/json" }, signal: AbortSignal.timeout(10000),
+          method: "POST", headers: { "content-type": "application/json" }, signal: AbortSignal.timeout(60000),
           body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.45, responseMimeType: "application/json", maxOutputTokens: 1800, thinkingConfig: { thinkingLevel: "low" } } })
         });
         const data = await r.json();
@@ -103,7 +103,7 @@ Verified source notes: ${clean(input.notes)}`;
     const r = await fetch(url, {
       method: "POST",
       headers: { "content-type": "application/json", Authorization: "Bearer " + key },
-      signal: AbortSignal.timeout(10000),
+      signal: AbortSignal.timeout(60000),
       body: JSON.stringify({
         model,
         messages: [
