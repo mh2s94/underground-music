@@ -1,6 +1,6 @@
 # UNDERGROUND — Extreme Music Magazine
 
-Static Cloudflare Pages site with Supabase-backed editorial workflow.
+Static Cloudflare Pages site with a Supabase-backed editorial workflow and multi-provider AI article generation.
 
 ## Deploy
 - Cloudflare Pages project: underground-music
@@ -15,16 +15,28 @@ Region: Singapore
 Tables: articles, categories, admin_users
 RLS is enabled. Published articles are public; article writes require membership in admin_users.
 
-## Finish admin setup
+## Admin setup
 1. In Supabase Dashboard → Authentication → Users, create an admin user with your email and a strong password.
 2. Copy that user's UUID.
 3. Open SQL Editor and run:
-   insert into public.admin_users (user_id) values ('YOUR-AUTH-USER-UUID');
-4. In Cloudflare Pages → Settings → Variables and Secrets, add:
-   - SUPABASE_URL = https://lhhmzfwjznlwkentbakv.supabase.co
-   - SUPABASE_ANON_KEY = your Supabase publishable key (or legacy anon key)
-   - GEMINI_API_KEY = your Gemini API key (secret; never place it in browser code)
-5. Redeploy the latest commit after adding variables.
-6. Open /admin.html and sign in.
+   `insert into public.admin_users (user_id) values ('YOUR-AUTH-USER-UUID') on conflict do nothing;`
+4. In Cloudflare Pages → Settings → Variables and Secrets, add these as **Secrets**:
+   - `SUPABASE_URL` = `https://lhhmzfwjznlwkentbakv.supabase.co`
+   - `SUPABASE_ANON_KEY` = your Supabase publishable key (or legacy anon key)
+5. Add one or more AI provider API keys as **Secrets**. The router tries configured providers in order and automatically falls back after a provider error, timeout, rate limit, or quota failure:
+   - `ANTHROPIC_API_KEY` — Claude
+   - `GEMINI_API_KEY` — Google Gemini
+   - `OPENAI_API_KEY` — OpenAI
+   - `DEEPSEEK_API_KEY` — DeepSeek
+   - `MISTRAL_API_KEY` — Mistral
+   - `GROQ_API_KEY` — Groq
+   - `OPENROUTER_API_KEY` — OpenRouter
+6. Optional plain-text configuration variables:
+   - `AI_PROVIDER_ORDER` = `claude,gemini,openai,deepseek,mistral,groq,openrouter`
+   - Model overrides: `CLAUDE_MODEL`, `GEMINI_MODEL`, `OPENAI_MODEL`, `DEEPSEEK_MODEL`, `MISTRAL_MODEL`, `GROQ_MODEL`, `OPENROUTER_MODEL`
+7. Redeploy the latest commit after changing environment variables.
+8. Open `/admin.html` and sign in.
 
-AI drafts are not automatically published. Verify facts and sources, then choose the desired status. The AI endpoint checks the user's Supabase session and admin membership before calling Gemini.
+Provider keys and model access are separate for each vendor. The router does not create accounts, bypass provider limits, or create free quota. Some providers require billing or paid credits. Configure only providers for which you have valid API keys and access to the selected model.
+
+AI drafts are not automatically published. Verify facts and sources, then choose the desired status. The AI endpoint checks the user's Supabase session and admin membership before calling any configured provider. Provider API keys remain server-side in Cloudflare Pages Secrets.
