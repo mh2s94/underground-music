@@ -63,7 +63,7 @@ Verified source notes: ${clean(input.notes)}`;
       key: env.GEMINI_API_KEY,
       model: env.GEMINI_MODEL || "gemini-3.8-flash",
       run: async () => {
-        const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(env.GEMINI_MODEL || "gemini-3.8-flash")}:generateContent?key=" + encodeURIComponent(env.GEMINI_API_KEY), {
+        const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(env.GEMINI_MODEL || "gemini-3.8-flash")}:generateContent?key=${encodeURIComponent(env.GEMINI_API_KEY)}`, {
           method: "POST", headers: { "content-type": "application/json" }, signal: AbortSignal.timeout(60000),
           body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.45, responseMimeType: "application/json", maxOutputTokens: 1800, thinkingConfig: { thinkingLevel: "low" } } })
         });
@@ -75,7 +75,7 @@ Verified source notes: ${clean(input.notes)}`;
     openai: {
       key: env.OPENAI_API_KEY,
       model: env.OPENAI_MODEL || "gpt-6-astra",
-      run: async () => openAICompatible("https://api.openai.com/v1/chat/completions", env.OPENAI_API_KEY, env.OPENAI_MODEL || "gpt-6-astra", prompt)
+      run: async () => openAICompatible("https://api.openai.com/v1/chat/completions", env.OPENAI_API_KEY, env.OPENAI_MODEL || "gpt-6-astra", prompt, { openai: true })
     },
     deepseek: {
       key: env.DEEPSEEK_API_KEY,
@@ -99,7 +99,11 @@ Verified source notes: ${clean(input.notes)}`;
     }
   };
 
-  async function openAICompatible(url, key, model, userPrompt) {
+  async function openAICompatible(url, key, model, userPrompt, opts = {}) {
+    // Newer OpenAI models reject max_tokens/temperature; they use max_completion_tokens instead.
+    const limits = opts.openai
+      ? { max_completion_tokens: 4000 }
+      : { temperature: 0.45, max_tokens: 1800 };
     const r = await fetch(url, {
       method: "POST",
       headers: { "content-type": "application/json", Authorization: "Bearer " + key },
@@ -110,8 +114,7 @@ Verified source notes: ${clean(input.notes)}`;
           { role: "system", content: "Return only valid JSON with keys title, excerpt, content. Do not wrap it in Markdown fences." },
           { role: "user", content: userPrompt }
         ],
-        temperature: 0.45,
-        max_tokens: 1800,
+        ...limits,
         response_format: { type: "json_object" }
       })
     });
