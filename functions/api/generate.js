@@ -99,6 +99,27 @@ Verified source notes: ${clean(input.notes)}`;
     }
   };
 
+  providers.workersai = {
+    key: env.AI ? "binding" : "",
+    model: env.WORKERSAI_MODEL || "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
+    run: async () => {
+      // Cloudflare Workers AI via the Pages "AI" binding: no API key, free daily allocation.
+      const result = await Promise.race([
+        env.AI.run(env.WORKERSAI_MODEL || "@cf/meta/llama-3.3-70b-instruct-fp8-fast", {
+          messages: [
+            { role: "system", content: "Return only valid JSON with keys title, excerpt, content. Do not wrap it in Markdown fences." },
+            { role: "user", content: prompt }
+          ],
+          max_tokens: 1800,
+          temperature: 0.45
+        }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Workers AI timed out")), 60000))
+      ]);
+      const out = result?.response ?? result?.choices?.[0]?.message?.content ?? "";
+      return typeof out === "string" ? out : JSON.stringify(out);
+    }
+  };
+
   async function openAICompatible(url, key, model, userPrompt, opts = {}) {
     // Newer OpenAI models reject max_tokens/temperature; they use max_completion_tokens instead.
     const limits = opts.openai
@@ -133,7 +154,7 @@ Verified source notes: ${clean(input.notes)}`;
     return { title: String(article.title), excerpt: String(article.excerpt || ""), content: String(article.content) };
   }
 
-  const requestedOrder = (env.AI_PROVIDER_ORDER || "claude,gemini,openai,deepseek,mistral,groq,openrouter")
+  const requestedOrder = (env.AI_PROVIDER_ORDER || "claude,gemini,openai,deepseek,mistral,groq,openrouter,workersai")
     .split(",").map(x => x.trim().toLowerCase()).filter(x => providers[x]);
   const configured = requestedOrder.filter(name => providers[name].key);
   if (!configured.length) {
