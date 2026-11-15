@@ -12,7 +12,7 @@ export async function onRequestPost({ request, env }) {
   let input;
   try { input = await request.json(); } catch { return json({ error: "Invalid JSON body." }, 400); }
   const clean = v => String(v || "").slice(0, 12000);
-  const prompt = `You are an editor for an independent underground extreme music magazine. Write in English. Produce accurate, original editorial copy using ONLY the supplied facts. Never invent release dates, track names, labels, quotes, tour dates, personnel, or claims. If information is missing, omit it or clearly flag it as unverified. Avoid promotional hype and generic filler. Return ONLY valid JSON with keys title, excerpt, content. The content should be 450-650 words in Markdown, with a clear editorial angle, useful context, and no fabricated citations.\n\nBand/artist: ${clean(input.band)}\nRelease/topic: ${clean(input.album)}\nGenre: ${clean(input.genre)}\nCategory: ${clean(input.category)}\nVerified source notes: ${clean(input.notes)}`;
+  const prompt = `You are an editor for an independent underground extreme music magazine. Write in English. Produce accurate, original editorial copy using ONLY the supplied facts. Never invent release dates, track names, labels, quotes, tour dates, personnel, or claims. If information is missing, omit it or clearly flag it as unverified. Avoid promotional hype and generic filler. Return ONLY valid JSON with keys title, excerpt, content. The content should be 300-400 words in Markdown, with a clear editorial angle, useful context, and no fabricated citations.\n\nBand/artist: ${clean(input.band)}\nRelease/topic: ${clean(input.album)}\nGenre: ${clean(input.genre)}\nCategory: ${clean(input.category)}\nVerified source notes: ${clean(input.notes)}`;
   let aiRes;
   let result;
   try {
@@ -22,7 +22,7 @@ export async function onRequestPost({ request, env }) {
       signal: AbortSignal.timeout(45000),
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.55, responseMimeType: "application/json", maxOutputTokens: 4096 }
+        generationConfig: { temperature: 0.45, responseMimeType: "application/json", maxOutputTokens: 2048, thinkingConfig: { thinkingLevel: "low" } }
       })
     });
     result = await aiRes.json();
