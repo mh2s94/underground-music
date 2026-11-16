@@ -66,7 +66,7 @@ export async function onRequestPost({ request, env }) {
   // ---- 3. AI -------------------------------------------------------------
   const prompt = buildPrompt({
     band, song,
-    category: clean(input.category, 100) || "Review",
+    category: clean(input.category, 100),
     genre: clean(input.genre, 100),
     notes: clean(input.notes)
   });
@@ -137,6 +137,8 @@ TITLE: <headline, max 90 characters>
 EXCERPT: <1-2 sentence teaser, max 200 characters>
 TAGS: <3-6 short lowercase tags, comma separated>
 GENRE: <the single best match for this band's sound, copied exactly from the genre list>
+TYPE: <exactly one of: Review, News, Feature, Interview>
+SCORE: <only when TYPE is Review: your verdict on the release from 0 to 10 with one decimal, for example 8.5, consistent with the article; otherwise leave empty>
 CONTENT:
 <the article body in Markdown>`;
 }
@@ -297,7 +299,7 @@ function parseArticle(raw) {
   if (titleMatch && contentMatch) {
     const field = (name) => (label(name).exec(text)?.[1] || "").replace(/[*_]+$/g, "").trim();
     const content = (contentMatch[1] + "\n" + text.slice(contentMatch.index + contentMatch[0].length)).trim();
-    a = { title: field("TITLE"), excerpt: field("EXCERPT"), tags: field("TAGS"), genre: field("GENRE"), band: field("BAND"), release: field("RELEASE"), content };
+    a = { title: field("TITLE"), excerpt: field("EXCERPT"), tags: field("TAGS"), genre: field("GENRE"), band: field("BAND"), release: field("RELEASE"), type: field("TYPE"), score: field("SCORE"), content };
   } else {
     const start = text.indexOf("{"), end = text.lastIndexOf("}");
     if (start >= 0 && end > start) {
@@ -316,7 +318,10 @@ function parseArticle(raw) {
   const band = stripQuotes(String(a.band || "")).replace(/^\(|\)$/g, "").slice(0, 120);
   let release = stripQuotes(String(a.release || "")).slice(0, 160);
   if (/^(none|n\/a|-|empty|leave empty)$/i.test(release)) release = "";
-  return { title, excerpt: stripQuotes(String(a.excerpt || "")).slice(0, 300), content, tags, genre, band, release };
+  const kind = ["Review", "News", "Feature", "Interview"].find((k) => k.toLowerCase() === String(a.type || "").trim().toLowerCase()) || "";
+  const n = parseFloat(String(a.score ?? "").replace(",", ".").match(/\d+(?:\.\d+)?/)?.[0]);
+  const score = kind === "Review" && isFinite(n) && n >= 0 && n <= 10 ? Math.round(n * 10) / 10 : null;
+  return { title, excerpt: stripQuotes(String(a.excerpt || "")).slice(0, 300), content, tags, genre, band, release, kind, score };
 }
 
 // Escape raw newlines/tabs that models put inside JSON strings.

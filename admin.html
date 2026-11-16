@@ -166,6 +166,11 @@
 .input.ai-filled, .select.ai-filled { animation: aiGlow 1.6s ease both; }
 @keyframes aiGlow { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--uv, #7B5CFF) 70%, transparent); } 100% { box-shadow: 0 0 0 10px transparent; } }
 @media (prefers-reduced-motion: reduce) { .input.ai-filled, .select.ai-filled, .autofill { animation: none; } }
+
+.nl-list { list-style: none; margin: 0; padding: 0; max-height: 420px; overflow-y: auto; }
+.nl-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+.nl-list .mono { font-size: 12px; color: var(--muted); }
+.nl-list b { font-weight: 600; overflow-wrap: anywhere; }
 </style>
 </head>
 <body>
@@ -225,6 +230,7 @@
           <label class="field"><span>Genre</span><select class="select" id="genre" data-genre-select data-auto="Auto (AI decides)"></select></label>
           <label class="field"><span>Type</span><select class="select" id="category"><option value="">Auto</option><option>Review</option><option>News</option><option>Feature</option><option>Interview</option></select></label>
         </div>
+        <label class="field" id="scoreField" hidden><span>Review score <span class="hint">(0–10, filled by the AI for reviews; shown as a badge)</span></span><input class="input" id="score" type="number" min="0" max="10" step="0.5" inputmode="decimal" placeholder="e.g. 8.5"></label>
         <label class="field"><span>Extra notes <span class="hint">(optional)</span></span><textarea class="textarea" id="notes" rows="3" placeholder="Facts or an angle you want included"></textarea></label>
         <button class="btn btn-primary" type="button" id="generateBtn"><span id="genLabel">Generate article</span></button>
         <div class="phase" id="phase" aria-live="polite"></div>
@@ -394,6 +400,13 @@
         </div>
         <p class="hint" style="margin:0">Reset everything deletes articles, comments, saves, music (with files) and demo submissions, returning the site to a clean start.</p>
       </section>
+      <section class="panel card-pad" aria-labelledby="nlTitle" style="margin-top:20px">
+        <div class="card-head"><h2 id="nlTitle">Newsletter subscribers <span class="badge" id="nlCount" hidden></span></h2>
+          <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-sm btn-ghost" type="button" id="nlRefresh">Refresh</button><button class="btn btn-sm" type="button" id="nlExport">Export CSV</button></div></div>
+        <p class="muted" style="margin:0">People who signed up in the footer or under an article. Export the list as CSV to import into an email tool (Resend, Mailchimp, Brevo) when you start sending.</p>
+        <div class="alert warning" id="nlSetup" hidden><span style="color:var(--warning)">!</span><div><strong>Newsletter is not set up yet</strong><span class="muted">Run <span class="mono">supabase/extras.sql</span> in the Supabase SQL Editor once.</span></div></div>
+        <ul class="nl-list" id="nlList"></ul>
+      </section>
     </div>
   </div>
 </main>
@@ -498,7 +511,7 @@ function resetForm() {
   ["title", "slug", "excerpt", "content", "youtube", "cover", "tags", "band", "album", "notes"].forEach((id) => { $(id).value = ""; $(id).classList.remove("invalid"); });
   delete $("slug").dataset.edited;
   setStatus("draft"); renderYt(""); $("wordCount").textContent = "0 words";
-  $("genre").value = ""; $("category").value = "";
+  $("genre").value = ""; $("category").value = ""; $("score").value = ""; toggleScore();
   $("editingFlag").hidden = true; updateSaveLabel();
 }
 $("newBtn").onclick = () => { resetForm(); $("band").focus(); window.scrollTo({ top: 0, behavior: "smooth" }); };
@@ -553,6 +566,8 @@ $("generateBtn").onclick = async () => {
     if (j.fallback_used && Array.isArray(j.attempts) && j.attempts.length) {
       toast("warning", "Some providers were skipped", j.attempts.map((x) => "• " + x.provider + ": " + x.reason).join("\n"), { duration: 9000 });
     }
+    if (j.kind) $("category").value = j.kind;
+    $("score").value = j.kind === "Review" && j.score != null ? j.score : ""; toggleScore();
     if (j.band) $("band").value = j.band;
     if (j.release && !$("album").value.trim()) $("album").value = j.release;
     if (!$("genre").value) $("genre").value = "Underground";
@@ -591,13 +606,20 @@ $("saveBtn").onclick = async () => {
     // A chosen publication time (e.g. the source's original time from Scene radar) always wins;
     // otherwise keep the existing time, or use "now" when publishing for the first time.
     published_at: fromLocalInput($("pubDate").value) || (st === "published" ? (editing?.published_at || now) : null),
-    updated_at: now
+    updated_at: now,
+    kind: $("category").value || null,
+    score: $("category").value === "Review" && $("score").value !== "" ? Math.max(0, Math.min(10, Math.round(Number($("score").value) * 10) / 10)) : null
   };
 
   const btn = $("saveBtn"); btn.disabled = true; $("saveLabel").textContent = "Saving…"; btn.insertAdjacentHTML("afterbegin", '<span class="spinner" aria-hidden="true"></span>');
-  const res = editing
-    ? await sb.from("articles").update(payload).eq("id", editing.id).select("id,published_at").single()
-    : await sb.from("articles").insert({ ...payload, author_id: s.user.id }).select("id,published_at").single();
+  const saveA = (pl) => editing
+    ? sb.from("articles").update(pl).eq("id", editing.id).select("id,published_at").single()
+    : sb.from("articles").insert({ ...pl, author_id: s.user.id }).select("id,published_at").single();
+  let res = await saveA(payload);
+  if (res.error && /kind|score/i.test(res.error.message || "")) {
+    const { kind, score, ...rest } = payload; res = await saveA(rest); // database not updated yet
+    if (!res.error) toast("info", "Type and score were not saved", "Run supabase/extras.sql once in the Supabase SQL Editor to store review scores.", { duration: 10000 });
+  }
   btn.disabled = false; btn.querySelector(".spinner")?.remove();
   if (res.error) {
     updateSaveLabel();
@@ -656,6 +678,7 @@ async function editArticle(id) {
   setPubDate(a.published_at);
   $("band").value = a.band_name || ""; $("album").value = a.album_name || "";
   if (a.genre) { if (![...$("genre").options].some((o) => o.value === a.genre)) $("genre").add(new Option(a.genre, a.genre)); $("genre").value = a.genre; }
+  $("category").value = a.kind || ""; $("score").value = a.score ?? ""; toggleScore();
   setStatus(a.status || "draft");
   $("editingFlag").hidden = false; updateSaveLabel();
   $("editor").scrollIntoView({ behavior: "smooth", block: "start" });
@@ -896,8 +919,8 @@ function showTab(name, push) {
   if (!loadedTabs.has(name)) {
     loadedTabs.add(name);
     if (name === "music") { detectStorage(); loadTracks(); }
-    if (name === "settings") loadCounts();
-  } else if (name === "settings") loadCounts();
+    if (name === "settings") { loadCounts(); loadSubscribers(); }
+  } else if (name === "settings") { loadCounts(); loadSubscribers(); }
 }
 document.querySelectorAll(".tab").forEach((t) => t.addEventListener("click", () => showTab(t.dataset.tab, true)));
 document.querySelector(".tabs-bar").addEventListener("keydown", (e) => {
@@ -910,6 +933,38 @@ document.querySelector(".tabs-bar").addEventListener("keydown", (e) => {
 window.addEventListener("resize", moveInk);
 
 /* ===================== Music ===================== */
+function toggleScore() { $("scoreField").hidden = $("category").value !== "Review"; }
+$("category").addEventListener("change", toggleScore);
+
+// ---- Newsletter subscribers (Settings) ----
+let subscribers = [];
+async function loadSubscribers() {
+  const { data, error, count } = await sb.from("newsletter_subscribers").select("id,email,source,created_at", { count: "exact" }).order("created_at", { ascending: false }).limit(1000);
+  const missing = error && /newsletter_subscribers|schema cache|does not exist/i.test(error.message || "");
+  $("nlSetup").hidden = !missing;
+  if (error) { $("nlList").innerHTML = missing ? "" : `<li class="muted">${esc(error.message)}</li>`; return; }
+  subscribers = data || [];
+  $("nlCount").hidden = false; $("nlCount").textContent = (count ?? subscribers.length) + "";
+  $("nlList").innerHTML = subscribers.length ? subscribers.map((x) => `<li><div><b>${esc(x.email)}</b><div class="mono">${new Date(x.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })} · ${esc(x.source || "site")}</div></div><button class="btn btn-sm btn-ghost" type="button" data-nl-del="${esc(x.id)}">Remove</button></li>`).join("")
+    : `<li class="muted">No subscribers yet. The sign-up form is in the site footer and under every article.</li>`;
+}
+$("nlRefresh").onclick = loadSubscribers;
+$("nlList").addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-nl-del]"); if (!b) return;
+  if (b.dataset.armed !== "1") { b.dataset.armed = "1"; b.textContent = "Tap again to remove"; setTimeout(() => { b.dataset.armed = ""; b.textContent = "Remove"; }, 3000); return; }
+  const { error } = await sb.from("newsletter_subscribers").delete().eq("id", b.dataset.nlDel);
+  if (error) toast("error", "Could not remove", error.message); else { toast("success", "Subscriber removed"); loadSubscribers(); }
+});
+$("nlExport").onclick = () => {
+  if (!subscribers.length) { toast("info", "Nothing to export", "No subscribers yet."); return; }
+  const csv = "email,source,subscribed_at\n" + subscribers.map((x) => [x.email, x.source || "", x.created_at].map((v) => '"' + String(v).replace(/"/g, '""') + '"').join(",")).join("\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+  a.download = "underground-newsletter-" + new Date().toISOString().slice(0, 10) + ".csv";
+  document.body.append(a); a.click(); a.remove();
+  toast("success", "CSV downloaded", subscribers.length + " subscribers.");
+};
+
 const BUCKET = "music";
 document.querySelectorAll("[data-genre-select]").forEach((el) => {
   el.innerHTML = window.UG_GENRES ? window.UG_GENRES.options(el.dataset.auto ? "" : "Underground", { auto: el.dataset.auto }) : '<option>Underground</option>';
