@@ -528,7 +528,6 @@
     const btn = document.querySelector(`.nav-btn[data-view="${view}"]`);
     if (btn) $("navPill").style.transform = `translate(${btn.offsetLeft}px, ${btn.offsetTop}px)`;
   }
-  window.UGAccount = () => { authOpen = false; authAnim = false; authTab = "signin"; if (view !== "account") go("/account"); else { renderAccount(); enter($("view-account")); } };
   function showView(name) {
     if (!["home", "articles", "music", "charts", "about", "account", "band"].includes(name)) name = "home";
     const changed = name !== view || !document.querySelector(".view.entered");
@@ -536,11 +535,7 @@
     document.querySelectorAll(".view").forEach((v) => { v.hidden = v.dataset.view !== name; });
     document.querySelectorAll(".nav-btn").forEach((b) => { if (b.dataset.view === name) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); });
     movePill();
-    if (name === "account") {
-      const sub = authSub();
-      if (authMode() === "page" && !user) { const want = !!sub; if (sub) authTab = sub === "join" ? "signup" : (authTab === "forgot" || authTab === "check" ? authTab : "signin"); if (want !== authOpen || changed) { authOpen = want; if (!want && (authTab === "forgot" || authTab === "check")) authTab = "signin"; renderAccount(); if (!changed) { $("main").scrollTop = 0; enter($("view-account")); } } }
-      else if (changed) renderAccount();
-    }
+    if (name === "account" && changed) renderAccount();
     if (name === "charts" && changed) loadCharts();
     if (changed) { $("main").scrollTop = 0; enter($("view-" + name)); }
   }
@@ -666,8 +661,7 @@
   let currentArticle = null;
   let authTab = "signin", pendingEmail = "";
   let authOpen = false, authAnim = false; // minimal account page: the form opens only after Sign in / Create account
-  const authMode = () => (window.UGAuthMode && window.UGAuthMode()) || "page";
-  const authSub = () => (location.hash.match(/^#\/account\/(login|join)/) || [])[1];
+  const finePointer = window.matchMedia("(hover: hover) and (pointer: fine)").matches; // no auto-focus on phones: the keyboard would cover the form
   let demoLastFocus = null;
   const AUTH_REDIRECT = location.origin + "/?auth=1";
   const DEFAULT_ACCOUNT_ICON = $("accountIcon").innerHTML;
@@ -698,7 +692,7 @@
     if (then) sessionStorage.setItem("ug_then", then);
     toast("info", "Sign in to " + reason, "It's free and takes less than a minute.", { duration: 4500 });
     authTab = "signin"; authOpen = true;
-    location.hash = authMode() === "page" ? "/account/login" : "/account";
+    location.hash = "/account";
     return false;
   }
 
@@ -817,19 +811,12 @@
           <p>One free account to save stories, join the conversation and put your music in front of our editors.</p>
           ${perks}
           <div class="amp-cta"><button class="btn btn-forest" type="button" data-open="signin">Sign in</button><button class="btn btn-outline" type="button" data-open="signup">Create account</button></div>`;
-    const mode = authMode(), open = authOpen || authTab === "check" || authTab === "forgot";
+    const open = authOpen || authTab === "check" || authTab === "forgot";
     const back = `<button class="amp-back" type="button" data-auth-close aria-label="Back">← Back</button>`;
-    const formCard = `<div class="card auth-card amp-form">${back}${tabs}${form}</div>`;
     const on = open && !authAnim ? " is-open" : "";
-    if (mode === "page") return open
-      ? `<div class="amp-wrap amp-page bento-item">${formCard}</div>`
-      : `<div class="amp-wrap"><div class="card amp-land bento-item">${land}</div></div>`;
-    if (mode === "inplace") return `<div class="amp-wrap"><div class="card amp-land amp-stage bento-item${on}" data-mode="inplace">${land}
-          <div class="amp-drawer"><div><div class="amp-drawer-in">${open ? back + tabs + form : ""}</div></div></div></div></div>`;
-    if (mode === "sheet") return `<div class="amp-wrap"><div class="card amp-land bento-item">${land}</div>
-          <div class="amp-stage amp-sheet${on}" data-mode="sheet"${open ? "" : " hidden"}><div class="amp-backdrop" data-auth-close></div>${formCard}</div></div>`;
-    return `<div class="amp-wrap"><div class="amp-stage bento-item${on}" data-mode="${mode}"><div class="amp-track">
-          <div class="card amp-land amp-face">${land}</div><div class="amp-face amp-back-face">${open ? formCard : ""}</div></div></div></div>`;
+    // Rack slide: the panel with the two choices slides left, the form slides in from the right.
+    return `<div class="amp-wrap"><div class="amp-stage bento-item${on}" data-mode="slide"><div class="amp-track">
+          <div class="card amp-land amp-face">${land}</div><div class="amp-face amp-back-face">${open ? `<div class="card auth-card amp-form">${back}${tabs}${form}</div>` : ""}</div></div></div></div>`;
   }
 
   function recoveryHtml() {
@@ -900,22 +887,11 @@
 
   function renderAccount() {
     const el = $("view-account");
-    if (!user && window.UGSkin && window.UGSkin.demo) { // preview only: sample member profile for comparing designs
-      const keep = [user, profile, savedIds];
-      user = { id: "demo", email: "raka@contoh.com", created_at: "2025-03-01T00:00:00Z" };
-      profile = { display_name: "Raka Deathgrind", favorite_genres: ["Death Metal", "Deathcore", "Hardcore", "Grindcore"] };
-      savedIds = new Set(articles.slice(0, 2).map((a) => String(a.id)));
-      el.innerHTML = memberHtml();
-      [user, profile, savedIds] = keep;
-      $("myDemos").innerHTML = `<li><div style="min-width:0"><div style="font-weight:700">Kuburan Basah</div><div class="fine">Deathgrind · sent 2 Nov 2026</div></div><span class="status new">new</span></li><li><div style="min-width:0"><div style="font-weight:700">Rawa Hitam</div><div class="fine">Sludge Metal · sent 14 Oct 2026</div></div><span class="status featured">featured</span></li>`;
-      const w = el.querySelector(".wave"); if (w) wave(w, 600, w.viewBox.baseVal.height || 300, 6);
-      return;
-    }
     el.innerHTML = user ? (recovery ? recoveryHtml() : memberHtml()) : guestHtml();
     if (!user && authAnim) {
       authAnim = false;
       const st = el.querySelector(".amp-stage");
-      if (st) requestAnimationFrame(() => requestAnimationFrame(() => { st.classList.add("is-open"); setTimeout(() => st.querySelector(".amp-form input, .amp-drawer input")?.focus({ preventScroll: true }), 450); }));
+      if (st) requestAnimationFrame(() => requestAnimationFrame(() => { st.classList.add("is-open"); if (finePointer) setTimeout(() => st.querySelector(".amp-form input")?.focus({ preventScroll: true }), 600); }));
     }
     const w = el.querySelector(".wave");
     if (w) wave(w, 600, w.viewBox.baseVal.height || 300, 6);
@@ -945,14 +921,12 @@
   acct.addEventListener("click", async (e) => {
     const t = e.target.closest("[data-tab-btn],[data-open],[data-auth-close],[data-action],[data-demo-open],.pw-toggle,[data-fav]");
     if (!t) return;
-    if (t.dataset.tabBtn) { authTab = t.dataset.tabBtn; renderAccount(); acct.querySelector(".amp-form input, .amp-drawer input, input")?.focus(); return; }
+    if (t.dataset.tabBtn) { authTab = t.dataset.tabBtn; renderAccount(); if (finePointer) acct.querySelector(".amp-form input, input")?.focus(); return; }
     if (t.dataset.open) {
       authTab = t.dataset.open;
-      if (authMode() === "page") { go("/account/" + (authTab === "signup" ? "join" : "login")); return; }
       const was = authOpen; authOpen = true; authAnim = !was; renderAccount(); return;
     }
     if (t.hasAttribute("data-auth-close")) {
-      if (authMode() === "page") { go("/account"); return; }
       const st = acct.querySelector(".amp-stage");
       const done = () => { authOpen = false; authTab = "signin"; renderAccount(); };
       if (st) { st.classList.remove("is-open"); setTimeout(done, reduceMotion ? 0 : 420); } else done();
