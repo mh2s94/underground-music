@@ -979,7 +979,7 @@ function showTab(name, push) {
     if (name === "music") { detectStorage(); loadTracks(); }
     if (name === "gigs") loadGigsAdmin();
     if (name === "settings") { loadCounts(); loadSubscribers(); loadNlPicks(); }
-  } else if (name === "settings") { loadCounts(); loadSubscribers(); }
+  } else if (name === "settings") { loadCounts(); loadSubscribers(); loadNlPicks(); }
 }
 document.querySelectorAll(".tab").forEach((t) => t.addEventListener("click", () => showTab(t.dataset.tab, true)));
 document.querySelector(".tabs-bar").addEventListener("keydown", (e) => {
