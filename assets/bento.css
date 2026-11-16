@@ -726,3 +726,36 @@ button.chart-row:hover, a.chart-row:hover { background: var(--card-2); }
 .rel-pic img { z-index: 1; }
 .rel-name { font-weight: 700; font-size: 13.5px; line-height: 1.2; }
 @media (prefers-reduced-motion: reduce) { .bh-bg, .v-ring { animation: none; } }
+.danger-zone { box-shadow: inset 0 0 0 1px rgba(255, 46, 99, .25); }
+.btn-danger { align-self: flex-start; background: transparent; color: var(--neon-hi); border: 1px solid rgba(255, 46, 99, .55); }
+.btn-danger:hover { background: var(--neon-soft); box-shadow: 0 0 22px -6px rgba(255, 46, 99, .8); }
+.dz-confirm { margin-bottom: 12px; }
+
+/* ---- Gigs --------------------------------------------------------------------- */
+.gig-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.gig { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; gap: 14px; align-items: start; padding: 14px 8px; border-radius: 14px; animation: rise .6s var(--ease-out) both; animation-delay: calc(var(--i, 0) * 50ms); }
+.gig + .gig { border-top: 1px solid var(--line); border-radius: 0; }
+.gig-date { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 64px; border-radius: 12px; background: var(--card-2); box-shadow: inset 0 0 0 1px var(--line-2); }
+.gig-date b { font: 400 30px/.9 var(--display); color: #fff; }
+.gig-date span { font: 700 10px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--uv-hi); }
+.gig.soon .gig-date { background: var(--neon-soft); box-shadow: inset 0 0 0 1px rgba(255, 46, 99, .55), 0 0 22px -8px rgba(255, 46, 99, .9); }
+.gig.soon .gig-date span { color: var(--neon-hi); }
+.gig-main { min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+.gig-title { font-weight: 700; font-size: 16.5px; line-height: 1.25; }
+.gig-bands { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
+.gig-band { padding: 4px 9px; border-radius: 7px; background: var(--uv-soft); color: var(--uv-hi); font: 700 10.5px/1.2 var(--mono); letter-spacing: .06em; text-transform: uppercase; text-decoration: none; box-shadow: inset 0 0 0 1px rgba(123, 92, 255, .4); }
+.gig-band:hover { color: var(--neon-hi); box-shadow: inset 0 0 0 1px var(--neon); }
+.gig-desc { margin: 2px 0 0; color: var(--muted); font-size: 14px; }
+.gig-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.btn-sm { min-height: 38px; padding: 0 14px; font-size: 11px; }
+.gig-poster { width: 84px; border-radius: 10px; overflow: hidden; box-shadow: 0 0 0 1px var(--line-2); }
+.gig-poster img { display: block; width: 100%; height: auto; }
+.gig-list.compact .gig { grid-template-columns: 52px minmax(0, 1fr); padding: 8px 6px; }
+.gig-list.compact .gig + .gig, .gig-list.compact li + li .gig { border-top: 0; }
+.gig-list.compact .gig-date { height: 52px; }
+.gig-list.compact .gig-date b { font-size: 24px; }
+.gig-link { display: block; color: inherit; text-decoration: none; border-radius: 12px; transition: background-color .2s; }
+.gig-link:hover { background: var(--card-2); }
+.band-grid .band-gigs { grid-column: 1 / -1; }
+@media (max-width: 520px) { .gig { grid-template-columns: 54px minmax(0, 1fr); } .gig-poster { grid-column: 2; width: 120px; } .gig-date { height: 56px; } }
+.gig-main .c-sub { white-space: normal; overflow: visible; }

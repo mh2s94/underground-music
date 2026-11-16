@@ -520,7 +520,7 @@
     if (btn) $("navPill").style.transform = `translate(${btn.offsetLeft}px, ${btn.offsetTop}px)`;
   }
   function showView(name) {
-    if (!["home", "articles", "music", "charts", "about", "account", "band"].includes(name)) name = "home";
+    if (!["home", "articles", "music", "charts", "about", "account", "band", "gigs"].includes(name)) name = "home";
     const changed = name !== view || !document.querySelector(".view.entered");
     view = name;
     document.querySelectorAll(".view").forEach((v) => { v.hidden = v.dataset.view !== name; });
@@ -528,6 +528,7 @@
     movePill();
     if (name === "account" && changed) renderAccount();
     if (name === "charts" && changed) loadCharts();
+    if (name === "gigs" && changed) renderGigs();
     if (changed) { $("main").scrollTop = 0; enter($("view-" + name)); }
   }
   // Views live in the hash (#/music); articles have real paths (/a/<slug>) that Google and link previews can read.
@@ -855,6 +856,14 @@
             <div class="form-error" role="alert" hidden></div>
             <button class="btn btn-forest" type="submit" style="align-self:flex-start">Save profile</button>
           </form>
+          <div class="card pad bento-item danger-zone">
+            <div class="card-title" style="margin:0 0 6px"><h2>Delete account</h2></div>
+            <p class="muted-s" style="margin:0 0 12px">Permanently removes your account, profile, comments, saved stories, ratings and demo submissions. This cannot be undone.</p>
+            <div class="dz-confirm" hidden>
+              <label class="field"><span>Type <b style="color:var(--neon-hi)">DELETE</b> to confirm</span><input class="input" name="dzWord" autocomplete="off" spellcheck="false"></label>
+            </div>
+            <button class="btn btn-danger" type="button" data-action="delete-account">Delete my account</button>
+          </div>
         </div>
       </div>`;
   }
@@ -891,6 +900,17 @@
     const t = e.target.closest("[data-tab-btn],[data-action],[data-demo-open],.pw-toggle,[data-fav]");
     if (!t) return;
     if (t.dataset.tabBtn) { authTab = t.dataset.tabBtn; renderAccount(); acct.querySelector("input")?.focus(); return; }
+    if (t.dataset.action === "delete-account") {
+      const box = t.closest(".danger-zone"), conf = box.querySelector(".dz-confirm"), input = box.querySelector("[name=dzWord]");
+      if (conf.hidden) { conf.hidden = false; t.textContent = "Delete permanently"; input.focus(); return; }
+      if (input.value.trim().toUpperCase() !== "DELETE") { shakeEl(input); toast("warning", "Type DELETE to confirm"); return; }
+      busy(t, true, "Deleting…");
+      const { error } = await db.rpc("ug_delete_my_account");
+      if (error) { busy(t, false); toast("error", "Could not delete the account", /ug_delete_my_account|schema cache/i.test(error.message || "") ? "This option isn't switched on yet. Email hello@mikasa.me and we'll delete it for you." : error.message, { duration: 9000 }); return; }
+      await db.auth.signOut();
+      toast("success", "Account deleted", "Your account and its data have been removed. Thanks for being part of the scene.", { duration: 8000 });
+      return;
+    }
     if (t.dataset.action === "signout") { busy(t, true, "Signing out…"); await db.auth.signOut(); toast("info", "Signed out", "See you at the next show."); return; }
     if (t.hasAttribute("data-demo-open")) { openDemo(); return; }
     if (t.classList.contains("pw-toggle")) {
@@ -1503,6 +1523,7 @@
         <div class="card pad bento-item" id="bhSongsCard" hidden><div class="card-title"><h2>On Basement radio</h2><span class="hint">Full songs</span></div><ol class="chart-list" id="bhSongs"></ol></div>
         <div class="card pad bento-item" id="bhTopCard" hidden><div class="card-title"><h2>Top tracks</h2><span class="hint">30s previews · Deezer</span></div><ol class="chart-list" id="bhTop"></ol></div>
         <div class="card pad bento-item band-stories" id="bhStoriesCard" hidden><div class="card-title"><h2>Stories</h2><span class="hint" id="bhStoriesN"></span></div><div class="grid" id="bhStories"></div></div>
+        <div class="card pad bento-item band-gigs" id="bhGigsCard" hidden><div class="card-title"><h2>Upcoming gigs</h2><a class="link" href="#/gigs">All gigs</a></div><ol class="gig-list" id="bhGigs"></ol></div>
         <div class="card pad bento-item" id="bhRelCard" hidden><div class="card-title"><h2>Fans also like</h2></div><div class="rel" id="bhRel"></div></div>
       </div>
       <div class="card pad bento-item band-empty" id="bhEmpty" hidden></div>`;
@@ -1543,6 +1564,10 @@
       $("bhStoriesCard").hidden = false; $("bhStoriesN").textContent = stories.length + (stories.length === 1 ? " story" : " stories");
       $("bhStories").innerHTML = stories.slice(0, 12).map((a) => `<a class="card lift acard" href="/a/${keyOf(a)}"><div class="art-wrap">${media(a)}${scoreBadge(a)}</div><div class="body">${tagHtml(a.kind || a.genre)}<h3>${esc(a.title)}</h3><div class="meta"><span>${fmtDate(a.published_at)}</span><span>${readTime(a.content)}</span></div></div></a>`).join("");
     }
+    await loadGigs();
+    if (run !== bandRun) return;
+    const bandGigs = gigs.filter((g) => (g.bands || []).some((b) => bandSlug(b) === s));
+    if (bandGigs.length) { $("bhGigsCard").hidden = false; $("bhGigs").innerHTML = bandGigs.map((g, i) => gigHtml(g, i, false)).join(""); }
     if (dz && dz.related && dz.related.length) {
       $("bhRelCard").hidden = false;
       $("bhRel").innerHTML = dz.related.map((r) => `<a class="rel-item" href="/band/${encodeURIComponent(bandSlug(r.name))}"><span class="rel-pic">${r.picture ? `<img src="${esc(r.picture)}" alt="" loading="lazy" onerror="this.remove()">` : ""}${art(r.name)}</span><span class="rel-name">${esc(r.name)}</span>${r.fans ? `<span class="c-votes">${nfc.format(r.fans)} fans</span>` : ""}</a>`).join("");
@@ -1558,6 +1583,64 @@
     const q = chartQueues[b.dataset.playBand]; if (q && q.length) playFrom(q, 0);
   });
 
+  // ---- Gigs ----------------------------------------------------------------------
+  let gigs = [], gigsLoaded = null;
+  function loadGigs() {
+    if (!gigsLoaded) gigsLoaded = (async () => {
+      try {
+        const since = new Date(Date.now() - 12 * 3600e3).toISOString();
+        const { data, error } = await db.from("gigs").select("*").eq("status", "published").gte("starts_at", since).order("starts_at", { ascending: true }).limit(200);
+        gigs = error ? [] : (data || []);
+      } catch { gigs = []; }
+      return gigs;
+    })();
+    return gigsLoaded;
+  }
+  const gigDay = (d) => new Date(d).toLocaleDateString("en-GB", { day: "2-digit" });
+  const gigMon = (d) => new Date(d).toLocaleDateString("en-GB", { month: "short" });
+  const gigWhen = (d) => new Date(d).toLocaleString("en-GB", { weekday: "short", hour: "2-digit", minute: "2-digit" });
+  function gigHtml(g, i, compact) {
+    const bands = (g.bands || []).map((b) => bandLink(b, "gig-band")).join("");
+    const soon = new Date(g.starts_at) - Date.now() < 7 * 864e5;
+    return `<li class="gig${soon ? " soon" : ""}" style="--i:${i}">
+      <div class="gig-date"><b>${gigDay(g.starts_at)}</b><span>${gigMon(g.starts_at)}</span></div>
+      <div class="gig-main">
+        <div class="gig-title">${esc(g.title)}</div>
+        <div class="c-sub">${esc([gigWhen(g.starts_at), g.venue, g.city].filter(Boolean).join(" · "))}${g.price ? " · " + esc(g.price) : ""}</div>
+        ${!compact && bands ? `<div class="gig-bands">${bands}</div>` : ""}
+        ${!compact && g.description ? `<p class="gig-desc">${esc(g.description)}</p>` : ""}
+        ${!compact ? `<div class="gig-actions">${g.ticket_url ? `<a class="btn btn-forest btn-sm" href="${esc(g.ticket_url)}" target="_blank" rel="noopener">Tickets ↗</a>` : ""}<button class="btn btn-ghost-dark btn-sm" type="button" data-ics="${esc(g.id)}">Add to calendar</button></div>` : ""}
+      </div>
+      ${!compact && g.poster_url ? `<a class="gig-poster" href="${esc(g.poster_url)}" target="_blank" rel="noopener"><img src="${esc(g.poster_url)}" alt="Poster for ${esc(g.title)}" loading="lazy" onerror="this.parentElement.remove()"></a>` : ""}
+    </li>`;
+  }
+  async function renderGigPeek() {
+    await loadGigs();
+    $("gigPeek").innerHTML = gigs.length ? gigs.slice(0, 3).map((g, i) => `<a class="gig-link" href="#/gigs">${gigHtml(g, i, true).replace(/^<li/, "<div").replace(/<\/li>$/, "</div>")}</a>`).map((x) => `<li>${x}</li>`).join("")
+      : `<li><div class="empty-note">No gigs announced yet. Shows appear here as soon as they're added.</div></li>`;
+  }
+  async function renderGigs() {
+    $("gigList").innerHTML = '<li class="skel" style="height:90px;list-style:none;margin-bottom:8px"></li>'.repeat(3);
+    await loadGigs();
+    $("gigList").innerHTML = gigs.length ? gigs.map((g, i) => gigHtml(g, i, false)).join("")
+      : `<li><div class="chart-empty"><strong>No upcoming gigs yet</strong>Playing a show? Send it to hello@mikasa.me and we'll list it.</div></li>`;
+  }
+  // .ics calendar file for one gig (works with Google, Apple and Outlook calendars)
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-ics]"); if (!b) return;
+    const g = gigs.find((x) => String(x.id) === b.dataset.ics); if (!g) return;
+    const t = (d) => new Date(d).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+    const end = new Date(new Date(g.starts_at).getTime() + 3 * 3600e3);
+    const x = (v) => String(v || "").replace(/[\\,;]/g, (m) => "\\" + m).replace(/\n/g, "\\n");
+    const ics = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//UNDERGROUND//Gigs//EN", "BEGIN:VEVENT", "UID:" + g.id + "@music.mikasa.me", "DTSTAMP:" + t(new Date()),
+      "DTSTART:" + t(g.starts_at), "DTEND:" + t(end), "SUMMARY:" + x(g.title), "LOCATION:" + x([g.venue, g.city].filter(Boolean).join(", ")),
+      "DESCRIPTION:" + x([(g.bands || []).join(", "), g.ticket_url, "music.mikasa.me/#/gigs"].filter(Boolean).join("\n")), "END:VEVENT", "END:VCALENDAR"].join("\r\n");
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([ics], { type: "text/calendar" }));
+    a.download = (g.title || "gig").replace(/[^\w-]+/g, "-").slice(0, 40) + ".ics";
+    document.body.append(a); a.click(); a.remove();
+  });
+
   heroFloor($("heroFloor"));
   recTimer();
   wave($("aboutWave"), 600, 180, 6);
@@ -1569,7 +1652,7 @@
     clearTimeout(maxSplash);
     renderPills(); renderHome(); renderCoverage(); renderGrid(false); renderAbout();
     loadNews();
-    loadTracks(); loadPeek();
+    loadTracks(); loadPeek(); renderGigPeek();
     hideSplash();
     route();
   });
