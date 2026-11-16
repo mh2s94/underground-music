@@ -12,6 +12,14 @@ Static Cloudflare Pages site with a Supabase-backed editorial workflow and multi
 ## Public site
 `index.html` + `assets/bento.css` + `assets/bento.js`: a "Neon Basement" bento dashboard (Bebas Neue / Inter / Space Mono, neon pink #FF2E63 + UV #7B5CFF, VHS scanlines) with four views (Dashboard, Articles, About, Account), splash screen, animated counters and charts, and an article reader at `#/a/<slug>`. All numbers and charts are computed from published articles. To enable the "Submit your demo" and "Contact" buttons, set `SUBMIT_EMAIL` at the top of `assets/bento.js`.
 
+## Music (Basement radio)
+1. Supabase Dashboard → SQL Editor → run `supabase/music.sql` once (after `community.sql`). It creates the `tracks` table, a public `music` storage bucket (25 MB per file, audio + cover images, admin-only uploads) and the `ug_admin_purge` cleanup function.
+2. Admin → **Music** tab: drop an MP3/M4A/OGG/WAV/FLAC, add title, artist, genre and an optional cover, then **Upload & publish**. Tracks can be edited, unpublished or deleted (files are removed from storage too).
+3. Visitors play tracks from the **Music** view; the mini player keeps playing while they browse, with lock-screen controls on phones.
+
+## Admin settings: clean up data
+Admin → **Settings** shows counts and lets you delete articles, comments, saved articles, music (with files) or demo submissions, or **Reset everything**. Every deletion asks you to type DELETE / RESET first. Member accounts, admin access and categories are never deleted.
+
 ## Scene radar (music news)
 `functions/api/news.js` reads the public RSS feeds of heavy-music sites (Metal Injection, MetalSucks, Theprp, Decibel, Loudwire metal, New Noise, Distorted Sound), tags each headline with our genres, guesses the band name, and caches the list for 15 minutes. No API key needed. The public "Underground wire" shows headlines linking to the original sites; the admin **Scene radar** panel has a **Write article** button that fills the AI generator with the facts and adds a source credit. Only headlines, short summaries and links are used — full articles stay on the original sites. Edit the `SOURCES` list in that file to add or remove feeds.
 

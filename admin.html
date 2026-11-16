@@ -99,6 +99,52 @@
 @media (max-width: 700px) { .news-row { grid-template-columns: 72px minmax(0, 1fr); } .news-row .thumb { width: 72px; } .news-row .acts { grid-column: 1 / -1; justify-content: flex-start; } }
 .btn.glow-pulse { animation: glowPulse 1.2s ease-in-out 3; }
 @keyframes glowPulse { 50% { box-shadow: 0 0 0 6px rgba(255, 46, 99, .25), 0 0 34px rgba(255, 46, 99, .8); } }
+
+/* Tabs */
+.tabs-bar { position: relative; display: flex; gap: 4px; margin: 0 0 22px; padding: 4px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); width: max-content; max-width: 100%; overflow-x: auto; }
+.tab { position: relative; z-index: 1; min-height: 44px; padding: 0 20px; border: 0; border-radius: 10px; background: transparent; color: var(--faint); font: 700 12px/1 var(--font-mono); letter-spacing: .1em; text-transform: uppercase; cursor: pointer; transition: color .3s; white-space: nowrap; }
+.tab:hover { color: var(--text); }
+.tab[aria-selected="true"] { color: var(--accent-ink); }
+.tab-ink { position: absolute; top: 4px; bottom: 4px; left: 0; width: 0; border-radius: 10px; background: var(--accent); box-shadow: 0 0 18px rgba(255, 46, 99, .55); transition: transform .45s var(--spring), width .45s var(--spring); }
+.tab-panel { animation: sheetUp .5s var(--spring) both; }
+
+/* Music upload */
+.drop { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; min-height: 150px; padding: 18px; border: 1.5px dashed var(--line-strong); border-radius: var(--r-md); background: var(--bg); color: var(--muted); text-align: center; cursor: pointer; transition: border-color .25s, box-shadow .25s, color .25s; }
+.drop:hover, .drop.over, .drop:focus-within { border-color: var(--accent); color: var(--text); box-shadow: 0 0 22px -6px rgba(255, 46, 99, .55); }
+.drop.has-file { border-style: solid; border-color: var(--uv); color: var(--text); }
+.drop-title { font-weight: 600; overflow-wrap: anywhere; }
+#upPreview { width: 100%; height: 40px; }
+.cover-prev { width: 76px; height: 76px; flex: none; border-radius: 12px; background: var(--surface-2) center/cover no-repeat; border: 1px solid var(--line); }
+.up-progress { height: 4px; border-radius: 4px; background: var(--surface-2); overflow: hidden; }
+.up-progress span { display: block; height: 100%; width: 40%; background: var(--accent); box-shadow: 0 0 12px var(--accent); animation: indet 1.1s ease-in-out infinite; }
+@keyframes indet { from { transform: translateX(-100%); } to { transform: translateX(260%); } }
+.track-row { display: grid; grid-template-columns: 56px minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 12px 0; border-top: 1px solid var(--line); animation: sheetUp .45s var(--spring) both; animation-delay: var(--d, 0ms); }
+.track-row .thumb { width: 56px; height: 56px; border-radius: 10px; object-fit: cover; background: var(--surface-2) center/cover no-repeat; border: 1px solid var(--line); }
+.track-row .tt { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.track-row .sub { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 5px; }
+.track-row .actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.track-row.playing { box-shadow: inset 3px 0 0 var(--accent); }
+@media (max-width: 700px) { .track-row { grid-template-columns: 48px minmax(0, 1fr); } .track-row .thumb { width: 48px; height: 48px; } .track-row .actions { grid-column: 1 / -1; justify-content: flex-start; } }
+
+/* Settings */
+.purge-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 12px; }
+.purge-item { position: relative; display: flex; gap: 14px; align-items: flex-start; padding: 16px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--bg); cursor: pointer; transition: border-color .25s, box-shadow .25s; }
+.purge-item:hover { border-color: var(--line-strong); }
+.purge-item input { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
+.pi-box { flex: none; width: 22px; height: 22px; border-radius: 6px; border: 1.5px solid var(--line-strong); display: grid; place-items: center; transition: background-color .2s, border-color .2s; margin-top: 2px; }
+.purge-item input:checked ~ .pi-box { background: var(--danger); border-color: var(--danger); box-shadow: 0 0 12px rgba(255, 92, 134, .6); }
+.purge-item input:checked ~ .pi-box::after { content: ""; width: 10px; height: 6px; border-left: 2.5px solid #07060B; border-bottom: 2.5px solid #07060B; transform: rotate(-45deg) translate(1px, -1px); }
+.purge-item:has(input:checked) { border-color: var(--danger); box-shadow: 0 0 20px -8px rgba(255, 92, 134, .7); }
+.purge-item input:focus-visible ~ .pi-box { outline: 2px solid var(--accent); outline-offset: 3px; }
+.pi-body { flex: 1; display: flex; flex-direction: column; gap: 4px; font-size: 14px; color: var(--muted); }
+.pi-body b { color: var(--text); font-size: 15px; }
+.pi-count { flex: none; font: 400 28px/1 var(--font-display); color: var(--text); }
+.purge-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.btn-danger-solid { background: var(--danger); border-color: var(--danger); color: #07060B; font-weight: 700; }
+.btn-danger-solid:hover { box-shadow: 0 0 26px rgba(255, 92, 134, .7); }
+.cf-list { list-style: none; margin: 0; padding: 14px; border-radius: var(--r-md); background: var(--bg); border: 1px solid var(--line); display: flex; flex-direction: column; gap: 8px; font-size: 14px; }
+.cf-list li { display: flex; justify-content: space-between; gap: 12px; }
+.cf-list b { font-family: var(--font-display); font-size: 20px; font-weight: 400; color: var(--danger); }
 </style>
 </head>
 <body>
@@ -130,10 +176,19 @@
     <div class="page-head">
       <div>
         <span class="eyebrow"><span class="dot" aria-hidden="true"></span>Editorial control room</span>
-        <h1 class="display" style="margin-top:12px">Newsroom</h1>
+        <h1 class="display" style="margin-top:12px" id="tabHeading">Newsroom</h1>
       </div>
       <button class="btn" type="button" id="newBtn">+ New article</button>
     </div>
+
+    <div class="tabs-bar" role="tablist" aria-label="Admin sections">
+      <button class="tab" type="button" role="tab" id="tab-articles" aria-controls="panel-articles" aria-selected="true" data-tab="articles">Articles</button>
+      <button class="tab" type="button" role="tab" id="tab-music" aria-controls="panel-music" aria-selected="false" data-tab="music">Music</button>
+      <button class="tab" type="button" role="tab" id="tab-settings" aria-controls="panel-settings" aria-selected="false" data-tab="settings">Settings</button>
+      <span class="tab-ink" id="tabInk" aria-hidden="true"></span>
+    </div>
+
+    <div class="tab-panel" id="panel-articles" role="tabpanel" aria-labelledby="tab-articles" data-panel="articles">
 
     <div class="workspace">
       <!-- Generator -->
@@ -218,6 +273,60 @@
       <div class="rows" id="articles"></div>
     </section>
 
+    </div>
+
+    <!-- ======================= MUSIC ======================= -->
+    <div class="tab-panel" id="panel-music" role="tabpanel" aria-labelledby="tab-music" data-panel="music" hidden>
+      <div class="workspace">
+        <section class="panel card-pad gen" aria-labelledby="upTitle">
+          <div class="card-head"><h2 id="upTitle">Upload track</h2><span class="badge" id="upMode">New</span></div>
+          <div class="alert warning" id="musicSetup" hidden>
+            <span style="color:var(--warning)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v6"/><path d="M12 16.5v.5"/></svg></span>
+            <div><strong>Music is not set up yet</strong><span class="muted">Run <span class="mono">supabase/music.sql</span> in the Supabase SQL Editor once, then reload this page.</span></div>
+          </div>
+          <label class="drop" id="drop" for="audioFile">
+            <input type="file" id="audioFile" accept="audio/mpeg,audio/mp3,audio/mp4,audio/x-m4a,audio/aac,audio/ogg,audio/wav,audio/flac,.mp3,.m4a,.aac,.ogg,.wav,.flac" class="sr-only">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg>
+            <span class="drop-title" id="dropTitle">Drop an MP3 here or tap to choose</span>
+            <span class="hint" id="dropHint">MP3, M4A, OGG, WAV or FLAC · max 25 MB</span>
+          </label>
+          <audio id="upPreview" controls preload="metadata" hidden></audio>
+          <label class="field"><span>Track title</span><input class="input" id="tTitle" maxlength="160" placeholder="Song title"></label>
+          <label class="field"><span>Artist / band</span><input class="input" id="tArtist" maxlength="160" placeholder="Band name"></label>
+          <label class="field"><span>Genre</span><select class="select" id="tGenre"><option>Metalcore</option><option>Deathcore</option><option>Hardcore</option><option>Darkcore</option><option>Post-Hardcore</option><option>Black Metal</option><option>Djent</option><option selected>Underground</option></select></label>
+          <div class="field">
+            <span class="label">Cover image <span class="hint">(optional)</span></span>
+            <div style="display:flex;gap:12px;align-items:center">
+              <div class="cover-prev" id="coverPrev" aria-hidden="true"></div>
+              <div style="display:flex;flex-direction:column;gap:8px;min-width:0;flex:1">
+                <label class="btn btn-sm" for="coverFile" style="align-self:flex-start">Choose image</label>
+                <input type="file" id="coverFile" accept="image/jpeg,image/png,image/webp" class="sr-only">
+                <input class="input" id="tCoverUrl" placeholder="…or paste an image URL (https://)" style="min-height:40px;font-size:14px">
+              </div>
+            </div>
+          </div>
+          <label class="field"><span>Note <span class="hint">(optional, shown to editors only)</span></span><textarea class="textarea" id="tDesc" rows="2" maxlength="1000" placeholder="Source, permission, release info…"></textarea></label>
+          <div class="segmented" role="radiogroup" aria-label="Track status">
+            <label><input type="radio" name="tstatus" value="draft"><span>Draft</span></label>
+            <label><input type="radio" name="tstatus" value="published" checked><span>Publish</span></label>
+          </div>
+          <div class="up-progress" id="upProgress" hidden><span></span></div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <button class="btn btn-primary" type="button" id="tSave" style="flex:1"><span id="tSaveLabel">Upload &amp; publish</span></button>
+            <button class="btn btn-ghost" type="button" id="tCancel" hidden>Cancel edit</button>
+          </div>
+          <p class="hint" style="margin:0">Only upload music you have the rights or the band's permission to share.</p>
+        </section>
+
+        <section class="panel card-pad" aria-labelledby="libTitle">
+          <div class="list-head">
+            <h2 id="libTitle" style="margin:0">Music library <span class="badge" id="trackTotal" hidden></span></h2>
+            <input class="input" id="tSearch" placeholder="Search tracks…" style="max-width:240px;min-height:42px">
+          </div>
+          <div class="rows" id="trackRows"></div>
+        </section>
+      </div>
+
     <!-- Demo inbox -->
     <section class="panel card-pad" style="margin-top:20px" aria-labelledby="demoTitle">
       <div class="list-head">
@@ -228,8 +337,45 @@
       </div>
       <div class="rows" id="demos"></div>
     </section>
+    </div>
+
+    <!-- ======================= SETTINGS ======================= -->
+    <div class="tab-panel" id="panel-settings" role="tabpanel" aria-labelledby="tab-settings" data-panel="settings" hidden>
+      <section class="panel card-pad" aria-labelledby="purgeTitle">
+        <div class="card-head"><h2 id="purgeTitle">Clean up data</h2><button class="btn btn-sm btn-ghost" type="button" id="purgeRefresh">Refresh counts</button></div>
+        <p class="muted" style="margin:0">Choose what to delete permanently. Member accounts, admin access and site settings are never deleted.</p>
+        <div class="purge-grid" id="purgeGrid">
+          <label class="purge-item"><input type="checkbox" value="articles"><span class="pi-box"></span><span class="pi-body"><b>Articles</b><span>All articles, drafts and reviews. Also removes their comments and saves.</span></span><span class="pi-count" data-count="articles">–</span></label>
+          <label class="purge-item"><input type="checkbox" value="comments"><span class="pi-box"></span><span class="pi-body"><b>Comments</b><span>Every comment from members, on every article.</span></span><span class="pi-count" data-count="comments">–</span></label>
+          <label class="purge-item"><input type="checkbox" value="saved"><span class="pi-box"></span><span class="pi-body"><b>Saved articles</b><span>Members' bookmarks. The articles themselves stay.</span></span><span class="pi-count" data-count="saved">–</span></label>
+          <label class="purge-item"><input type="checkbox" value="tracks"><span class="pi-box"></span><span class="pi-body"><b>Music</b><span>All tracks plus their audio and cover files in storage.</span></span><span class="pi-count" data-count="tracks">–</span></label>
+          <label class="purge-item"><input type="checkbox" value="demos"><span class="pi-box"></span><span class="pi-body"><b>Demo submissions</b><span>Everything in the Demo inbox.</span></span><span class="pi-count" data-count="demos">–</span></label>
+        </div>
+        <div class="purge-actions">
+          <button class="btn" type="button" id="purgeSelected" disabled>Delete selected</button>
+          <button class="btn btn-danger-solid" type="button" id="purgeAll">Reset everything</button>
+        </div>
+        <p class="hint" style="margin:0">Reset everything deletes articles, comments, saves, music (with files) and demo submissions, returning the site to a clean start.</p>
+      </section>
+    </div>
   </div>
 </main>
+
+<div id="confirmView" class="dv" hidden>
+  <div class="dv-backdrop" data-cf-close></div>
+  <div class="dv-sheet panel" role="alertdialog" aria-modal="true" aria-labelledby="cfTitle" aria-describedby="cfDesc">
+    <div class="dv-head">
+      <div><span class="eyebrow" style="color:var(--danger);text-shadow:none"><span class="dot" aria-hidden="true"></span>Permanent action</span><h2 id="cfTitle">Delete permanently?</h2></div>
+      <button class="btn btn-icon btn-ghost" type="button" data-cf-close aria-label="Cancel"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <div id="cfDesc"></div>
+    <label class="field"><span>Type <b id="cfWord" style="color:var(--danger)">DELETE</b> to confirm</span><input class="input" id="cfInput" autocomplete="off" spellcheck="false"></label>
+    <div class="dv-actions">
+      <button class="btn btn-ghost" type="button" data-cf-close>Cancel</button>
+      <button class="btn btn-danger-solid" type="button" id="cfGo" disabled>Delete permanently</button>
+    </div>
+  </div>
+</div>
 
 <div id="demoView" class="dv" hidden>
   <div class="dv-backdrop" data-dv-close></div>
@@ -267,6 +413,8 @@ async function session() {
   loadArticles();
   loadDemos();
   loadRadar(false);
+  const initial = (location.hash || "").slice(1);
+  showTab(["music", "settings"].includes(initial) ? initial : "articles", false);
 }
 function showLogin() { $("login").hidden = false; $("app").hidden = true; $("userBar").hidden = true; setTimeout(() => $("email").focus(), 50); }
 
@@ -689,6 +837,347 @@ $("radarGenre").addEventListener("change", renderRadar);
 $("pubNow").addEventListener("click", () => setPubDate(new Date().toISOString()));
 $("pubClear").addEventListener("click", () => setPubDate(null));
 $("radarRefresh").addEventListener("click", () => loadRadar(true));
+
+/* ===================== Tabs ===================== */
+const TAB_TITLES = { articles: "Newsroom", music: "Music", settings: "Settings" };
+const loadedTabs = new Set(["articles"]);
+function moveInk() {
+  const t = document.querySelector('.tab[aria-selected="true"]'); if (!t) return;
+  $("tabInk").style.width = t.offsetWidth + "px";
+  $("tabInk").style.transform = `translateX(${t.offsetLeft}px)`;
+}
+function showTab(name, push) {
+  if (!TAB_TITLES[name]) name = "articles";
+  document.querySelectorAll(".tab").forEach((t) => t.setAttribute("aria-selected", String(t.dataset.tab === name)));
+  document.querySelectorAll(".tab-panel").forEach((p) => { p.hidden = p.dataset.panel !== name; });
+  $("tabHeading").textContent = TAB_TITLES[name];
+  $("newBtn").hidden = name !== "articles";
+  moveInk();
+  if (push) history.replaceState(null, "", "#" + name);
+  if (!loadedTabs.has(name)) {
+    loadedTabs.add(name);
+    if (name === "music") loadTracks();
+    if (name === "settings") loadCounts();
+  } else if (name === "settings") loadCounts();
+}
+document.querySelectorAll(".tab").forEach((t) => t.addEventListener("click", () => showTab(t.dataset.tab, true)));
+document.querySelector(".tabs-bar").addEventListener("keydown", (e) => {
+  if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+  const tabs = [...document.querySelectorAll(".tab")];
+  const i = tabs.findIndex((t) => t.getAttribute("aria-selected") === "true");
+  const n = tabs[(i + (e.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length];
+  showTab(n.dataset.tab, true); n.focus();
+});
+window.addEventListener("resize", moveInk);
+
+/* ===================== Music ===================== */
+const BUCKET = "music";
+const MAX_AUDIO = 25 * 1024 * 1024, MAX_COVER = 5 * 1024 * 1024;
+let allTracks = [];
+let editingTrack = null;
+let audioFile = null, coverFile = null, probedDuration = null;
+const isMissing = (err) => !!err && (err.code === "42P01" || err.code === "PGRST205" || /does not exist|schema cache|Bucket not found/i.test(err.message || ""));
+const fmtDur = (sec) => sec ? Math.floor(sec / 60) + ":" + String(Math.floor(sec % 60)).padStart(2, "0") : "";
+const fmtSize = (b) => (b / 1048576).toFixed(1) + " MB";
+const tStatus = () => document.querySelector('input[name="tstatus"]:checked').value;
+const extOf = (f, fallback) => ((f.name.match(/\.([a-z0-9]{2,5})$/i) || [])[1] || fallback).toLowerCase();
+const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
+
+function updateTrackSaveLabel() {
+  if ($("tSave").disabled) return;
+  $("tSaveLabel").textContent = editingTrack ? (tStatus() === "published" ? "Save & publish" : "Save as draft") : (tStatus() === "published" ? "Upload & publish" : "Upload as draft");
+}
+document.querySelectorAll('input[name="tstatus"]').forEach((r) => r.addEventListener("change", updateTrackSaveLabel));
+
+function probeDuration(file) {
+  return new Promise((resolve) => {
+    const a = new Audio(); const url = URL.createObjectURL(file);
+    const done = (v) => { URL.revokeObjectURL(url); resolve(v); };
+    a.preload = "metadata";
+    a.onloadedmetadata = () => done(isFinite(a.duration) ? Math.round(a.duration) : null);
+    a.onerror = () => done(null);
+    setTimeout(() => done(null), 8000);
+    a.src = url;
+  });
+}
+function guessFromFilename(name) {
+  const base = name.replace(/\.[^.]+$/, "").replace(/[_]+/g, " ").replace(/\s+/g, " ").trim();
+  const m = base.match(/^(.+?)\s+[-–—]\s+(.+)$/);
+  return m ? { artist: m[1].trim(), title: m[2].trim() } : { artist: "", title: base };
+}
+async function pickAudio(file) {
+  if (!file) return;
+  if (!/^audio\//.test(file.type) && !/\.(mp3|m4a|aac|ogg|wav|flac)$/i.test(file.name)) { toast("warning", "Not an audio file", "Choose an MP3, M4A, OGG, WAV or FLAC file."); return; }
+  if (file.size > MAX_AUDIO) { toast("warning", "File too large", `${fmtSize(file.size)}. The limit is 25 MB; export a smaller MP3 (e.g. 192–320 kbps).`); return; }
+  audioFile = file;
+  $("drop").classList.add("has-file");
+  $("dropTitle").textContent = file.name;
+  $("dropHint").textContent = fmtSize(file.size) + " · reading duration…";
+  const p = $("upPreview"); if (p.dataset.url) URL.revokeObjectURL(p.dataset.url);
+  p.dataset.url = URL.createObjectURL(file); p.src = p.dataset.url; p.hidden = false;
+  const g = guessFromFilename(file.name);
+  if (!$("tTitle").value.trim()) $("tTitle").value = g.title;
+  if (!$("tArtist").value.trim() && g.artist) $("tArtist").value = g.artist;
+  probedDuration = await probeDuration(file);
+  $("dropHint").textContent = fmtSize(file.size) + (probedDuration ? " · " + fmtDur(probedDuration) : "");
+}
+$("audioFile").addEventListener("change", (e) => pickAudio(e.target.files[0]));
+["dragenter", "dragover"].forEach((ev) => $("drop").addEventListener(ev, (e) => { e.preventDefault(); $("drop").classList.add("over"); }));
+["dragleave", "drop"].forEach((ev) => $("drop").addEventListener(ev, (e) => { e.preventDefault(); $("drop").classList.remove("over"); }));
+$("drop").addEventListener("drop", (e) => pickAudio(e.dataTransfer.files[0]));
+
+function setCoverPreview(src) { $("coverPrev").style.backgroundImage = src ? `url("${src.replace(/"/g, "%22")}")` : ""; }
+$("coverFile").addEventListener("change", (e) => {
+  const f = e.target.files[0]; if (!f) return;
+  if (!/^image\/(jpeg|png|webp)$/.test(f.type)) { toast("warning", "Unsupported image", "Use JPG, PNG or WebP."); return; }
+  if (f.size > MAX_COVER) { toast("warning", "Image too large", "Keep covers under 5 MB."); return; }
+  coverFile = f; $("tCoverUrl").value = "";
+  setCoverPreview(URL.createObjectURL(f));
+});
+$("tCoverUrl").addEventListener("input", () => { coverFile = null; const v = $("tCoverUrl").value.trim(); setCoverPreview(/^https:\/\//i.test(v) ? v : ""); });
+
+function resetTrackForm() {
+  editingTrack = null; audioFile = null; coverFile = null; probedDuration = null;
+  ["tTitle", "tArtist", "tDesc", "tCoverUrl"].forEach((id) => { $(id).value = ""; $(id).classList.remove("invalid"); });
+  $("tGenre").value = "Underground";
+  $("audioFile").value = ""; $("coverFile").value = "";
+  $("drop").classList.remove("has-file"); $("dropTitle").textContent = "Drop an MP3 here or tap to choose"; $("dropHint").textContent = "MP3, M4A, OGG, WAV or FLAC · max 25 MB";
+  const p = $("upPreview"); p.pause(); p.removeAttribute("src"); p.hidden = true;
+  setCoverPreview("");
+  document.querySelector('input[name="tstatus"][value="published"]').checked = true;
+  $("upMode").textContent = "New"; $("upTitle").textContent = "Upload track"; $("tCancel").hidden = true;
+  updateTrackSaveLabel();
+}
+$("tCancel").onclick = resetTrackForm;
+
+async function uploadFile(file, folder, fallbackExt) {
+  const path = `${folder}/${uid()}.${extOf(file, fallbackExt)}`;
+  const { error } = await sb.storage.from(BUCKET).upload(path, file, { contentType: file.type || undefined, cacheControl: "31536000", upsert: false });
+  if (error) throw error;
+  return { path, url: sb.storage.from(BUCKET).getPublicUrl(path).data.publicUrl };
+}
+async function removeFiles(paths) {
+  const list = paths.filter(Boolean);
+  if (list.length) await sb.storage.from(BUCKET).remove(list);
+}
+
+$("tSave").onclick = async () => {
+  const title = $("tTitle").value.trim(), artist = $("tArtist").value.trim();
+  const missing = [];
+  if (!editingTrack && !audioFile) { shake($("drop")); missing.push("an audio file"); }
+  if (!title) { $("tTitle").classList.add("invalid"); shake($("tTitle")); missing.push("title"); }
+  if (!artist) { $("tArtist").classList.add("invalid"); shake($("tArtist")); missing.push("artist"); }
+  if (missing.length) { toast("warning", "Missing " + missing.join(", "), "Fill in the highlighted fields first."); return; }
+  const coverUrlTyped = $("tCoverUrl").value.trim();
+  if (coverUrlTyped && !/^https:\/\//i.test(coverUrlTyped)) { $("tCoverUrl").classList.add("invalid"); toast("warning", "Cover URL must start with https://"); return; }
+
+  const btn = $("tSave"); btn.disabled = true; $("tCancel").disabled = true;
+  const label = $("tSaveLabel"); $("upProgress").hidden = false;
+  const uploaded = [];
+  try {
+    const st = tStatus(), now = new Date().toISOString();
+    const payload = {
+      title, artist, genre: $("tGenre").value || "Underground", description: $("tDesc").value.trim() || null,
+      status: st, updated_at: now,
+      published_at: st === "published" ? (editingTrack?.published_at || now) : null
+    };
+    if (audioFile) {
+      label.textContent = `Uploading ${fmtSize(audioFile.size)}…`;
+      const a = await uploadFile(audioFile, "audio", "mp3"); uploaded.push(a.path);
+      payload.audio_path = a.path; payload.audio_url = a.url; payload.duration_sec = probedDuration;
+    }
+    if (coverFile) {
+      label.textContent = "Uploading cover…";
+      const c = await uploadFile(coverFile, "covers", "jpg"); uploaded.push(c.path);
+      payload.cover_path = c.path; payload.cover_url = c.url;
+    } else if (coverUrlTyped !== (editingTrack?.cover_path ? "" : (editingTrack?.cover_url || ""))) {
+      payload.cover_path = null; payload.cover_url = coverUrlTyped || null;
+    }
+    label.textContent = "Saving…";
+    const res = editingTrack
+      ? await sb.from("tracks").update(payload).eq("id", editingTrack.id).select("*").single()
+      : await sb.from("tracks").insert(payload).select("*").single();
+    if (res.error) throw res.error;
+    if (editingTrack) {
+      const old = [];
+      if (payload.audio_path && editingTrack.audio_path !== payload.audio_path) old.push(editingTrack.audio_path);
+      if ("cover_path" in payload && editingTrack.cover_path && editingTrack.cover_path !== payload.cover_path) old.push(editingTrack.cover_path);
+      removeFiles(old).catch(() => {});
+    }
+    toast("success", editingTrack ? "Track updated" : (st === "published" ? "Track published" : "Draft saved"), `${title} — ${artist}${st === "published" ? " is now playable on the site." : ""}`);
+    resetTrackForm();
+    loadTracks();
+  } catch (err) {
+    removeFiles(uploaded).catch(() => {});
+    toast("error", "Could not save the track", isMissing(err) ? "Run supabase/music.sql in the Supabase SQL Editor first." : (err.message || String(err)), { duration: 9000 });
+    if (isMissing(err)) $("musicSetup").hidden = false;
+  } finally {
+    btn.disabled = false; $("tCancel").disabled = false; $("upProgress").hidden = true;
+    updateTrackSaveLabel();
+  }
+};
+
+async function loadTracks() {
+  $("trackRows").innerHTML = Array.from({ length: 3 }, () => `<div class="track-row" aria-hidden="true"><div class="thumb skel"></div><div><div class="skel" style="height:14px;width:60%"></div><div class="skel" style="height:10px;width:35%;margin-top:10px"></div></div><div></div></div>`).join("");
+  const { data, error } = await sb.from("tracks").select("*").order("created_at", { ascending: false }).limit(500);
+  if (error) {
+    $("trackRows").innerHTML = `<p class="muted" style="margin:8px 0 0">${isMissing(error) ? "Music is not set up yet." : esc(error.message)}</p>`;
+    if (isMissing(error)) $("musicSetup").hidden = false;
+    return;
+  }
+  $("musicSetup").hidden = true;
+  allTracks = data || [];
+  $("trackTotal").hidden = !allTracks.length; $("trackTotal").textContent = allTracks.length + " tracks";
+  renderTracks();
+}
+let previewAudio = null, previewId = null;
+function renderTracks() {
+  const q = $("tSearch").value.trim().toLowerCase();
+  const list = q ? allTracks.filter((t) => (t.title + " " + t.artist).toLowerCase().includes(q)) : allTracks;
+  if (!list.length) { $("trackRows").innerHTML = `<p class="muted" style="margin:8px 0 0">${allTracks.length ? "No matches." : "No tracks yet. Upload your first one."}</p>`; return; }
+  $("trackRows").innerHTML = list.map((t, i) => `
+    <div class="track-row${previewId === t.id ? " playing" : ""}" style="--d:${Math.min(i, 10) * 35}ms">
+      <div class="thumb" style="${t.cover_url ? `background-image:url('${esc(t.cover_url)}')` : ""}"></div>
+      <div style="min-width:0"><div class="tt">${esc(t.title)}</div>
+        <div class="sub"><span class="badge ${t.status === "published" ? "published" : "draft"}">${t.status === "published" ? "published" : "draft"}</span><span class="mono muted">${esc(t.artist)} · ${esc(t.genre || "")}${t.duration_sec ? " · " + fmtDur(t.duration_sec) : ""}</span></div></div>
+      <div class="actions">
+        <button class="btn btn-sm btn-ghost" type="button" data-tprev="${esc(t.id)}">${previewId === t.id ? "Stop" : "Play"}</button>
+        <button class="btn btn-sm" type="button" data-tpub="${esc(t.id)}">${t.status === "published" ? "Unpublish" : "Publish"}</button>
+        <button class="btn btn-sm" type="button" data-tedit="${esc(t.id)}">Edit</button>
+        <button class="btn btn-sm btn-danger" type="button" data-tdel="${esc(t.id)}">Delete</button>
+      </div>
+    </div>`).join("");
+}
+$("tSearch").addEventListener("input", renderTracks);
+$("trackRows").addEventListener("click", async (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  const id = b.dataset.tprev || b.dataset.tpub || b.dataset.tedit || b.dataset.tdel;
+  const t = allTracks.find((x) => String(x.id) === id); if (!t) return;
+  if (b.dataset.tprev) {
+    if (previewId === t.id) { previewAudio?.pause(); previewId = null; }
+    else { previewAudio?.pause(); previewAudio = new Audio(t.audio_url); previewAudio.play().catch(() => toast("warning", "Could not play this file")); previewAudio.onended = () => { previewId = null; renderTracks(); }; previewId = t.id; }
+    renderTracks(); return;
+  }
+  if (b.dataset.tpub) {
+    const st = t.status === "published" ? "draft" : "published";
+    const { error } = await sb.from("tracks").update({ status: st, published_at: st === "published" ? (t.published_at || new Date().toISOString()) : t.published_at, updated_at: new Date().toISOString() }).eq("id", t.id);
+    if (error) return toast("error", "Could not update", error.message);
+    t.status = st; renderTracks(); toast("success", st === "published" ? "Published" : "Unpublished", t.title); return;
+  }
+  if (b.dataset.tedit) {
+    resetTrackForm();
+    editingTrack = t;
+    $("tTitle").value = t.title; $("tArtist").value = t.artist; $("tGenre").value = t.genre || "Underground"; $("tDesc").value = t.description || "";
+    $("tCoverUrl").value = t.cover_path ? "" : (t.cover_url || ""); setCoverPreview(t.cover_url || "");
+    document.querySelector(`input[name="tstatus"][value="${t.status}"]`).checked = true;
+    $("dropTitle").textContent = "Current audio kept · drop a file to replace it"; $("dropHint").textContent = t.duration_sec ? "Length " + fmtDur(t.duration_sec) : "";
+    $("upMode").textContent = "Editing"; $("upTitle").textContent = "Edit track"; $("tCancel").hidden = false;
+    updateTrackSaveLabel();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    return;
+  }
+  if (b.dataset.tdel) {
+    if (!b.dataset.armed) {
+      b.dataset.armed = "1"; b.textContent = "Confirm?";
+      setTimeout(() => { if (b.isConnected) { delete b.dataset.armed; b.textContent = "Delete"; } }, 3000);
+      return;
+    }
+    b.disabled = true;
+    const { error } = await sb.from("tracks").delete().eq("id", t.id);
+    if (error) { b.disabled = false; return toast("error", "Could not delete", error.message); }
+    await removeFiles([t.audio_path, t.cover_path]).catch(() => {});
+    if (previewId === t.id) { previewAudio?.pause(); previewId = null; }
+    if (editingTrack?.id === t.id) resetTrackForm();
+    toast("success", "Track deleted", "The audio file was removed from storage too.");
+    loadTracks();
+  }
+});
+
+/* ===================== Settings: clean up data ===================== */
+const PURGE = {
+  articles: { table: "articles", label: "Articles (with their comments and saves)" },
+  comments: { table: "comments", label: "Comments" },
+  saved: { table: "saved_articles", label: "Saved articles" },
+  tracks: { table: "tracks", label: "Music tracks + audio and cover files" },
+  demos: { table: "demo_submissions", label: "Demo submissions" }
+};
+let counts = {};
+async function loadCounts() {
+  document.querySelectorAll("[data-count]").forEach((el) => { el.textContent = "…"; });
+  await Promise.all(Object.entries(PURGE).map(async ([k, v]) => {
+    const { count, error } = await sb.from(v.table).select("*", { count: "exact", head: true });
+    counts[k] = error ? null : (count || 0);
+    const el = document.querySelector(`[data-count="${k}"]`);
+    el.textContent = error ? "n/a" : counts[k];
+    el.closest(".purge-item").querySelector("input").disabled = !!error;
+  }));
+}
+$("purgeRefresh").onclick = loadCounts;
+$("purgeGrid").addEventListener("change", () => { $("purgeSelected").disabled = !selectedTargets().length; });
+const selectedTargets = () => [...document.querySelectorAll("#purgeGrid input:checked")].map((i) => i.value);
+
+let pendingPurge = null;
+function openConfirm(targets, all) {
+  pendingPurge = targets;
+  const word = all ? "RESET" : "DELETE";
+  $("cfTitle").textContent = all ? "Reset the whole site?" : "Delete permanently?";
+  $("cfWord").textContent = word;
+  $("cfDesc").innerHTML = `<p class="muted" style="margin:0 0 12px">This cannot be undone. The following will be deleted permanently:</p>
+    <ul class="cf-list">${targets.map((t) => `<li><span>${esc(PURGE[t].label)}</span><b>${counts[t] ?? "?"}</b></li>`).join("")}</ul>
+    <p class="muted" style="margin:12px 0 0;font-size:13px">Member accounts and admin access are kept.</p>`;
+  $("cfInput").value = ""; $("cfGo").disabled = true; $("cfGo").textContent = all ? "Reset everything" : "Delete permanently";
+  $("cfInput").dataset.word = word;
+  $("confirmView").hidden = false; document.body.style.overflow = "hidden";
+  setTimeout(() => $("cfInput").focus(), 60);
+}
+function closeConfirm() { $("confirmView").hidden = true; document.body.style.overflow = ""; pendingPurge = null; }
+$("confirmView").addEventListener("click", (e) => { if (e.target.closest("[data-cf-close]")) closeConfirm(); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("confirmView").hidden) closeConfirm(); });
+$("cfInput").addEventListener("input", () => { $("cfGo").disabled = $("cfInput").value.trim().toUpperCase() !== $("cfInput").dataset.word; });
+$("cfInput").addEventListener("keydown", (e) => { if (e.key === "Enter" && !$("cfGo").disabled) $("cfGo").click(); });
+$("purgeSelected").onclick = () => { const t = selectedTargets(); if (t.length) openConfirm(t, false); };
+$("purgeAll").onclick = () => openConfirm(Object.keys(PURGE).filter((k) => counts[k] !== null), true);
+
+async function purgeStorage() {
+  let removed = 0;
+  for (const folder of ["audio", "covers"]) {
+    for (let guard = 0; guard < 50; guard++) {
+      const { data, error } = await sb.storage.from(BUCKET).list(folder, { limit: 1000 });
+      if (error) { if (/not found/i.test(error.message || "")) break; throw error; }
+      const files = (data || []).filter((f) => f.name && f.id !== null).map((f) => `${folder}/${f.name}`);
+      if (!files.length) break;
+      const { error: rmErr } = await sb.storage.from(BUCKET).remove(files);
+      if (rmErr) throw rmErr;
+      removed += files.length;
+      if (files.length < 1000) break;
+    }
+  }
+  return removed;
+}
+$("cfGo").onclick = async () => {
+  const targets = pendingPurge; if (!targets?.length) return;
+  const btn = $("cfGo"); btn.disabled = true; const label = btn.textContent;
+  btn.innerHTML = '<span class="spinner" aria-hidden="true"></span>Deleting…';
+  try {
+    let files = 0;
+    if (targets.includes("tracks")) { previewAudio?.pause(); files = await purgeStorage(); }
+    const { data, error } = await sb.rpc("ug_admin_purge", { p_targets: targets });
+    if (error) throw error;
+    const parts = Object.entries(data || {}).map(([k, n]) => `${n} ${k}`);
+    if (files) parts.push(`${files} files`);
+    closeConfirm();
+    document.querySelectorAll("#purgeGrid input").forEach((i) => { i.checked = false; }); $("purgeSelected").disabled = true;
+    toast("success", "Data deleted", parts.length ? "Removed " + parts.join(", ") + "." : "Nothing to delete.", { duration: 8000 });
+    loadCounts();
+    if (targets.includes("articles")) { resetForm(); loadArticles(); }
+    if (targets.includes("tracks") && loadedTabs.has("music")) { resetTrackForm(); loadTracks(); }
+    if (targets.includes("demos")) loadDemos();
+  } catch (err) {
+    btn.textContent = label; btn.disabled = false;
+    const missing = /ug_admin_purge|function .* does not exist|schema cache/i.test(err.message || "");
+    toast("error", "Deletion failed", missing ? "Run supabase/music.sql in the Supabase SQL Editor first." : (err.message || String(err)), { duration: 9000 });
+  }
+};
 
 sb.auth.onAuthStateChange((evt) => { if (evt === "SIGNED_OUT") showLogin(); });
 session();
