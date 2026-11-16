@@ -528,6 +528,7 @@
     const btn = document.querySelector(`.nav-btn[data-view="${view}"]`);
     if (btn) $("navPill").style.transform = `translate(${btn.offsetLeft}px, ${btn.offsetTop}px)`;
   }
+  window.UGAccount = () => { if (view !== "account") go("/account"); else { renderAccount(); enter($("view-account")); } };
   function showView(name) {
     if (!["home", "articles", "music", "charts", "about", "account", "band"].includes(name)) name = "home";
     const changed = name !== view || !document.querySelector(".view.entered");
@@ -882,6 +883,17 @@
 
   function renderAccount() {
     const el = $("view-account");
+    if (!user && window.UGSkin && window.UGSkin.demo) { // preview only: sample member profile for comparing designs
+      const keep = [user, profile, savedIds];
+      user = { id: "demo", email: "raka@contoh.com", created_at: "2025-03-01T00:00:00Z" };
+      profile = { display_name: "Raka Deathgrind", favorite_genres: ["Death Metal", "Deathcore", "Hardcore", "Grindcore"] };
+      savedIds = new Set(articles.slice(0, 2).map((a) => String(a.id)));
+      el.innerHTML = memberHtml();
+      [user, profile, savedIds] = keep;
+      $("myDemos").innerHTML = `<li><div style="min-width:0"><div style="font-weight:700">Kuburan Basah</div><div class="fine">Deathgrind · sent 2 Nov 2026</div></div><span class="status new">new</span></li><li><div style="min-width:0"><div style="font-weight:700">Rawa Hitam</div><div class="fine">Sludge Metal · sent 14 Oct 2026</div></div><span class="status featured">featured</span></li>`;
+      const w = el.querySelector(".wave"); if (w) wave(w, 600, w.viewBox.baseVal.height || 300, 6);
+      return;
+    }
     el.innerHTML = user ? (recovery ? recoveryHtml() : memberHtml()) : guestHtml();
     const w = el.querySelector(".wave");
     if (w) wave(w, 600, w.viewBox.baseVal.height || 300, 6);
