@@ -22,10 +22,10 @@
   background-image: radial-gradient(260px circle at var(--mx, 50%) var(--my, 50%), rgb(255 46 99 / calc(var(--spot) * .18)), rgb(123 92 255 / calc(var(--spot) * .09)) 35%, transparent 62%); }
 .card.lift.lit { --spot: 1; }
 
-/* 6. 3D tilt on article cards. Uses the separate `rotate`/`translate` properties so it never fights the
+/* 6. 3D tilt on article cards (mouse and pen only; phones would tilt while scrolling). Uses the separate `rotate`/`translate` properties so it never fights the
    entrance animations (they animate `transform`). Perspective comes from the cards' parent. */
 :has(> .acard) { perspective: 1000px; }
-.acard.lit { rotate: var(--tx, 0) var(--ty, 0) 0 var(--ta, 0deg); translate: 0 -3px; }
+.acard.tilt { rotate: var(--tx, 0) var(--ty, 0) 0 var(--ta, 0deg); translate: 0 -3px; }
 
 /* 5. View transitions between sections: only the main area animates */
 .main { view-transition-name: ug-main; }
@@ -47,7 +47,7 @@
 @media (prefers-reduced-motion: reduce) {
   .hero h1.glitch::before, .hero h1.glitch::after { display: none; }
   .card.lift { --spot: 0 !important; }
-  .acard.lit { rotate: none; translate: none; }
+  .acard.tilt { rotate: none; translate: none; }
   ::view-transition-old(ug-main), ::view-transition-new(ug-main) { animation: none; }
   .view .fx-rv { opacity: 1; transform: none; }
   .skel-num { animation: none; }
