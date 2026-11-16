@@ -24,6 +24,12 @@
   };
   const YT_LINE = /^https:\/\/(?:www\.|m\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]{11})\S*$/m;
   const DAY = 864e5;
+  const ACOLS_BASE = "id,slug,title,excerpt,content,cover_image_url,genre,tags,published_at,band_name,album_name";
+  let ACOLS = ACOLS_BASE + ",kind,score"; // kind/score exist after supabase/extras.sql
+  const bandSlug = (n) => String(n || "").trim().toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  const bandLink = (n, cls = "band-link") => n ? `<a class="${cls}" href="/band/${encodeURIComponent(bandSlug(n))}">${esc(n)}</a>` : "";
+  const fmtScore = (v) => (Math.round(Number(v) * 10) / 10).toFixed(1).replace(/\.0$/, ".0");
+  const scoreBadge = (a) => a && a.score != null && a.score !== "" ? `<span class="score-badge${Number(a.score) >= 8 ? " hot" : ""}" title="Review score ${fmtScore(a.score)} out of 10"><b>${fmtScore(a.score)}</b><i>/10</i></span>` : "";
 
   const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
   const { esc, toast } = window.UI;
@@ -453,7 +459,7 @@
     const list = genre === "All" ? articles : articles.filter((a) => (a.genre || "Underground").toLowerCase() === genre.toLowerCase());
     $("grid").innerHTML = list.length ? list.map((a) => `
       <a class="card lift acard bento-item" href="/a/${keyOf(a)}">
-        <div class="art-wrap">${media(a)}${ytId(a.content) ? `<span class="vid"><svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"/></svg>Video</span>` : ""}</div>
+        <div class="art-wrap">${media(a)}${scoreBadge(a)}${ytId(a.content) ? `<span class="vid"><svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"/></svg>Video</span>` : ""}</div>
         <div class="body">${tagHtml(a.genre)}<h3>${esc(a.title)}</h3>${a.excerpt ? `<p>${esc(a.excerpt)}</p>` : ""}
           <div class="meta"><span>${fmtDate(a.published_at)}</span><span>${readTime(a.content)}</span></div></div>
       </a>`).join("")
@@ -514,7 +520,7 @@
     if (btn) $("navPill").style.transform = `translate(${btn.offsetLeft}px, ${btn.offsetTop}px)`;
   }
   function showView(name) {
-    if (!["home", "articles", "music", "charts", "about", "account"].includes(name)) name = "home";
+    if (!["home", "articles", "music", "charts", "about", "account", "band"].includes(name)) name = "home";
     const changed = name !== view || !document.querySelector(".view.entered");
     view = name;
     document.querySelectorAll(".view").forEach((v) => { v.hidden = v.dataset.view !== name; });
@@ -526,14 +532,14 @@
   }
   // Views live in the hash (#/music); articles have real paths (/a/<slug>) that Google and link previews can read.
   function go(target) { // target: "/music" or "/a/slug"
-    if (target.startsWith("/a/")) history.pushState(null, "", target);
+    if (target.startsWith("/a/") || target.startsWith("/band/")) history.pushState(null, "", target);
     else if (location.pathname !== "/") history.pushState(null, "", "/#" + target);
     else { location.hash = target; return; }
     route();
   }
   document.querySelectorAll(".nav-btn[data-view]").forEach((b) => b.addEventListener("click", () => go("/" + b.dataset.view)));
   document.addEventListener("click", (e) => {
-    const a = e.target.closest('a[href^="/a/"], a[href^="#/"]');
+    const a = e.target.closest('a[href^="/a/"], a[href^="/band/"], a[href^="#/"]');
     if (!a || e.defaultPrevented || e.button || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || a.target === "_blank") return;
     const href = a.getAttribute("href");
     if (href.startsWith("#/") && location.pathname === "/") return; // plain hash link: browser handles it
@@ -547,10 +553,12 @@
     const legacy = h.match(/^#\/a\/(.+)$/); // old share links: /#/a/slug → /a/slug
     if (legacy) { history.replaceState(null, "", "/a/" + legacy[1]); return route(); }
     const pm = location.pathname.match(/^\/a\/([^/]+)\/?$/);
+    const bm = location.pathname.match(/^\/band\/([^/]+)\/?$/);
     const v = (h.match(/^#\/(\w+)/) || [])[1];
+    if (bm && !v) { closeReader(true); showView("band"); renderBand(decodeURIComponent(bm[1])); return; }
     if (pm && v) { history.replaceState(null, "", "/" + h); } // a view was requested while on an article path
     else if (pm) { if (!document.querySelector(".view.entered")) showView(view); openArticle(decodeURIComponent(pm[1])); return; }
-    else if (location.pathname !== "/" && location.pathname !== "/index.html") { history.replaceState(null, "", "/" + h); }
+    else if (location.pathname !== "/" && location.pathname !== "/index.html") { history.replaceState(null, "", "/" + h); document.title = "UNDERGROUND — Independent Extreme Music Magazine"; }
     closeReader(true);
     showView(v || "home");
   }
@@ -560,7 +568,7 @@
   async function openArticle(key) {
     let a = articles.find((x) => x.slug === key || String(x.id) === key);
     if (!a) {
-      const q = db.from("articles").select("id,slug,title,excerpt,content,cover_image_url,genre,tags,published_at,band_name,album_name").eq("status", "published");
+      const q = db.from("articles").select(ACOLS).eq("status", "published");
       const { data } = await (/^[0-9a-f-]{36}$|^\d+$/i.test(key) ? q.eq("id", key) : q.eq("slug", key)).maybeSingle();
       a = data;
     }
@@ -572,12 +580,15 @@
     $("readerTag").innerHTML = tagHtml(a.genre);
     $("readerBody").innerHTML = `
       ${vid ? "" : `<div class="reader-hero">${media(a)}</div>`}
-      <div class="meta-row"><time datetime="${esc(a.published_at || "")}">${fmtDate(a.published_at)}${a.published_at ? ", " + new Date(a.published_at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) : ""}</time><span aria-hidden="true">·</span><span>${readTime(a.content)}</span>${a.band_name ? `<span aria-hidden="true">·</span><span>${esc(a.band_name)}</span>` : ""}</div>
+      <div class="meta-row"><time datetime="${esc(a.published_at || "")}">${fmtDate(a.published_at)}${a.published_at ? ", " + new Date(a.published_at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) : ""}</time><span aria-hidden="true">·</span><span>${readTime(a.content)}</span>${a.band_name ? `<span aria-hidden="true">·</span>${bandLink(a.band_name)}` : ""}</div>
       <h1 id="readerTitle">${esc(a.title)}</h1>
       ${a.excerpt ? `<p class="lede">${esc(a.excerpt)}</p>` : ""}
+      ${a.score != null && a.score !== "" ? verdictHtml(a) : ""}
       ${vid ? ytEmbed(vid) : ""}
       <div class="prose">${md(a.content, vid)}</div>
-      ${Array.isArray(a.tags) && a.tags.length ? `<div class="tags">${a.tags.map((t) => `<span class="tag">#${esc(t)}</span>`).join("")}</div>` : ""}`;
+      ${Array.isArray(a.tags) && a.tags.length ? `<div class="tags">${a.tags.map((t) => `<span class="tag">#${esc(t)}</span>`).join("")}</div>` : ""}
+      ${a.band_name ? `<a class="band-cta" href="/band/${encodeURIComponent(bandSlug(a.band_name))}"><span class="hint">Band profile</span><strong>More from ${esc(a.band_name)}</strong><span class="arr" aria-hidden="true">→</span></a>` : ""}
+      ${newsletterHtml("reader")}`;
     document.title = a.title + " — UNDERGROUND";
     if ($("reader").hidden) { lastFocus = document.activeElement; $("reader").hidden = false; document.body.classList.add("locked"); }
     const sheet = $("reader").querySelector(".reader-sheet");
@@ -589,7 +600,7 @@
     $("reader").hidden = true;
     document.body.classList.remove("locked");
     document.title = "UNDERGROUND — Independent Extreme Music Magazine";
-    if (!silent && location.pathname.startsWith("/a/")) history.pushState(null, "", "/#/" + view);
+    if (!silent && location.pathname.startsWith("/a/")) history.pushState(null, "", view === "band" && lastBand ? "/band/" + encodeURIComponent(bandSlug(lastBand)) : "/#/" + view);
     currentArticle = null;
     lastFocus?.focus?.();
   }
@@ -1128,8 +1139,9 @@
   }
   async function load() {
     const { data, error } = await db.from("articles")
-      .select("id,slug,title,excerpt,content,cover_image_url,genre,tags,published_at,band_name,album_name")
+      .select(ACOLS)
       .eq("status", "published").order("published_at", { ascending: false }).limit(60);
+    if (error && ACOLS !== ACOLS_BASE) { ACOLS = ACOLS_BASE; return load(); } // database not updated yet
     if (error) toast("error", "Could not load stories", "Check your connection and refresh the page.");
     articles = (data || []).filter((a) => a.published_at);
   }
@@ -1186,11 +1198,11 @@
     </button></li>`;
   }
   function communityBandRow(b, i) {
-    return `<li><div class="chart-row${place(i)}" style="--i:${i}">
+    return `<li><a class="chart-row${place(i)}" href="/band/${encodeURIComponent(bandSlug(b.artist))}" style="--i:${i}">
       <span class="c-rank">${i + 1}</span><span class="c-cover">${chartCover(b.cover_url, b.artist, b.artist)}</span>
       <span class="c-meta"><span class="c-title">${esc(b.artist)}</span><span class="c-sub">Top: ${esc(b.top_track || "")}${b.tracks > 1 ? " · " + b.tracks + " tracks" : ""}</span></span>
       <span class="c-score">${starsTxt(b.avg_stars)}<span class="c-votes">${b.votes} ${b.votes === 1 ? "vote" : "votes"}</span></span>
-    </div></li>`;
+    </a></li>`;
   }
   function globalHitRow(h, i, from) {
     const meter = `<span class="c-meter" title="Popularity ${h.popularity}/100"><b style="--w:${h.popularity}%"></b></span><span class="c-votes">Pop ${h.popularity}</span>`;
@@ -1202,7 +1214,7 @@
       : `<li><a class="chart-row${place(i)}" href="${esc(h.link || "#")}" target="_blank" rel="noopener" style="--i:${i}">${inner}</a></li>`;
   }
   function globalBandRow(b, i) {
-    return `<li><a class="chart-row${place(i)}" href="${esc(b.link)}" target="_blank" rel="noopener" style="--i:${i}" aria-label="Number ${i + 1}: ${esc(b.name)}${b.fans ? ", " + nfc.format(b.fans) + " fans" : ""}">
+    return `<li><a class="chart-row${place(i)}" href="/band/${encodeURIComponent(bandSlug(b.name))}" style="--i:${i}" aria-label="Number ${i + 1}: ${esc(b.name)}${b.fans ? ", " + nfc.format(b.fans) + " fans" : ""}">
       <span class="c-rank">${i + 1}</span><span class="c-cover">${chartCover(b.picture, b.name, b.name)}</span>
       <span class="c-meta"><span class="c-title">${esc(b.name)}</span><span class="c-sub">${b.top_track ? "Hit: " + esc(b.top_track) : "Metal"}</span></span>
       <span class="c-score"><span class="c-stars">${b.fans ? nfc.format(b.fans) : b.popularity}</span><span class="c-votes">${b.fans ? "fans" : "popularity"}</span></span>
@@ -1376,14 +1388,17 @@
     const match = (...f) => f.some((x) => String(x || "").toLowerCase().includes(low));
     const localArts = articles.filter((a) => match(a.title, a.band_name, a.album_name, a.excerpt, a.genre, (a.tags || []).join(" ")));
     const songs = tracks.filter((t) => match(t.title, t.artist, t.album, t.genre)).slice(0, 6);
+    const bandNames = [...new Map([...articles.map((a) => a.band_name), ...tracks.map((t) => t.artist)].filter((n) => n && n.toLowerCase().includes(low)).map((n) => [bandSlug(n), n])).values()].slice(0, 5);
     const genres = UGG ? [...UGG.GROUPS.map((g) => g.name), ...UGG.ALL].filter((g, i, arr) => g.toLowerCase().includes(low) && arr.findIndex((x) => x.toLowerCase() === g.toLowerCase()) === i).slice(0, 8) : [];
     const paint = (arts) => {
       if (run !== searchRun) return;
       searchItems = [];
       let html = "";
       if (arts.length) html += `<div class="sr-h">Stories</div>` + arts.slice(0, 8).map((a) => `<a class="sr-item" href="/a/${keyOf(a)}" data-sr>${thumb(a.cover_image_url || ytThumb(a), a.id)}<span><span class="sr-t">${hl(a.title, q)}</span><span class="sr-s">${hl([a.band_name, a.genre].filter(Boolean).join(" · "), q)}</span></span><span class="sr-k">Story</span></a>`).join("");
+      if (bandNames.length) html += `<div class="sr-h">Bands</div>` + bandNames.map((n) => `<a class="sr-item" href="/band/${encodeURIComponent(bandSlug(n))}" data-sr>${thumb("", n).replace("</span>", coverMark(n) + "</span>")}<span><span class="sr-t">${hl(n, q)}</span><span class="sr-s">Band profile</span></span><span class="sr-k">Band</span></a>`).join("");
       if (songs.length) html += `<div class="sr-h">Songs on Basement radio</div>` + songs.map((t) => `<button class="sr-item" type="button" data-sr data-sr-track="${esc(t.id)}">${thumb(t.cover_url, t.id)}<span><span class="sr-t">${hl(t.title, q)}</span><span class="sr-s">${hl(t.artist + (t.genre ? " · " + t.genre : ""), q)}</span></span><span class="sr-k">Play</span></button>`).join("");
       if (genres.length) html += `<div class="sr-h">Genres</div><div class="sr-chips">${genres.map((g) => `<button class="pill" type="button" data-sr-genre="${esc(g)}">${hl(g, q)}</button>`).join("")}</div>`;
+      if (q.length >= 3 && !bandNames.some((n) => bandSlug(n) === bandSlug(q))) html += `<div class="sr-h">Band profile</div><a class="sr-item" href="/band/${encodeURIComponent(bandSlug(q))}" data-sr>${thumb("", q).replace("</span>", coverMark(q) + "</span>")}<span><span class="sr-t">${esc(q)}</span><span class="sr-s">Open the band page: top tracks, fans, stories</span></span><span class="sr-k">Band</span></a>`;
       $("searchResults").innerHTML = html || `<div class="sr-empty"><strong>No results for “${esc(q)}”</strong>Try a band name, a song or a genre like deathcore.</div>`;
       hydrateCovers($("searchResults"));
     };
@@ -1395,7 +1410,7 @@
     searchTimer = setTimeout(async () => {
       const like = `*${term}*`;
       let data = null;
-      try { ({ data } = await db.from("articles").select("id,slug,title,excerpt,content,cover_image_url,genre,tags,published_at,band_name,album_name")
+      try { ({ data } = await db.from("articles").select(ACOLS)
         .eq("status", "published").or(`title.ilike.${like},band_name.ilike.${like},album_name.ilike.${like},excerpt.ilike.${like}`)
         .order("published_at", { ascending: false }).limit(10)); } catch { return; }
       if (run !== searchRun || !data) return;
@@ -1427,6 +1442,121 @@
     if ((e.key === "/" && !typing) || (e.key.toLowerCase() === "k" && (e.ctrlKey || e.metaKey))) { e.preventDefault(); openSearch(); }
     else if (e.key === "Escape" && !$("search").hidden) { e.stopImmediatePropagation(); closeSearch(); }
   }, true);
+
+  // ---- Review verdict ----------------------------------------------------------
+  function verdictHtml(a) {
+    const v = Number(a.score), pct = Math.max(0, Math.min(100, v * 10));
+    const word = v >= 9 ? "Essential" : v >= 8 ? "Excellent" : v >= 7 ? "Strong" : v >= 6 ? "Solid" : v >= 5 ? "Mixed" : "Weak";
+    return `<div class="verdict" role="img" aria-label="Review score ${fmtScore(v)} out of 10, ${word}">
+      <div class="v-ring" style="--p:${pct}"><b>${fmtScore(v)}</b><i>/10</i></div>
+      <div><span class="hint">Verdict</span><strong>${word}</strong>${a.album_name ? `<span class="v-sub">${esc(a.album_name)}${a.band_name ? " · " + esc(a.band_name) : ""}</span>` : ""}</div>
+    </div>`;
+  }
+
+  // ---- Newsletter ----------------------------------------------------------------
+  function newsletterHtml(where) {
+    return `<form class="nl" data-nl="${where}" novalidate>
+      <div class="nl-copy"><span class="hint">Newsletter</span><strong>New stories in your inbox</strong><span class="muted-s">Reviews, news and charts from the heavy scene. No spam, unsubscribe any time.</span></div>
+      <div class="nl-row"><input class="input" type="email" name="email" placeholder="you@email.com" autocomplete="email" required aria-label="Email address"><button class="btn btn-forest" type="submit">Subscribe</button></div>
+      <p class="nl-legal">By subscribing you agree to our <a href="/privacy.html">Privacy policy</a>.</p>
+    </form>`;
+  }
+  document.addEventListener("submit", async (e) => {
+    const f = e.target.closest("form[data-nl]"); if (!f) return;
+    e.preventDefault();
+    const input = f.elements.email, email = input.value.trim(), btn = f.querySelector("button");
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { input.classList.add("invalid"); shakeEl(input); toast("warning", "Check your email address", "It should look like you@email.com."); return; }
+    input.classList.remove("invalid"); busy(btn, true, "Joining…");
+    const { error } = await db.rpc("ug_subscribe", { p_email: email, p_source: f.dataset.nl });
+    busy(btn, false);
+    if (error) {
+      const setup = /ug_subscribe|function|schema cache/i.test(error.message || "");
+      toast(setup ? "info" : "error", setup ? "Newsletter opens soon" : "Could not subscribe", setup ? "Sign-ups aren't switched on yet. Please try again later." : error.message, { duration: 6000 });
+      return;
+    }
+    f.innerHTML = `<div class="nl-done"><span class="nl-check" aria-hidden="true">✓</span><div><strong>You're on the list</strong><span class="muted-s">We'll send new stories to ${esc(email)}.</span></div></div>`;
+    toast("success", "Subscribed", "Thanks for joining the UNDERGROUND newsletter.");
+  });
+  if ($("ftNewsletter")) $("ftNewsletter").innerHTML = newsletterHtml("footer");
+
+  // ---- Band profile (/band/<name>) ---------------------------------------------
+  let lastBand = null, bandRun = 0;
+  const nameFromSlug = (slug) => {
+    const s = bandSlug(slug);
+    const hit = [...articles.map((a) => a.band_name), ...tracks.map((t) => t.artist)].find((n) => n && bandSlug(n) === s);
+    return hit || s.split("-").filter(Boolean).map((w) => w[0].toUpperCase() + w.slice(1)).join(" ");
+  };
+  async function renderBand(slug) {
+    const run = ++bandRun;
+    const name = nameFromSlug(slug); lastBand = name; $("main").scrollTop = 0;
+    const s = bandSlug(name);
+    document.title = name + " — UNDERGROUND";
+    const el = $("view-band");
+    el.innerHTML = `<div class="band-hero card bento-item"><div class="bh-bg" id="bhBg"></div><div class="bh-in">
+        <a class="link" href="#/charts">← Charts</a>
+        <span class="badge-dark"><i aria-hidden="true"></i>Band profile</span>
+        <h1 id="bhName">${esc(name)}</h1>
+        <div class="bh-tags" id="bhTags"></div>
+        <div class="bh-stats" id="bhStats"><span class="skel" style="width:220px;height:46px"></span></div>
+        <div class="actions" id="bhActions"></div></div></div>
+      <div class="band-grid">
+        <div class="card pad bento-item" id="bhSongsCard" hidden><div class="card-title"><h2>On Basement radio</h2><span class="hint">Full songs</span></div><ol class="chart-list" id="bhSongs"></ol></div>
+        <div class="card pad bento-item" id="bhTopCard" hidden><div class="card-title"><h2>Top tracks</h2><span class="hint">30s previews · Deezer</span></div><ol class="chart-list" id="bhTop"></ol></div>
+        <div class="card pad bento-item band-stories" id="bhStoriesCard" hidden><div class="card-title"><h2>Stories</h2><span class="hint" id="bhStoriesN"></span></div><div class="grid" id="bhStories"></div></div>
+        <div class="card pad bento-item" id="bhRelCard" hidden><div class="card-title"><h2>Fans also like</h2></div><div class="rel" id="bhRel"></div></div>
+      </div>
+      <div class="card pad bento-item band-empty" id="bhEmpty" hidden></div>`;
+    stagger(el); enter(el);
+    // Our own content: stories about the band (loaded + server) and songs on Basement radio
+    const like = name.replace(/[^\p{L}\p{N}]+/gu, "_");
+    const [srv, rating, dz] = await Promise.all([
+      (async () => { try { const r = await db.from("articles").select(ACOLS).eq("status", "published").ilike("band_name", like).order("published_at", { ascending: false }).limit(30); return r.data || []; } catch { return []; } })(),
+      db.rpc("ug_band_rating", { p_artist: name }).then((r) => (r.data && r.data[0]) || null).catch(() => null),
+      fetch("/api/band?name=" + encodeURIComponent(name)).then((r) => r.ok ? r.json() : null).catch(() => null)
+    ]);
+    if (run !== bandRun) return;
+    const seen = new Set(); const stories = [...articles.filter((a) => bandSlug(a.band_name) === s), ...srv].filter((a) => !seen.has(a.id) && seen.add(a.id));
+    const songs = tracks.filter((t) => bandSlug(t.artist) === s);
+    const reviews = stories.filter((a) => a.score != null && a.score !== "");
+    const avgReview = reviews.length ? reviews.reduce((x, a) => x + Number(a.score), 0) / reviews.length : null;
+    const genres = [...new Set([...stories.map((a) => a.genre), ...songs.map((t) => t.genre)].filter((g) => g && g !== "Underground"))].slice(0, 4);
+    const disp = dz && dz.found ? dz.name : name;
+    $("bhName").textContent = disp; document.title = disp + " — UNDERGROUND";
+    const pic = (dz && dz.picture) || stories.find((a) => a.cover_image_url)?.cover_image_url || songs.find((t) => t.cover_url)?.cover_url;
+    if (pic) $("bhBg").style.backgroundImage = `url("${String(pic).replace(/"/g, "%22")}")`;
+    $("bhTags").innerHTML = genres.map((g) => tagHtml(g)).join("");
+    const stat = (v, l) => `<div class="bh-stat"><b>${v}</b><span>${l}</span></div>`;
+    $("bhStats").innerHTML = [
+      dz && dz.fans ? stat(nfc.format(dz.fans), "Fans") : "",
+      avgReview != null ? stat(fmtScore(avgReview) + "<small>/10</small>", reviews.length > 1 ? "Avg review" : "Review score") : "",
+      rating && rating.votes ? stat("★ " + Number(rating.avg_stars).toFixed(1), rating.votes + (rating.votes === 1 ? " vote" : " votes")) : "",
+      stat(stories.length, stories.length === 1 ? "Story" : "Stories"),
+      stat(songs.length, songs.length === 1 ? "Song here" : "Songs here")
+    ].join("");
+    const playable = (dz && dz.top || []).filter((t) => t.preview).map((t, i) => ({ id: "bt-" + s + "-" + i, title: t.title, artist: disp, genre: "30s preview", album: t.album, cover_url: t.cover, audio_url: t.preview, duration_sec: 30, preview: true }));
+    chartQueues.bandSongs = songs; chartQueues.bandTop = playable;
+    $("bhActions").innerHTML = (songs.length ? `<button class="btn btn-white" type="button" data-play-band="bandSongs">▶ Play songs</button>` : playable.length ? `<button class="btn btn-white" type="button" data-play-band="bandTop">▶ Play top tracks</button>` : "")
+      + (dz && dz.link ? `<a class="btn btn-ghost-dark" href="${esc(dz.link)}" target="_blank" rel="noopener">Deezer ↗</a>` : "");
+    if (songs.length) { $("bhSongsCard").hidden = false; $("bhSongs").innerHTML = songs.map((t, i) => `<li><button class="chart-row" type="button" data-track="${esc(t.id)}" data-from="bandSongs" style="--i:${i}"><span class="c-rank">${i + 1}</span><span class="c-cover">${chartCover(t.cover_url, t.id, t.artist, t.title)}</span><span class="c-meta"><span class="c-title">${esc(t.title)}</span><span class="c-sub">${esc(t.album || t.genre || "")}</span></span><span class="c-score"><span class="c-votes">${t.duration_sec ? fmtTime(t.duration_sec) : ""}</span></span></button></li>`).join(""); }
+    if (playable.length) { $("bhTopCard").hidden = false; $("bhTop").innerHTML = playable.map((t, i) => `<li><button class="chart-row" type="button" data-track="${esc(t.id)}" data-from="bandTop" style="--i:${i}"><span class="c-rank">${i + 1}</span><span class="c-cover">${chartCover(t.cover_url, t.id, disp, t.title)}</span><span class="c-meta"><span class="c-title">${esc(t.title)}</span><span class="c-sub">${esc(t.album || "")}</span></span><span class="c-score"><span class="c-votes">Preview</span></span></button></li>`).join(""); }
+    if (stories.length) {
+      $("bhStoriesCard").hidden = false; $("bhStoriesN").textContent = stories.length + (stories.length === 1 ? " story" : " stories");
+      $("bhStories").innerHTML = stories.slice(0, 12).map((a) => `<a class="card lift acard" href="/a/${keyOf(a)}"><div class="art-wrap">${media(a)}${scoreBadge(a)}</div><div class="body">${tagHtml(a.kind || a.genre)}<h3>${esc(a.title)}</h3><div class="meta"><span>${fmtDate(a.published_at)}</span><span>${readTime(a.content)}</span></div></div></a>`).join("");
+    }
+    if (dz && dz.related && dz.related.length) {
+      $("bhRelCard").hidden = false;
+      $("bhRel").innerHTML = dz.related.map((r) => `<a class="rel-item" href="/band/${encodeURIComponent(bandSlug(r.name))}"><span class="rel-pic">${r.picture ? `<img src="${esc(r.picture)}" alt="" loading="lazy" onerror="this.remove()">` : ""}${art(r.name)}</span><span class="rel-name">${esc(r.name)}</span>${r.fans ? `<span class="c-votes">${nfc.format(r.fans)} fans</span>` : ""}</a>`).join("");
+    }
+    if (!stories.length && !songs.length && !playable.length) {
+      $("bhEmpty").hidden = false;
+      $("bhEmpty").innerHTML = `<div class="chart-empty"><strong>Nothing on ${esc(disp)} yet</strong>Stories, songs and ratings appear here once the editors cover this band.</div>`;
+    }
+    hydrateCovers(el); markPlaying();
+  }
+  $("view-band").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-play-band]"); if (!b) return;
+    const q = chartQueues[b.dataset.playBand]; if (q && q.length) playFrom(q, 0);
+  });
 
   heroFloor($("heroFloor"));
   recTimer();

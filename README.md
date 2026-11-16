@@ -23,6 +23,10 @@ Static Cloudflare Pages site with a Supabase-backed editorial workflow and multi
 2g. **SEO and sharing:** articles live at `/a/<slug>`. `functions/a/[slug].js` serves the site with that article's title, description, share image (cover or YouTube thumbnail) and NewsArticle structured data, so Google and WhatsApp/Instagram/X previews show the real story. `/sitemap.xml` lists every published article. `robots.txt`, a web app manifest, icons and a default share image (`assets/og.png`) are included. Old `#/a/...` links still work. Submit `https://music.mikasa.me/sitemap.xml` in Google Search Console.
 2h. **Legal and contact:** `privacy.html` and `terms.html`, linked from the footer and the sign-up form. The contact address is `hello@mikasa.me`, so create it in Cloudflare Email Routing.
 2i. **Search:** press `/` or Ctrl+K, or use the search icon. It searches stories (on the server), Basement radio songs and genres.
+2j. **Reviews, band pages and newsletter:** run `supabase/extras.sql` once. It adds:
+   - **Review scores:** article `kind` and `score` columns. The AI fills the type and a 0–10 score for reviews. Cards show a score badge, the article shows a verdict ring, and Google gets Review structured data.
+   - **Band profiles:** `/band/<name>` pages with stories, Basement radio songs, average review score, members' rating, Deezer fans, top tracks (30 s previews) and related bands. Served by `functions/band/[slug].js` and `/api/band`, and listed in the sitemap.
+   - **Newsletter:** a `newsletter_subscribers` table with sign-up only through the `ug_subscribe` function. The form is in the footer and under every article. Admins see, remove and export subscribers to CSV in Settings.
 3. Visitors play tracks from the **Music** view; the mini player keeps playing while they browse, with lock-screen controls on phones.
 
 ## Admin settings: clean up data
