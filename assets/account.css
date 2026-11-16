@@ -45,3 +45,5 @@
 .amp-stage[data-mode="slide"]:not(.is-open) .amp-back-face { visibility: hidden; transition: visibility 0s .6s; }
 .amp-stage[data-mode="slide"].is-open .amp-land { visibility: hidden; transition: visibility 0s .6s; }
 @media (prefers-reduced-motion: reduce) { .amp-track { transition: none !important; } }
+
+.captcha { min-height: 66px; display: grid; place-items: center; }

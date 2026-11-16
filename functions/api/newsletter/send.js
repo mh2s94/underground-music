@@ -6,6 +6,7 @@
 // Needs Pages environment variables: RESEND_API_KEY and NEWSLETTER_FROM
 // (e.g. "UNDERGROUND <news@mikasa.me>", on a domain verified in Resend).
 
+import { isAal2, MFA_ERROR } from "../aal.js";
 const SITE = "https://music.mikasa.me";
 const json = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
 const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -23,6 +24,7 @@ export async function onRequestPost({ request, env }) {
     me = await u.json();
     const a = await fetch(`${env.SUPABASE_URL}/rest/v1/admin_users?select=user_id&user_id=eq.${encodeURIComponent(me.id)}`, { headers: sb });
     if (!a.ok || !(await a.json()).length) return json({ error: "Administrator access required." }, 403);
+    if (!isAal2(request)) return json({ error: MFA_ERROR, mfa: true }, 403);
   } catch { return json({ error: "Could not verify your session." }, 502); }
 
   if (!env.RESEND_API_KEY || !env.NEWSLETTER_FROM) {

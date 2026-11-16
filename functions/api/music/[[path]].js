@@ -13,6 +13,7 @@
 // Streaming from R2 has no egress fees. Admin routes verify the Supabase session
 // and admin_users membership, exactly like /api/generate.
 
+import { isAal2, MFA_ERROR } from "../aal.js";
 const MAX_BYTES = 100 * 1024 * 1024;   // per file
 const SINGLE_PUT_MAX = 95 * 1024 * 1024; // one-request uploads stay under Cloudflare's 100 MB body limit
 const PART_MAX = 50 * 1024 * 1024;
@@ -176,6 +177,7 @@ async function requireAdmin(request, env) {
     const user = await u.json();
     const a = await fetch(env.SUPABASE_URL + "/rest/v1/admin_users?select=user_id&user_id=eq." + encodeURIComponent(user.id), { headers, signal: AbortSignal.timeout(8000) });
     if (!a.ok || !(await a.json()).length) return json({ error: "Administrator access required." }, 403);
+    if (!isAal2(request)) return json({ error: MFA_ERROR, mfa: true }, 403);
     return null;
   } catch {
     return json({ error: "Could not verify your session. Try again." }, 502);

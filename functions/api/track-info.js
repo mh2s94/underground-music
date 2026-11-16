@@ -11,6 +11,7 @@
 
 import { buildProviders, DEFAULT_ORDER } from "./generate.js";
 import { PROMPT_LIST, canonicalGenre } from "./genres-data.js";
+import { isAal2, MFA_ERROR } from "./aal.js";
 const SYSTEM = "You identify music tracks and return strict JSON only. No prose, no code fences.";
 
 const json = (data, status = 200) => new Response(JSON.stringify(data), {
@@ -162,6 +163,7 @@ async function requireAdmin(request, env) {
     const user = await u.json();
     const a = await fetch(env.SUPABASE_URL + "/rest/v1/admin_users?select=user_id&user_id=eq." + encodeURIComponent(user.id), { headers, signal: AbortSignal.timeout(8000) });
     if (!a.ok || !(await a.json()).length) return json({ error: "Administrator access required." }, 403);
+    if (!isAal2(request)) return json({ error: MFA_ERROR, mfa: true }, 403);
     return null;
   } catch {
     return json({ error: "Could not verify your session. Try again." }, 502);

@@ -11,7 +11,8 @@ stable
 security definer
 set search_path = public
 as $$
-  select exists (select 1 from public.admin_users where user_id = auth.uid());
+  select exists (select 1 from public.admin_users where user_id = auth.uid())
+     and coalesce(auth.jwt() ->> 'aal', '') = 'aal2'; -- admins must pass two-step verification (security.sql)
 $$;
 revoke all on function public.ug_is_admin() from public;
 grant execute on function public.ug_is_admin() to anon, authenticated;

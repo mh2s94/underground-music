@@ -763,6 +763,7 @@
         <label class="field"><span>Email</span><input class="input" name="email" type="email" autocomplete="email" required></label>
         ${pwField("password", "Password", "current-password")}
         <div class="form-error" role="alert" hidden></div>
+        ${TURNSTILE_SITE_KEY ? `<div class="captcha" aria-label="Security check"></div>` : ""}
         <button class="btn btn-forest" type="submit">Sign in <span class="arr" aria-hidden="true">→</span></button>
         <p class="fine" style="margin:0;text-align:center"><button class="text-btn" type="button" data-tab-btn="forgot">Forgot your password?</button></p>
       </form>`;
@@ -776,6 +777,7 @@
         <p class="fine" id="pwHint" style="margin:-6px 0 0">At least 8 characters. Mix letters, numbers and symbols for a stronger password.</p>
         <div class="form-error" role="alert" hidden></div>
         <p class="hint" style="margin:0;text-transform:none;letter-spacing:.02em">By creating an account you agree to our <a href="/terms.html" target="_blank" style="color:var(--uv-hi)">Terms</a> and <a href="/privacy.html" target="_blank" style="color:var(--uv-hi)">Privacy policy</a>.</p>
+        ${TURNSTILE_SITE_KEY ? `<div class="captcha" aria-label="Security check"></div>` : ""}
         <button class="btn btn-forest" type="submit">Create account <span class="arr" aria-hidden="true">→</span></button>
         <p class="fine" style="margin:0;text-align:center">By joining you agree to keep comments respectful.</p>
       </form>`;
@@ -784,6 +786,7 @@
         <div><h2>Reset your password</h2><p class="muted-p">We'll email you a link to choose a new one.</p></div>
         <label class="field"><span>Email</span><input class="input" name="email" type="email" autocomplete="email" required></label>
         <div class="form-error" role="alert" hidden></div>
+        ${TURNSTILE_SITE_KEY ? `<div class="captcha" aria-label="Security check"></div>` : ""}
         <button class="btn btn-forest" type="submit">Send reset link</button>
         <p class="fine" style="margin:0;text-align:center"><button class="text-btn" type="button" data-tab-btn="signin">Back to sign in</button></p>
       </form>`;
@@ -885,9 +888,32 @@
       </div>`;
   }
 
+  // ---- Bot protection on sign-in / sign-up / reset (Cloudflare Turnstile via Supabase Auth captcha) ----
+  // The site key is public. Empty = captcha off. Turn on: put the key here, deploy, THEN enable
+  // Supabase → Authentication → Attack Protection → Captcha (Turnstile) with the secret key.
+  const TURNSTILE_SITE_KEY = "";
+  let tsReady = null, tsToken = "", tsWidget = null;
+  const loadTurnstile = () => tsReady || (tsReady = new Promise((res) => {
+    window.__ugTs = () => res(window.turnstile);
+    const sc = document.createElement("script");
+    sc.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=__ugTs";
+    sc.async = true; sc.onerror = () => res(null); document.head.append(sc);
+  }));
+  async function mountCaptcha(root) {
+    const box = TURNSTILE_SITE_KEY && root.querySelector(".captcha");
+    if (!box) return;
+    const ts = await loadTurnstile();
+    if (!ts || !box.isConnected) return;
+    tsToken = "";
+    tsWidget = ts.render(box, { sitekey: TURNSTILE_SITE_KEY, theme: "dark", size: "flexible",
+      callback: (t) => { tsToken = t; }, "expired-callback": () => { tsToken = ""; }, "error-callback": () => { tsToken = ""; } });
+  }
+  const resetCaptcha = () => { tsToken = ""; try { window.turnstile && tsWidget != null && window.turnstile.reset(tsWidget); } catch (e) { /* widget gone */ } };
+
   function renderAccount() {
     const el = $("view-account");
     el.innerHTML = user ? (recovery ? recoveryHtml() : memberHtml()) : guestHtml();
+    if (!user) mountCaptcha(el);
     if (!user && authAnim) {
       authAnim = false;
       const st = el.querySelector(".amp-stage");
@@ -975,11 +1001,15 @@
       if (field) { const i = form.elements[field]; i?.classList.add("invalid"); i?.focus(); }
     };
 
+    const needCaptcha = TURNSTILE_SITE_KEY && ["signin", "signup", "forgot"].includes(kind);
+    if (needCaptcha && !tsToken) return fail("Complete the security check first.");
+    const captchaToken = needCaptcha ? tsToken : undefined;
+    if (needCaptcha) setTimeout(resetCaptcha, 0); // a token works once
     if (kind === "signin") {
       if (!EMAIL_RE.test(val("email"))) return fail("Enter a valid email address.", "email");
       if (!form.elements.password.value) return fail("Enter your password.", "password");
       busy(btn, true, "Signing in…");
-      const { error } = await db.auth.signInWithPassword({ email: val("email"), password: form.elements.password.value });
+      const { error } = await db.auth.signInWithPassword({ email: val("email"), password: form.elements.password.value, options: { captchaToken } });
       busy(btn, false);
       if (error) return fail(friendly(error));
       toast("success", "Welcome back", "You're signed in.");
@@ -995,7 +1025,7 @@
       if (!EMAIL_RE.test(val("email"))) return fail("Enter a valid email address.", "email");
       if (form.elements.password.value.length < 8) return fail("Password must be at least 8 characters.", "password");
       busy(btn, true, "Creating account…");
-      const { data, error } = await db.auth.signUp({ email: val("email"), password: form.elements.password.value, options: { data: { display_name: name }, emailRedirectTo: AUTH_REDIRECT } });
+      const { data, error } = await db.auth.signUp({ email: val("email"), password: form.elements.password.value, options: { data: { display_name: name }, emailRedirectTo: AUTH_REDIRECT, captchaToken } });
       busy(btn, false);
       if (error) return fail(friendly(error));
       if (data?.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) return fail("An account with this email already exists. Sign in instead.", "email");
@@ -1006,7 +1036,7 @@
     if (kind === "forgot") {
       if (!EMAIL_RE.test(val("email"))) return fail("Enter a valid email address.", "email");
       busy(btn, true, "Sending…");
-      const { error } = await db.auth.resetPasswordForEmail(val("email"), { redirectTo: AUTH_REDIRECT });
+      const { error } = await db.auth.resetPasswordForEmail(val("email"), { redirectTo: AUTH_REDIRECT, captchaToken });
       busy(btn, false);
       if (error) return fail(friendly(error));
       pendingEmail = val("email"); authTab = "check"; renderAccount();
