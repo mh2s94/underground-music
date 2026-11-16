@@ -175,6 +175,15 @@
             <label class="field"><span>Cover image URL</span><input class="input" id="cover" placeholder="https://…"></label>
             <label class="field"><span>Tags</span><input class="input" id="tags" placeholder="metalcore, review"></label>
           </div>
+          <div class="field">
+            <label for="pubDate" class="label">Publication date &amp; time</label>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+              <input class="input" id="pubDate" type="datetime-local" step="60" style="max-width:280px">
+              <button class="btn btn-sm btn-ghost" type="button" id="pubNow">Use current time</button>
+              <button class="btn btn-sm btn-ghost" type="button" id="pubClear">Clear</button>
+            </div>
+            <span class="hint" id="pubHint">Leave empty to use the moment you publish.</span>
+          </div>
           <div class="save-row">
             <div class="segmented" role="radiogroup" aria-label="Status">
               <label><input type="radio" name="status" value="draft" checked><span>Draft</span></label>
@@ -288,8 +297,16 @@ function renderYt(url, title = "") {
   if (!id) { $("ytPreview").innerHTML = ""; return; }
   $("ytPreview").innerHTML = `<div class="yt-preview"><img src="https://i.ytimg.com/vi/${id}/mqdefault.jpg" alt=""><div><div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(title || "YouTube video")}</div><a href="https://www.youtube.com/watch?v=${id}" target="_blank" rel="noopener">Check the video ↗</a></div></div>`;
 }
+const toLocalInput = (iso) => { if (!iso) return ""; const d = new Date(iso); if (isNaN(d)) return ""; return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16); };
+const fromLocalInput = (v) => { if (!v) return null; const d = new Date(v); return isNaN(d) ? null : d.toISOString(); };
+const fmtStamp = (iso) => new Date(iso).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+function setPubDate(iso, hint) {
+  $("pubDate").value = toLocalInput(iso);
+  $("pubHint").textContent = hint || ($("pubDate").value ? "This date and time will be shown as the publication time." : "Leave empty to use the moment you publish.");
+}
 function resetForm() {
   pendingSource = null;
+  setPubDate(null);
   editing = null;
   ["title", "slug", "excerpt", "content", "youtube", "cover", "tags", "band", "album", "notes"].forEach((id) => { $(id).value = ""; $(id).classList.remove("invalid"); });
   delete $("slug").dataset.edited;
@@ -379,7 +396,9 @@ $("saveBtn").onclick = async () => {
     category_id: cat?.id || null, cover_image_url: $("cover").value.trim() || null,
     tags: $("tags").value.split(",").map((x) => x.trim()).filter(Boolean),
     status: st,
-    published_at: st === "published" ? (editing?.published_at || now) : null,
+    // A chosen publication time (e.g. the source's original time from Scene radar) always wins;
+    // otherwise keep the existing time, or use "now" when publishing for the first time.
+    published_at: fromLocalInput($("pubDate").value) || (st === "published" ? (editing?.published_at || now) : null),
     updated_at: now
   };
 
@@ -396,6 +415,7 @@ $("saveBtn").onclick = async () => {
     return;
   }
   editing = { id: res.data.id, published_at: res.data.published_at };
+  if (res.data.published_at && !$("pubDate").value) setPubDate(res.data.published_at);
   $("editingFlag").hidden = false; $("saveLabel").textContent = "Update article";
   toast("success", st === "published" ? "Published" : "Saved", st === "published" ? "The article is live on the site." : "Saved as " + st + ".");
   loadArticles();
@@ -441,6 +461,7 @@ async function editArticle(id) {
   $("excerpt").value = a.excerpt || ""; $("content").value = content; $("wordCount").textContent = words(content) + " words";
   $("youtube").value = yt; renderYt(yt);
   $("cover").value = a.cover_image_url || ""; $("tags").value = (a.tags || []).join(", ");
+  setPubDate(a.published_at);
   $("band").value = a.band_name || ""; $("album").value = a.album_name || "";
   if (a.genre) $("genre").value = a.genre;
   setStatus(a.status || "draft");
@@ -613,7 +634,7 @@ function renderRadar() {
       ${n.image ? `<img class="thumb" src="${esc(n.image)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.style.visibility='hidden'">` : `<div class="thumb"></div>`}
       <div style="min-width:0">
         <div class="nt">${esc(n.title)}</div>
-        <div class="nm"><span>${esc(n.source)}</span>${n.date ? `<span>· ${timeAgo(n.date)}</span>` : ""}${(n.genres || []).map((x) => `<span class="badge">${esc(x)}</span>`).join("")}</div>
+        <div class="nm"><span>${esc(n.source)}</span>${n.date ? `<span title="${esc(fmtStamp(n.date))}">· ${esc(fmtStamp(n.date))} (${timeAgo(n.date)})</span>` : ""}${(n.genres || []).map((x) => `<span class="badge">${esc(x)}</span>`).join("")}</div>
       </div>
       <div class="acts">
         <a class="btn btn-sm btn-ghost" href="${esc(n.link)}" target="_blank" rel="noopener noreferrer">Read ↗</a>
@@ -635,13 +656,17 @@ function useNews(n) {
     `Headline: ${n.title}\n` +
     (n.summary ? `Summary: ${n.summary}\n` : "") +
     `Write an original news piece in your own words based only on these facts. Do not copy the source's sentences. Mention that ${n.source} reported it.`;
-  pendingSource = { name: n.source, link: n.link };
+  pendingSource = { name: n.source, link: n.link, date: n.date || null };
+  if (n.date) setPubDate(n.date, `Original publication time from ${n.source}: ${fmtStamp(n.date)}. This will be used when you publish.`);
+  else setPubDate(null, `${n.source} did not provide a publication time. The moment you publish will be used.`);
   $("tags").value = ["news", ...(n.genres || []).map((x) => x.toLowerCase())].join(", ");
   window.scrollTo({ top: 0, behavior: "smooth" });
   const gb = $("generateBtn"); gb.classList.remove("glow-pulse"); void gb.offsetWidth; gb.classList.add("glow-pulse");
   toast("info", "Generator filled", (n.band ? "Band: " + n.band + ". " : "") + "Check the band name, then tap Generate article.", { duration: 7000 });
 }
 $("radarGenre").addEventListener("change", renderRadar);
+$("pubNow").addEventListener("click", () => setPubDate(new Date().toISOString()));
+$("pubClear").addEventListener("click", () => setPubDate(null));
 $("radarRefresh").addEventListener("click", () => loadRadar(true));
 
 sb.auth.onAuthStateChange((evt) => { if (evt === "SIGNED_OUT") showLogin(); });

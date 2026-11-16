@@ -368,7 +368,7 @@
     $("readerTag").innerHTML = tagHtml(a.genre);
     $("readerBody").innerHTML = `
       ${vid ? "" : `<div class="reader-hero">${media(a)}</div>`}
-      <div class="meta-row"><span>${fmtDate(a.published_at)}</span><span aria-hidden="true">·</span><span>${readTime(a.content)}</span>${a.band_name ? `<span aria-hidden="true">·</span><span>${esc(a.band_name)}</span>` : ""}</div>
+      <div class="meta-row"><time datetime="${esc(a.published_at || "")}">${fmtDate(a.published_at)}${a.published_at ? ", " + new Date(a.published_at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) : ""}</time><span aria-hidden="true">·</span><span>${readTime(a.content)}</span>${a.band_name ? `<span aria-hidden="true">·</span><span>${esc(a.band_name)}</span>` : ""}</div>
       <h1 id="readerTitle">${esc(a.title)}</h1>
       ${a.excerpt ? `<p class="lede">${esc(a.excerpt)}</p>` : ""}
       ${vid ? ytEmbed(vid) : ""}
