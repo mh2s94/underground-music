@@ -11,8 +11,8 @@
   const GENRES = ["Metalcore", "Deathcore", "Hardcore", "Darkcore", "Post-Hardcore", "Black Metal", "Djent", "Underground"];
   const WARM = new Set(["deathcore", "hardcore", "darkcore", "black metal"]);
   const GENRE_COLOR = {
-    Metalcore: "#40A887", Djent: "#62C3A5", "Post-Hardcore": "#9BD8C3", Underground: "#1B3C36",
-    Deathcore: "#C68B59", Hardcore: "#E2A878", Darkcore: "#8A5A2E", "Black Metal": "#B9A08A"
+    Metalcore: "#7B5CFF", Djent: "#A48FFF", "Post-Hardcore": "#4F7BFF", Underground: "#C9C2E8",
+    Deathcore: "#FF2E63", Hardcore: "#FF5C86", Darkcore: "#B3124A", "Black Metal": "#FF9BB5"
   };
   const YT_LINE = /^https:\/\/(?:www\.|m\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]{11})\S*$/m;
   const DAY = 864e5;
@@ -50,34 +50,31 @@
   function hash(str) { let h = 2166136261; for (const c of String(str)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; }
   function rng(seed) { let s = seed || 1; return () => ((s = Math.imul(s ^ (s >>> 15), 1 | s) + 0x6d2b79f5 | 0, (((s ^ (s >>> 7)) >>> 0) % 10000) / 10000)); }
 
-  // Abstract 3D-style cover art (emerald / sage / terracotta), unique per article
+  // Neon cover art: glowing tubes, rings and a perspective floor, unique per article
   let artN = 0;
   function art(seed) {
     const r = rng(hash(seed));
     const id = "a" + (++artN);
-    const bgs = ["#E6F2EC", "#F3ECE3", "#E1EEE9", "#EDF1EA", "#F1E9E1"];
-    const bg = bgs[Math.floor(r() * bgs.length)];
-    const sx = 90 + r() * 160, sy = 110 + r() * 80, sr = 46 + r() * 30;
-    const cx = 200 + r() * 140, cy = 70 + r() * 120, cs = 64 + r() * 40, rot = -25 + r() * 50;
-    const tx = 60 + r() * 280, ty = 40 + r() * 80, tr = 30 + r() * 26;
-    const px = 40 + r() * 260, py = 190 + r() * 50;
+    const flip = r() > .5;
+    const c1 = flip ? "#FF2E63" : "#7B5CFF", c2 = flip ? "#7B5CFF" : "#FF2E63";
+    const rx = 120 + r() * 160, ry = 70 + r() * 70, rr = 46 + r() * 34;
+    const tx = 40 + r() * 140, ty = 40 + r() * 60, tw = 140 + r() * 120, rot = -20 + r() * 40;
+    const hz = 175 + r() * 30;
+    let floor = "";
+    for (let i = 0; i < 9; i++) { const x = -200 + i * 100; floor += `<path d="M200 ${hz} L${x} 300"/>`; }
+    for (let j = 1; j < 6; j++) { const y = hz + Math.pow(j / 5, 1.8) * (300 - hz); floor += `<path d="M0 ${y.toFixed(1)} H400"/>`; }
     return `<svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
 <defs>
-<radialGradient id="${id}s" cx="35%" cy="30%" r="75%"><stop offset="0" stop-color="#C9F5E4"/><stop offset=".45" stop-color="#62C3A5"/><stop offset="1" stop-color="#1B3C36"/></radialGradient>
-<linearGradient id="${id}c" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F6D7B6"/><stop offset=".55" stop-color="#E2A878"/><stop offset="1" stop-color="#9C643A"/></linearGradient>
-<linearGradient id="${id}t" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9BD8C3"/><stop offset="1" stop-color="#2E7D66"/></linearGradient>
-<linearGradient id="${id}p" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#1B3C36"/><stop offset="1" stop-color="#40A887"/></linearGradient>
-<filter id="${id}b"><feGaussianBlur stdDeviation="9"/></filter>
+<filter id="${id}g" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+<radialGradient id="${id}h" cx="50%" cy="40%" r="70%"><stop offset="0" stop-color="${c2}" stop-opacity=".35"/><stop offset="1" stop-color="#07060B" stop-opacity="0"/></radialGradient>
 </defs>
-<rect width="400" height="300" fill="${bg}"/>
-<circle cx="${(sx + 220) % 400}" cy="${(sy + 140) % 300}" r="120" fill="#ffffff" opacity=".45"/>
-<ellipse cx="${sx}" cy="${sy + sr + 10}" rx="${sr * .9}" ry="10" fill="#132B27" opacity=".18" filter="url(#${id}b)"/>
-<ellipse cx="${cx}" cy="${cy + cs * .75}" rx="${cs * .6}" ry="9" fill="#132B27" opacity=".15" filter="url(#${id}b)"/>
-<rect x="${px}" y="${py}" width="${110 + r() * 60}" height="26" rx="13" fill="url(#${id}p)" opacity=".9"/>
-<circle cx="${tx}" cy="${ty}" r="${tr}" fill="none" stroke="url(#${id}t)" stroke-width="${12 + r() * 6}"/>
-<g transform="rotate(${rot} ${cx} ${cy})"><rect x="${cx - cs / 2}" y="${cy - cs / 2}" width="${cs}" height="${cs}" rx="${cs * .22}" fill="url(#${id}c)"/><rect x="${cx - cs / 2 + 8}" y="${cy - cs / 2 + 7}" width="${cs * .45}" height="${cs * .2}" rx="${cs * .1}" fill="#fff" opacity=".35"/></g>
-<circle cx="${sx}" cy="${sy}" r="${sr}" fill="url(#${id}s)"/>
-<ellipse cx="${sx - sr * .35}" cy="${sy - sr * .4}" rx="${sr * .28}" ry="${sr * .16}" fill="#fff" opacity=".55"/>
+<rect width="400" height="300" fill="#07060B"/>
+<rect width="400" height="300" fill="url(#${id}h)"/>
+<g stroke="${c2}" stroke-width="1" opacity=".45" fill="none">${floor}</g>
+<circle cx="${rx}" cy="${ry}" r="${rr}" fill="none" stroke="${c1}" stroke-width="5" filter="url(#${id}g)"/>
+<circle cx="${rx}" cy="${ry}" r="${rr}" fill="none" stroke="#FFE3EC" stroke-width="1.4"/>
+<g transform="rotate(${rot} ${tx + tw / 2} ${ty})"><rect x="${tx}" y="${ty - 5}" width="${tw}" height="10" rx="5" fill="${c2}" filter="url(#${id}g)"/><rect x="${tx + 3}" y="${ty - 1.5}" width="${tw - 6}" height="3" rx="1.5" fill="#F2EEFF"/></g>
+<path d="M0 ${hz} H400" stroke="${c1}" stroke-width="2" filter="url(#${id}g)" opacity=".85"/>
 </svg>`;
   }
 
@@ -92,10 +89,24 @@
         const y = mid + Math.sin((x / w) * Math.PI * 2 * freq + phase) * amp * env;
         d += (x ? "L" : "M") + x + " " + y.toFixed(1);
       }
-      const col = k % 3 === 2 ? "rgba(226,168,120,.7)" : "rgba(98,195,165,.75)";
+      const col = k % 3 === 2 ? "rgba(255,46,99,.75)" : "rgba(123,92,255,.7)";
       out += `<path d="${d}" fill="none" stroke="${col}" stroke-width="${k % 3 === 0 ? 2 : 1.2}" style="animation-delay:${k * 90}ms"/>`;
     }
     el.innerHTML = out;
+  }
+
+  // Hero: perspective dance-floor grid + live REC timer
+  function heroFloor(el) {
+    const hz = 230; let d = "";
+    for (let i = 0; i <= 16; i++) d += `<path d="M400 ${hz} L${-400 + i * 100} 360"/>`;
+    for (let j = 1; j <= 6; j++) { const y = hz + Math.pow(j / 6, 1.7) * (360 - hz); d += `<path d="M0 ${y.toFixed(1)} H800"/>`; }
+    el.innerHTML = `<g fill="none" stroke="#7B5CFF" stroke-width="1">${d}</g><path d="M0 ${hz} H800" stroke="#FF2E63" stroke-width="1.5" style="filter:drop-shadow(0 0 6px #FF2E63)"/>`;
+  }
+  function recTimer() {
+    const el = document.getElementById("recTime"); if (!el) return;
+    const t0 = Date.now();
+    const tick = () => { const s = Math.floor((Date.now() - t0) / 1000); el.textContent = [Math.floor(s / 3600), Math.floor(s / 60) % 60, s % 60].map((n) => String(n).padStart(2, "0")).join(":"); };
+    tick(); setInterval(tick, 1000);
   }
 
   // Markdown → HTML (escaped first)
@@ -140,8 +151,8 @@
       if (!total) return `<div class="bar-col"><div class="bar empty" data-h="4" style="--b:${i}"></div><small>${label.split(" ")[0]}</small></div>`;
       return `<div class="bar-col" title="${total} ${total === 1 ? "story" : "stories"} · week of ${label}">
         <div class="bar" data-h="${Math.round((total / max) * 100)}" data-v="${total}" style="--b:${i};display:flex;flex-direction:column;background:none;gap:2px">
-          ${w.warm ? `<span style="flex:${w.warm};background:var(--amber);border-radius:8px"></span>` : ""}
-          ${w.mint ? `<span style="flex:${w.mint};background:var(--mint);border-radius:8px"></span>` : ""}
+          ${w.warm ? `<span data-c="neon" style="flex:${w.warm};background:var(--neon)"></span>` : ""}
+          ${w.mint ? `<span data-c="uv" style="flex:${w.mint};background:var(--uv)"></span>` : ""}
         </div><small>${label.split(" ")[0]}</small></div>`;
     }).join("");
   }
@@ -385,7 +396,7 @@
   const DEFAULT_ACCOUNT_ICON = $("accountIcon").innerHTML;
   const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
   const initials = (n) => String(n || "").trim().split(/\s+/).filter(Boolean).map((w) => w[0]).join("").slice(0, 2).toUpperCase() || "U";
-  const colorFor = (s) => ["#40A887", "#C68B59", "#1B3C36", "#62C3A5", "#8A5A2E", "#2E7D66"][hash(s) % 6];
+  const colorFor = (s) => ["#7B5CFF", "#FF2E63", "#4F2BB8", "#B3124A", "#5A3FD6", "#E0245A"][hash(s) % 6];
   const myName = () => profile?.display_name || user?.user_metadata?.display_name || (user?.email || "").split("@")[0] || "Reader";
   const notReady = (err) => !!err && (err.code === "42P01" || err.code === "PGRST205" || err.code === "PGRST200" || /does not exist|schema cache|relationship/i.test(err.message || ""));
   function friendly(err) {
@@ -505,9 +516,9 @@
       </form>`;
     else form = `
       <div class="auth-form" style="text-align:center;align-items:center;padding:12px 0">
-        <span class="big-avatar" style="background:var(--mint-soft);color:var(--mint-ink)">${ic("mail", 28)}</span>
+        <span class="big-avatar" style="background:var(--neon-soft);color:var(--neon-hi)">${ic("mail", 28)}</span>
         <h2>Check your inbox</h2>
-        <p class="muted-p">We sent a link to <b style="color:var(--text)">${esc(pendingEmail)}</b>. Open it on this device to continue. It can take a minute, and may land in spam.</p>
+        <p class="muted-p">We sent a link to <b style="color:var(--ink)">${esc(pendingEmail)}</b>. Open it on this device to continue. It can take a minute, and may land in spam.</p>
         <button class="btn btn-outline" type="button" data-tab-btn="signin">Back to sign in</button>
       </div>`;
     const tabs = (authTab === "signin" || authTab === "signup") ? `
@@ -635,7 +646,7 @@
     e.target.classList.remove("invalid");
     if (e.target.matches("[data-strength]")) {
       const s = strength(e.target.value);
-      const colors = ["#E5EAE8", "#C68B59", "#E2A878", "#62C3A5", "#40A887"];
+      const colors = ["#1B1729", "#FF2E63", "#FFC23D", "#A48FFF", "#3DF5A7"];
       e.target.closest("form").querySelectorAll(".strength span").forEach((b, i) => { b.style.background = i < s ? colors[s] : ""; });
     }
   });
@@ -878,7 +889,8 @@
     setTimeout(() => s.remove(), 750);
   }
 
-  wave($("heroWave"), 600, 320, 7);
+  heroFloor($("heroFloor"));
+  recTimer();
   wave($("aboutWave"), 600, 180, 6);
   renderPills(); skeletons();
   const minSplash = new Promise((r) => setTimeout(r, reduceMotion ? 0 : 900));

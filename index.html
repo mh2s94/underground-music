@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#132B27">
+<meta name="theme-color" content="#050409">
 <meta name="description" content="UNDERGROUND — an independent extreme music magazine covering metalcore, hardcore, deathcore and the sounds beneath them.">
 <title>UNDERGROUND — Independent Extreme Music Magazine</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400..800;1,400..800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap">
 <link rel="stylesheet" href="/assets/bento.css">
 </head>
 <body>
@@ -16,7 +16,7 @@
 <!-- Splash -->
 <div class="splash" id="splash" aria-hidden="true">
   <div class="splash-inner">
-    <svg width="72" height="72" viewBox="0 0 48 48" fill="none" aria-hidden="true"><rect x="2.5" y="2.5" width="43" height="43" rx="13" stroke="currentColor" stroke-width="2" opacity=".3"/><path d="M15 11v13.5a9 9 0 0 0 18 0V11" stroke="currentColor" stroke-width="4.5" stroke-linecap="round"/><circle cx="35.5" cy="11" r="3" fill="#62C3A5"/></svg>
+    <svg width="84" height="84" viewBox="0 0 48 48" fill="none" aria-hidden="true"><path d="M14 9v15a10 10 0 0 0 20 0V9" stroke="#FF5C86" stroke-width="3.2" stroke-linecap="round"/><path d="M14 9v15a10 10 0 0 0 20 0V9" stroke="#FFE3EC" stroke-width="1.2" stroke-linecap="round"/></svg>
     <div class="splash-word">UNDERGROUND</div>
   </div>
 </div>
@@ -25,7 +25,7 @@
   <!-- Sidebar -->
   <aside class="sidebar">
     <a class="emblem" href="#/home" aria-label="UNDERGROUND home">
-      <svg width="40" height="40" viewBox="0 0 48 48" fill="none" aria-hidden="true"><rect x="2.5" y="2.5" width="43" height="43" rx="13" stroke="currentColor" stroke-width="2" opacity=".3"/><path d="M15 11v13.5a9 9 0 0 0 18 0V11" stroke="currentColor" stroke-width="4.5" stroke-linecap="round"/><circle cx="35.5" cy="11" r="3" fill="#62C3A5"/></svg>
+      <svg width="38" height="38" viewBox="0 0 48 48" fill="none" aria-hidden="true"><path d="M14 9v15a10 10 0 0 0 20 0V9" stroke="#FF5C86" stroke-width="3.6" stroke-linecap="round"/><path d="M14 9v15a10 10 0 0 0 20 0V9" stroke="#FFE3EC" stroke-width="1.2" stroke-linecap="round"/></svg>
     </a>
     <nav class="nav" aria-label="Main">
       <span class="nav-pill" id="navPill" aria-hidden="true"></span>
@@ -58,10 +58,17 @@
     <section class="view" id="view-home" data-view="home" aria-label="Dashboard">
       <div class="home">
         <div class="col">
+          <div class="ticker bento-item" aria-hidden="true"><div class="ticker-in">
+            <span>Metalcore</span><span>Deathcore</span><span>Hardcore</span><span>Darkcore</span><span>Post-Hardcore</span><span>Black Metal</span><span>Djent</span><span>Underground</span>
+            <span>Metalcore</span><span>Deathcore</span><span>Hardcore</span><span>Darkcore</span><span>Post-Hardcore</span><span>Black Metal</span><span>Djent</span><span>Underground</span>
+          </div></div>
+
           <div class="card hero bento-item">
-            <svg class="wave" id="heroWave" viewBox="0 0 600 320" preserveAspectRatio="none" aria-hidden="true"></svg>
+            <svg class="floor" id="heroFloor" viewBox="0 0 800 360" preserveAspectRatio="none" aria-hidden="true"></svg>
+            <span class="cam" aria-hidden="true">CAM 02 · BASEMENT</span>
+            <span class="rec" aria-hidden="true"><span class="live-dot"></span>REC <span id="recTime">00:00:00</span></span>
             <span class="badge-dark"><i aria-hidden="true"></i>Independent extreme music magazine</span>
-            <h1>Beneath the <em>noise</em>.</h1>
+            <h1><span class="neon-txt">Beneath</span> the <span class="uv-txt">noise.</span></h1>
             <p>Reviews, features and new releases from metalcore, hardcore, deathcore and the heavier corners of the scene. Written by people who still go to the shows.</p>
             <div class="actions">
               <button class="btn btn-white" type="button" id="readLatest">Read latest <span class="arr" aria-hidden="true">→</span></button>
@@ -79,7 +86,7 @@
                 <div class="card-title" style="margin-bottom:8px"><h2>Publishing activity</h2><span class="hint">Last 8 weeks</span></div>
                 <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:10px;flex-wrap:wrap">
                   <div><div class="kpi" data-count="0" id="kpi30">0</div><div class="kpi-sub">stories in the last 30 days</div></div>
-                  <div class="legend"><span><i style="background:var(--mint)"></i>Melodic &amp; modern</span><span><i style="background:var(--amber)"></i>Heavy &amp; extreme</span></div>
+                  <div class="legend"><span><i style="background:var(--uv)"></i>Melodic &amp; modern</span><span><i style="background:var(--neon)"></i>Heavy &amp; extreme</span></div>
                 </div>
                 <div class="bars" id="activityBars" role="img" aria-label="Stories per week, last 8 weeks"></div>
               </div>
@@ -95,7 +102,7 @@
               </div>
             </div>
             <div class="card pad lift demo bento-item">
-              <svg class="blob" viewBox="0 0 200 200" aria-hidden="true"><defs><radialGradient id="blobG" cx="35%" cy="30%" r="75%"><stop offset="0" stop-color="#B8F0DC"/><stop offset=".55" stop-color="#40A887"/><stop offset="1" stop-color="#1B3C36"/></radialGradient></defs><path fill="url(#blobG)" d="M150 40c25 22 34 62 18 92s-58 52-92 42-58-48-46-84 37-58 70-62c18-2 34 0 50 12z"/></svg>
+              <span class="ring-deco" aria-hidden="true"></span>
               <h3>Submit your demo</h3>
               <p>Making something heavy? Send us your band, a link and two lines about it. We listen to everything.</p>
               <button class="btn btn-forest" type="button" data-demo>Send your music <span class="arr" aria-hidden="true">→</span></button>
@@ -148,10 +155,10 @@
     <!-- View 3: About -->
     <section class="view" id="view-about" data-view="about" aria-label="About" hidden>
       <div class="card profile bento-item">
-        <div class="profile-banner"><svg id="aboutWave" viewBox="0 0 600 180" preserveAspectRatio="none" aria-hidden="true"></svg></div>
+        <div class="profile-banner"><svg id="aboutWave" viewBox="0 0 600 180" preserveAspectRatio="none" aria-hidden="true"></svg><span class="big-neon neon-txt" aria-hidden="true">Live from the basement</span></div>
         <div class="profile-body">
           <div class="profile-id">
-            <div class="profile-emblem"><svg width="54" height="54" viewBox="0 0 48 48" fill="none" aria-hidden="true"><path d="M15 11v13.5a9 9 0 0 0 18 0V11" stroke="currentColor" stroke-width="4.5" stroke-linecap="round"/><circle cx="35.5" cy="11" r="3" fill="#62C3A5"/></svg></div>
+            <div class="profile-emblem"><svg width="56" height="56" viewBox="0 0 48 48" fill="none" aria-hidden="true"><path d="M14 9v15a10 10 0 0 0 20 0V9" stroke="#FF5C86" stroke-width="3.4" stroke-linecap="round"/><path d="M14 9v15a10 10 0 0 0 20 0V9" stroke="#FFE3EC" stroke-width="1.2" stroke-linecap="round"/></svg></div>
             <div><h1>UNDERGROUND</h1><p>Independent extreme music culture</p></div>
           </div>
           <div style="display:flex;flex-wrap:wrap;gap:10px">
@@ -177,7 +184,7 @@
         <div class="card pad bento-item">
           <div class="card-title"><h2>Release radar</h2><span class="hint">Stories per week, last 12 weeks</span></div>
           <div class="bars" id="radarBars" role="img" aria-label="Stories per week, last 12 weeks" style="height:190px"></div>
-          <div class="legend" style="margin-top:12px"><span><i style="background:var(--mint)"></i>Melodic &amp; modern</span><span><i style="background:var(--amber)"></i>Heavy &amp; extreme</span></div>
+          <div class="legend" style="margin-top:12px"><span><i style="background:var(--uv)"></i>Melodic &amp; modern</span><span><i style="background:var(--neon)"></i>Heavy &amp; extreme</span></div>
         </div>
       </div>
     </section>
