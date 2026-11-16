@@ -89,6 +89,16 @@
   .dv-sheet { width: 100%; max-height: 92dvh; border-radius: 22px 22px 0 0; padding: 20px; }
   .dv-grid { grid-template-columns: 1fr; }
 }
+
+/* Scene radar */
+.news-row { display: grid; grid-template-columns: 96px minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 14px 0; border-top: 1px solid var(--line); animation: sheetUp .45s var(--spring) both; animation-delay: var(--d, 0ms); }
+.news-row .thumb { width: 96px; aspect-ratio: 16 / 10; border-radius: 8px; object-fit: cover; background: var(--surface-2); }
+.news-row .nt { font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; }
+.news-row .nm { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 6px; font-family: var(--font-mono); font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.news-row .acts { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+@media (max-width: 700px) { .news-row { grid-template-columns: 72px minmax(0, 1fr); } .news-row .thumb { width: 72px; } .news-row .acts { grid-column: 1 / -1; justify-content: flex-start; } }
+.btn.glow-pulse { animation: glowPulse 1.2s ease-in-out 3; }
+@keyframes glowPulse { 50% { box-shadow: 0 0 0 6px rgba(255, 46, 99, .25), 0 0 34px rgba(255, 46, 99, .8); } }
 </style>
 </head>
 <body>
@@ -177,6 +187,19 @@
       </section>
     </div>
 
+    <!-- Scene radar -->
+    <section class="panel card-pad" style="margin-top:20px" aria-labelledby="radarTitle">
+      <div class="list-head">
+        <div><h2 id="radarTitle" style="margin:0">Scene radar</h2><p class="muted" style="margin:6px 0 0;font-size:14px">Latest headlines from heavy-music sites. Pick one and the generator is filled for you.</p></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <select class="select" id="radarGenre" aria-label="Filter news by genre" style="max-width:190px;min-height:42px"><option value="">All genres</option><option>Metalcore</option><option>Deathcore</option><option>Hardcore</option><option>Darkcore</option><option>Post-Hardcore</option><option>Black Metal</option><option>Djent</option></select>
+          <button class="btn btn-sm" type="button" id="radarRefresh">Refresh</button>
+        </div>
+      </div>
+      <div class="rows" id="radar"></div>
+      <p class="mono muted" id="radarSources" style="margin:12px 0 0;font-size:11px"></p>
+    </section>
+
     <!-- Articles -->
     <section class="panel card-pad" style="margin-top:20px" aria-labelledby="listTitle">
       <div class="list-head">
@@ -234,6 +257,7 @@ async function session() {
   $("userEmail").textContent = s.user.email || "";
   loadArticles();
   loadDemos();
+  loadRadar(false);
 }
 function showLogin() { $("login").hidden = false; $("app").hidden = true; $("userBar").hidden = true; setTimeout(() => $("email").focus(), 50); }
 
@@ -265,6 +289,7 @@ function renderYt(url, title = "") {
   $("ytPreview").innerHTML = `<div class="yt-preview"><img src="https://i.ytimg.com/vi/${id}/mqdefault.jpg" alt=""><div><div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(title || "YouTube video")}</div><a href="https://www.youtube.com/watch?v=${id}" target="_blank" rel="noopener">Check the video ↗</a></div></div>`;
 }
 function resetForm() {
+  pendingSource = null;
   editing = null;
   ["title", "slug", "excerpt", "content", "youtube", "cover", "tags", "band", "album", "notes"].forEach((id) => { $(id).value = ""; $(id).classList.remove("invalid"); });
   delete $("slug").dataset.edited;
@@ -312,7 +337,7 @@ $("generateBtn").onclick = async () => {
       return;
     }
     $("title").value = j.title || ""; $("slug").value = slugify(j.title); delete $("slug").dataset.edited;
-    $("excerpt").value = j.excerpt || ""; $("content").value = j.content || "";
+    $("excerpt").value = j.excerpt || ""; $("content").value = (j.content || "") + (pendingSource ? `\n\nSource: [${pendingSource.name}](${pendingSource.link})` : "");
     $("wordCount").textContent = words(j.content || "") + " words";
     if (Array.isArray(j.tags) && j.tags.length) $("tags").value = j.tags.join(", ");
     if (j.genre && [...$("genre").options].some((o) => o.value === j.genre)) $("genre").value = j.genre;
@@ -560,6 +585,64 @@ function closeDemo() {
 $("demoView").addEventListener("click", (e) => { if (e.target.closest("[data-dv-close]")) closeDemo(); });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeDemo(); });
 $("demoFilter").addEventListener("change", renderDemos);
+
+/* ---------- Scene radar ---------- */
+let radarItems = [];
+let pendingSource = null; // { name, link } of the news item the current draft is based on
+const timeAgo = (d) => { const s = Math.max(0, (Date.now() - new Date(d)) / 1000); return s < 3600 ? Math.max(1, Math.round(s / 60)) + "m ago" : s < 86400 ? Math.round(s / 3600) + "h ago" : Math.round(s / 86400) + "d ago"; };
+async function loadRadar(fresh) {
+  $("radar").innerHTML = Array.from({ length: 4 }, () => `<div class="news-row" aria-hidden="true"><div class="thumb skel"></div><div><div class="skel" style="height:14px;width:80%"></div><div class="skel" style="height:10px;width:40%;margin-top:10px"></div></div><div></div></div>`).join("");
+  try {
+    const r = await fetch("/api/news" + (fresh ? "?refresh=1" : ""));
+    const j = await r.json();
+    radarItems = j.items || [];
+    const ok = (j.sources || []).filter((x) => x.ok).map((x) => x.name);
+    const bad = (j.sources || []).filter((x) => !x.ok).map((x) => x.name);
+    $("radarSources").textContent = (ok.length ? "Sources: " + ok.join(", ") : "No sources reachable right now") + (bad.length ? " · unavailable: " + bad.join(", ") : "");
+    renderRadar();
+  } catch (e) {
+    $("radar").innerHTML = `<p class="muted" style="margin:8px 0 0">Could not load the scene radar. Try Refresh in a minute.</p>`;
+  }
+}
+function renderRadar() {
+  const g = $("radarGenre").value;
+  const list = (g ? radarItems.filter((n) => (n.genres || []).includes(g)) : radarItems).slice(0, 30);
+  if (!list.length) { $("radar").innerHTML = `<p class="muted" style="margin:8px 0 0">${radarItems.length ? "No " + esc(g) + " headlines right now." : "No headlines yet."}</p>`; return; }
+  $("radar").innerHTML = list.map((n, i) => `
+    <div class="news-row" style="--d:${Math.min(i, 10) * 35}ms">
+      ${n.image ? `<img class="thumb" src="${esc(n.image)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.style.visibility='hidden'">` : `<div class="thumb"></div>`}
+      <div style="min-width:0">
+        <div class="nt">${esc(n.title)}</div>
+        <div class="nm"><span>${esc(n.source)}</span>${n.date ? `<span>· ${timeAgo(n.date)}</span>` : ""}${(n.genres || []).map((x) => `<span class="badge">${esc(x)}</span>`).join("")}</div>
+      </div>
+      <div class="acts">
+        <a class="btn btn-sm btn-ghost" href="${esc(n.link)}" target="_blank" rel="noopener noreferrer">Read ↗</a>
+        <button class="btn btn-sm btn-primary" type="button" data-news="${radarItems.indexOf(n)}">Write article</button>
+      </div>
+    </div>`).join("");
+  $("radar").querySelectorAll("[data-news]").forEach((b) => b.onclick = () => useNews(radarItems[+b.dataset.news]));
+}
+function useNews(n) {
+  if (!n) return;
+  resetForm();
+  $("band").value = n.band || "";
+  $("album").value = "";
+  $("category").value = "News";
+  const g = (n.genres || [])[0];
+  if (g && [...$("genre").options].some((o) => o.value === g)) $("genre").value = g;
+  $("notes").value =
+    `News item reported by ${n.source}${n.date ? " on " + new Date(n.date).toDateString() : ""}.\n` +
+    `Headline: ${n.title}\n` +
+    (n.summary ? `Summary: ${n.summary}\n` : "") +
+    `Write an original news piece in your own words based only on these facts. Do not copy the source's sentences. Mention that ${n.source} reported it.`;
+  pendingSource = { name: n.source, link: n.link };
+  $("tags").value = ["news", ...(n.genres || []).map((x) => x.toLowerCase())].join(", ");
+  window.scrollTo({ top: 0, behavior: "smooth" });
+  const gb = $("generateBtn"); gb.classList.remove("glow-pulse"); void gb.offsetWidth; gb.classList.add("glow-pulse");
+  toast("info", "Generator filled", (n.band ? "Band: " + n.band + ". " : "") + "Check the band name, then tap Generate article.", { duration: 7000 });
+}
+$("radarGenre").addEventListener("change", renderRadar);
+$("radarRefresh").addEventListener("click", () => loadRadar(true));
 
 sb.auth.onAuthStateChange((evt) => { if (evt === "SIGNED_OUT") showLogin(); });
 session();

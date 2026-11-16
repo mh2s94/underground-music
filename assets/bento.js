@@ -110,7 +110,9 @@
   }
 
   // Markdown → HTML (escaped first)
-  const inline = (s) => s.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/(^|[^*])\*(?!\s)(.+?)\*/g, "$1<em>$2</em>");
+  const inline = (s) => s
+    .replace(/\[([^\]]{1,200})\]\((https:\/\/[^\s)]{4,500})\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer nofollow">$1</a>')
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/(^|[^*])\*(?!\s)(.+?)\*/g, "$1<em>$2</em>");
   const ytEmbed = (id) => `<div class="yt"><iframe src="https://www.youtube-nocookie.com/embed/${id}" title="YouTube video player" loading="lazy" allow="accelerometer; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
   function md(src, skip) {
     let html = "", para = [], list = false;
@@ -199,6 +201,26 @@
       <li><a href="#/a/${keyOf(a)}"><span class="ico${isWarm(a.genre) ? " warm" : ""}">${icoReview}</span>
       <span style="min-width:0"><div class="t">${esc(a.title)}</div><div class="time">${esc(a.genre || "Underground")} · ${timeAgo(a.published_at)}</div></span></a></li>`).join("")
       : `<li><div class="empty-note">No updates yet.</div></li>`;
+  }
+
+  // ---- Scene radar: latest headlines from heavy-music sites -------------------
+  async function loadNews() {
+    try {
+      const r = await fetch("/api/news", { headers: { accept: "application/json" } });
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      const { items = [] } = await r.json();
+      if (!items.length) return;
+      const ext = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8"/></svg>';
+      const icoNews = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 11a9 9 0 0 1 9 9M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1.5"/></svg>';
+      $("wire").innerHTML = items.slice(0, 7).map((n) => {
+        const g = (n.genres || [])[0];
+        return `<li><a href="${esc(n.link)}" target="_blank" rel="noopener noreferrer nofollow">
+          <span class="ico${g && isWarm(g) ? " warm" : ""}">${icoNews}</span>
+          <span style="min-width:0"><div class="t">${esc(n.title)}</div>
+          <div class="time">${esc(n.source)}${g ? " · " + esc(g) : ""}${n.date ? " · " + timeAgo(n.date) : ""} ${ext}</div></span></a></li>`;
+      }).join("");
+      $("wireHint").textContent = "Live from the scene";
+    } catch { /* keep our own stories in the wire */ }
   }
 
   function renderCalendar() {
@@ -898,6 +920,7 @@
   Promise.all([load(), minSplash]).then(() => {
     clearTimeout(maxSplash);
     renderHome(); renderCoverage(); renderGrid(false); renderAbout();
+    loadNews();
     hideSplash();
     route();
   });
