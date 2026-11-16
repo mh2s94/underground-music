@@ -222,7 +222,7 @@
         <p id="chartsLead">The ten most-loved bands and songs, ranked automatically by rating.</p>
         <div class="chart-switch" role="tablist" aria-label="Chart source">
           <button class="cs-btn" type="button" role="tab" data-src="community" aria-selected="true">Community</button>
-          <button class="cs-btn" type="button" role="tab" data-src="global" aria-selected="false">Global metal</button>
+          <button class="cs-btn" type="button" role="tab" data-src="global" aria-selected="false">Global</button>
         </div>
       </div>
       <div class="chart-bar bento-item">
@@ -231,6 +231,10 @@
           <button class="pill" type="button" data-period="all" aria-pressed="false">All time</button>
         </div>
         <span class="hint" id="chartMeta"></span>
+      </div>
+      <div class="genre-nav bento-item" id="genreNav">
+        <div class="gn-row" id="gnGroups" role="group" aria-label="Genre group"></div>
+        <div class="gn-row gn-subs" id="gnSubs" role="group" aria-label="Sub-genre" hidden></div>
       </div>
       <div class="charts-grid">
         <div class="card pad bento-item">
@@ -351,7 +355,7 @@
       <div class="form-grid">
         <label class="field"><span>Band / artist *</span><input class="input" name="band_name" maxlength="120" required autocomplete="off"></label>
         <label class="field"><span>Country</span><input class="input" name="country" maxlength="80" autocomplete="country-name"></label>
-        <label class="field"><span>Genre</span><select class="input" name="genre"><option>Metalcore</option><option>Deathcore</option><option>Hardcore</option><option>Darkcore</option><option>Post-Hardcore</option><option>Black Metal</option><option>Djent</option><option>Underground</option></select></label>
+        <label class="field"><span>Genre</span><select class="input" name="genre" data-genre-select></select></label>
         <label class="field"><span>Contact email *</span><input class="input" name="contact_email" type="email" required autocomplete="email"></label>
       </div>
       <label class="field"><span>Music link *</span><input class="input" name="link" type="url" placeholder="https://youtube.com/… or bandcamp, spotify, soundcloud" required></label>
@@ -384,6 +388,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/assets/ui.js"></script>
+<script src="/assets/genres.js"></script>
 <script src="/assets/bento.js"></script>
 </body>
 </html>

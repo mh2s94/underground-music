@@ -575,6 +575,7 @@ button.chart-row:hover, a.chart-row:hover { background: var(--card-2); }
 .c-rank { font: 400 32px/1 var(--display); text-align: center; color: var(--faint); }
 .c-cover { position: relative; width: 56px; height: 56px; border-radius: 10px; overflow: hidden; background: var(--card-3); }
 .c-cover img, .c-cover svg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.c-cover img { z-index: 1; }
 .c-meta { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .c-title { font-weight: 700; font-size: 15px; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .c-sub { font: 400 10.5px/1.4 var(--mono); letter-spacing: .05em; text-transform: uppercase; color: var(--faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -622,3 +623,11 @@ button.chart-row:hover, a.chart-row:hover { background: var(--card-2); }
 .rate-avg { font: 400 10px/1 var(--mono); letter-spacing: .05em; color: var(--faint); white-space: nowrap; }
 @media (max-width: 420px) { .nav { gap: 6px !important; } }
 @media (prefers-reduced-motion: reduce) { .chart-row, .c-meter b, .podium span { animation: none; } }
+/* chart genre picker: two swipeable rows (groups, then sub-genres) */
+.genre-nav { display: flex; flex-direction: column; gap: 10px; margin: -4px 0 18px; }
+.gn-row { display: flex; gap: 8px; overflow-x: auto; scroll-snap-type: x proximity; padding: 2px 2px 8px; scrollbar-width: thin; scrollbar-color: var(--line-2) transparent; -webkit-mask-image: linear-gradient(90deg, #000 92%, transparent); mask-image: linear-gradient(90deg, #000 92%, transparent); }
+.gn-row .pill { flex: none; scroll-snap-align: start; white-space: nowrap; }
+.gn-subs { padding-left: 12px; border-left: 2px solid var(--neon); animation: rise .4s var(--ease-out) both; }
+.gn-subs .pill { min-height: 34px; font-size: 10.5px; }
+.cover-in { animation: coverIn .5s var(--ease-out) both; }
+@keyframes coverIn { from { opacity: 0; } }
