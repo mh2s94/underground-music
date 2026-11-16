@@ -5,7 +5,8 @@
 //
 // Needs Cloudflare Pages secrets:
 //   AUTODRAFT_TOKEN            shared with the GitHub Actions secret of the same name
-//   SUPABASE_SERVICE_ROLE_KEY  lets the server save drafts (Supabase → Settings → API)
+//   SUPABASE_SERVICE_ROLE_KEY  lets the server save drafts: Supabase → Settings → API Keys →
+//                              Secret keys (sb_secret_…) or the legacy service_role key
 // Optional: AUTODRAFT_COUNT (default 2, max 3), AUTODRAFT_NOTIFY (email for a summary, uses Resend).
 
 import { writeArticle } from "./generate.js";
@@ -21,7 +22,9 @@ export async function onRequestPost({ request, env }) {
 
   const url = new URL(request.url);
   const count = Math.max(1, Math.min(3, Number(url.searchParams.get("count") || env.AUTODRAFT_COUNT || 2)));
-  const sb = { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: "Bearer " + env.SUPABASE_SERVICE_ROLE_KEY, "content-type": "application/json" };
+  // New Supabase secret keys (sb_secret_…) go in the apikey header only; legacy service_role JWTs also as Bearer.
+  const key = env.SUPABASE_SERVICE_ROLE_KEY.trim();
+  const sb = key.startsWith("sb_") ? { apikey: key, "content-type": "application/json" } : { apikey: key, Authorization: "Bearer " + key, "content-type": "application/json" };
   const rest = (path, init = {}) => fetch(`${env.SUPABASE_URL}/rest/v1/${path}`, { ...init, headers: { ...sb, ...(init.headers || {}) } });
 
   // 1. Fresh headlines (same feed as Scene Radar)
