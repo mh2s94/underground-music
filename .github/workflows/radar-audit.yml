@@ -1,0 +1,19 @@
+# Tahap 0 (read-only): how much archive each Scene Radar source exposes. No AI, no database, no deploy.
+name: Radar archive audit
+on:
+  push:
+    branches: [radar-audit]
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Audit sources
+        run: python3 scripts/radar_audit.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: radar-audit
+          path: radar-audit.json
