@@ -403,6 +403,19 @@
   // ---- Buttons -------------------------------------------------------------
   $("readLatest").onclick = () => { if (articles[0]) location.hash = "/a/" + keyOf(articles[0]); else toast("info", "No stories yet", "The first articles are on their way."); };
   document.querySelectorAll("[data-demo]").forEach((b) => b.onclick = () => openDemo());
+
+  // ---- Footer ----------------------------------------------------------------
+  $("ftYear").textContent = new Date().getFullYear();
+  $("ftTop").onclick = () => $("main").scrollTo({ top: 0, behavior: reduceMotion ? "auto" : "smooth" });
+  document.querySelectorAll("[data-ft-genre]").forEach((a) => a.addEventListener("click", () => {
+    genre = a.dataset.ftGenre; renderPills(); renderGrid(true);
+  }));
+  if ("IntersectionObserver" in window) {
+    const ftObs = new IntersectionObserver((entries) => entries.forEach((e) => {
+      if (e.isIntersecting) { e.target.classList.add("in"); ftObs.unobserve(e.target); }
+    }), { root: $("main"), threshold: .15 });
+    document.querySelectorAll(".ft-reveal").forEach((el) => ftObs.observe(el));
+  } else document.querySelectorAll(".ft-reveal").forEach((el) => el.classList.add("in"));
   document.querySelectorAll("[data-contact]").forEach((b) => b.onclick = () => {
     if (SUBMIT_EMAIL) location.href = `mailto:${SUBMIT_EMAIL}`;
     else toast("info", "Contact details coming soon");
