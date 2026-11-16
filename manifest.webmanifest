@@ -1,0 +1,15 @@
+{
+  "name": "UNDERGROUND — Independent Extreme Music Magazine",
+  "short_name": "UNDERGROUND",
+  "description": "News, reviews, charts and basement radio from the heavy scene.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#050409",
+  "theme_color": "#050409",
+  "icons": [
+    { "src": "/assets/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/assets/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
