@@ -38,10 +38,12 @@ export async function onRequestGet({ request, waitUntil }) {
     if (!g) return json({ error: "Unknown genre group." }, 400);
     q = g.q; label = g.name;
   }
-  const key = new Request(url.origin + "/api/charts?v=3&q=" + encodeURIComponent((q || "").toLowerCase()));
+  const key = new Request(url.origin + "/api/charts?v=4&q=" + encodeURIComponent((q || "metal").toLowerCase()));
   if (!fresh) { const hit = await cache.match(key); if (hit) return hit; }
   try {
-    const data = q ? await buildGenre(q, label) : await build();
+    // Default: Deezer's own "metal" playlists (its genre-artist list mixes in pop stars)
+    let data = await buildGenre(q || "Metal", label || "Metal");
+    if (!q && data.empty) data = await build();
     const res = json(data, 200, TTL);
     waitUntil(cache.put(key, res.clone()));
     return res;
@@ -95,7 +97,7 @@ async function build() {
   });
   const maxHit = hitsRaw[0]?.rank || 1;
   const hits = hitsRaw.map((t, i) => ({
-    rank: i + 1,
+    rank: i + 1, id: t.id,
     title: t.title_short || t.title,
     artist: t.artist?.name || "",
     album: t.album?.title || null,
@@ -138,7 +140,7 @@ async function buildGenre(q, label) {
   });
   const maxHit = hitsRaw[0]?.rank || 1;
   const hits = hitsRaw.map((t, i) => ({
-    rank: i + 1, title: t.title_short || t.title, artist: t.artist.name, album: t.album?.title || null,
+    rank: i + 1, id: t.id, title: t.title_short || t.title, artist: t.artist.name, album: t.album?.title || null,
     cover: t.album?.cover_xl || t.album?.cover_big || null,
     popularity: Math.max(1, Math.round(((t.rank || 0) / maxHit) * 100)), duration: t.duration || null,
     preview: /^https:\/\//.test(t.preview || "") ? t.preview : null, link: t.link || null

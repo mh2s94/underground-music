@@ -18,7 +18,7 @@ export async function onRequestGet({ request, waitUntil }) {
   const url = new URL(request.url);
   const name = String(url.searchParams.get("name") || "").replace(/[-_]+/g, " ").trim().slice(0, 120);
   if (!name) return json({ error: "Missing name" }, 60);
-  const key = new Request(`${url.origin}/api/band?v=1&n=${encodeURIComponent(norm(name))}`);
+  const key = new Request(`${url.origin}/api/band?v=2&n=${encodeURIComponent(norm(name))}`);
   const cache = caches.default;
   const hit = await cache.match(key); if (hit) return hit;
 
@@ -38,7 +38,7 @@ export async function onRequestGet({ request, waitUntil }) {
         fans: info.nb_fan || a.nb_fan || null, albums: info.nb_album || null,
         link: info.link || a.link || null,
         top: (top.data || []).filter((t) => t.readable !== false).map((t) => ({
-          title: t.title_short || t.title, album: t.album?.title || null,
+          id: t.id, title: t.title_short || t.title, album: t.album?.title || null,
           cover: t.album?.cover_xl || t.album?.cover_big || null,
           preview: /^https:\/\//.test(t.preview || "") ? t.preview : null,
           duration: t.duration || null, link: t.link || null
