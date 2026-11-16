@@ -241,9 +241,10 @@
   const filteredTracks = () => musicGenre === "All" ? tracks : tracks.filter((t) => (t.genre || "Underground").toLowerCase() === musicGenre.toLowerCase());
 
   async function loadTracks() {
-    const { data, error } = await db.from("tracks")
-      .select("id,title,artist,genre,cover_url,audio_url,duration_sec,published_at")
+    const q = (cols) => db.from("tracks").select(cols)
       .eq("status", "published").order("published_at", { ascending: false }).limit(300);
+    let { data, error } = await q("id,title,artist,genre,album,release_year,cover_url,audio_url,duration_sec,published_at");
+    if (error) ({ data, error } = await q("id,title,artist,genre,cover_url,audio_url,duration_sec,published_at")); // before music-v2.sql
     tracks = error ? [] : (data || []).filter((t) => /^https:\/\//i.test(t.audio_url || ""));
     renderMusicPills(); renderTrackList(); renderHomeTracks();
   }
@@ -262,7 +263,7 @@
     return `<li><button class="track" type="button" data-track="${esc(t.id)}" aria-label="Play ${esc(t.title)} by ${esc(t.artist)}">
       <span class="tr-n">${String(i + 1).padStart(2, "0")}</span>${EQ}
       <span class="tr-cover">${trackCover(t)}<span class="tr-play" aria-hidden="true">${PLAY_SVG}</span></span>
-      <span class="tr-meta"><span class="tr-title">${esc(t.title)}</span><span class="tr-artist">${esc(t.artist)}</span></span>
+      <span class="tr-meta"><span class="tr-title">${esc(t.title)}</span><span class="tr-artist">${esc(t.artist)}${t.album ? " · " + esc(t.album) : ""}${t.release_year ? " · " + esc(t.release_year) : ""}</span></span>
       ${tagHtml(t.genre || "Underground")}
       <span class="tr-dur">${t.duration_sec ? fmtTime(t.duration_sec) : ""}</span>
     </button></li>`;
@@ -304,8 +305,8 @@
     $("plSeek").value = 0;
     if ("mediaSession" in navigator) {
       navigator.mediaSession.metadata = new MediaMetadata({
-        title: t.title, artist: t.artist, album: "UNDERGROUND · Basement radio",
-        artwork: t.cover_url ? [{ src: t.cover_url, sizes: "512x512" }] : []
+        title: t.title, artist: t.artist, album: t.album || "UNDERGROUND · Basement radio",
+        artwork: t.cover_url ? [{ src: t.cover_url, sizes: "600x600" }] : []
       });
     }
     markPlaying();

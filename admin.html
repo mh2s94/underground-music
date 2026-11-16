@@ -149,6 +149,16 @@
 .storage-line { display: flex; align-items: center; gap: 8px; font: 400 11px/1.4 var(--font-mono); letter-spacing: .04em; color: var(--muted); }
 .storage-line .dot { background: var(--warning); }
 .storage-line.r2 .dot { background: var(--success); box-shadow: 0 0 8px var(--success); }
+
+.two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+@media (max-width: 380px) { .two { grid-template-columns: 1fr; } }
+.autofill { display: flex; gap: 12px; align-items: center; padding: 12px 14px; border-radius: 14px; border: 1px solid color-mix(in srgb, var(--uv, #7B5CFF) 45%, transparent); background: color-mix(in srgb, var(--uv, #7B5CFF) 10%, transparent); animation: sheetUp .35s var(--spring) both; }
+.autofill > div { display: flex; flex-direction: column; gap: 2px; font-size: 13px; }
+.autofill.done { border-color: color-mix(in srgb, var(--success) 50%, transparent); background: color-mix(in srgb, var(--success) 9%, transparent); }
+.autofill.done .spinner { display: none; }
+.input.ai-filled, .select.ai-filled { animation: aiGlow 1.6s ease both; }
+@keyframes aiGlow { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--uv, #7B5CFF) 70%, transparent); } 100% { box-shadow: 0 0 0 10px transparent; } }
+@media (prefers-reduced-motion: reduce) { .input.ai-filled, .select.ai-filled, .autofill { animation: none; } }
 </style>
 </head>
 <body>
@@ -296,17 +306,29 @@
             <span class="hint" id="dropHint">MP3, M4A, OGG, WAV or FLAC</span>
           </label>
           <audio id="upPreview" controls preload="metadata" hidden></audio>
+          <div class="autofill" id="autoFill" hidden role="status" aria-live="polite">
+            <span class="spinner" aria-hidden="true"></span>
+            <div><strong id="afTitle">Reading the song…</strong><span class="muted" id="afText">Checking embedded tags.</span></div>
+          </div>
           <label class="field"><span>Track title</span><input class="input" id="tTitle" maxlength="160" placeholder="Song title"></label>
           <label class="field"><span>Artist / band</span><input class="input" id="tArtist" maxlength="160" placeholder="Band name"></label>
+          <div class="two">
+            <label class="field"><span>Album</span><input class="input" id="tAlbum" maxlength="160" placeholder="Album or EP"></label>
+            <label class="field"><span>Release year</span><input class="input" id="tYear" inputmode="numeric" maxlength="4" placeholder="2026"></label>
+          </div>
+          <div class="two">
           <label class="field"><span>Genre</span><select class="select" id="tGenre"><option>Metalcore</option><option>Deathcore</option><option>Hardcore</option><option>Darkcore</option><option>Post-Hardcore</option><option>Black Metal</option><option>Djent</option><option selected>Underground</option></select></label>
+            <label class="field"><span>Duration</span><input class="input" id="tDur" readonly placeholder="Read from the file" tabindex="-1"></label>
+          </div>
           <div class="field">
-            <span class="label">Cover image <span class="hint">(optional)</span></span>
+            <span class="label">Cover image <span class="hint" id="coverSrc">(found automatically)</span></span>
             <div style="display:flex;gap:12px;align-items:center">
               <div class="cover-prev" id="coverPrev" aria-hidden="true"></div>
               <div style="display:flex;flex-direction:column;gap:8px;min-width:0;flex:1">
                 <label class="btn btn-sm" for="coverFile" style="align-self:flex-start">Choose image</label>
                 <input type="file" id="coverFile" accept="image/jpeg,image/png,image/webp" class="sr-only">
                 <input class="input" id="tCoverUrl" placeholder="…or paste an image URL (https://)" style="min-height:40px;font-size:14px">
+                <button class="btn btn-sm btn-ghost" type="button" id="tLookup" style="align-self:flex-start">Find details &amp; cover again</button>
               </div>
             </div>
           </div>
@@ -389,6 +411,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/assets/ui.js"></script>
+<script src="/assets/audiotags.js"></script>
 <script>
 const sb = window.supabase.createClient("https://lhhmzfwjznlwkentbakv.supabase.co", "sb_publishable_MQDqmSmPb3qiSODbBOSKmA_U7aBEFtN");
 const { toast, shake, esc } = window.UI;
@@ -879,6 +902,8 @@ window.addEventListener("resize", moveInk);
 const BUCKET = "music";
 let MAX_AUDIO = 25 * 1024 * 1024; const MAX_COVER = 5 * 1024 * 1024;
 let storageMode = null; // "r2" (Cloudflare R2) or "supabase"
+const MAX_SONG = 100 * 1024 * 1024; // the site's per-song limit (needs R2; Supabase free allows 25 MB here)
+let CHUNK = 10 * 1024 * 1024;
 const limitText = () => `MP3, M4A, OGG, WAV or FLAC · max ${MAX_AUDIO / 1048576} MB`;
 async function detectStorage() {
   if (storageMode) return storageMode;
@@ -886,12 +911,12 @@ async function detectStorage() {
     const r = await fetch("/api/music/status", { cache: "no-store" });
     const j = await r.json();
     storageMode = j.r2 ? "r2" : "supabase";
-    if (j.r2 && j.maxBytes) MAX_AUDIO = j.maxBytes;
+    if (j.r2) { MAX_AUDIO = j.maxBytes || 100 * 1048576; CHUNK = j.chunkBytes || CHUNK; }
   } catch { storageMode = "supabase"; }
   $("storageLine").classList.toggle("r2", storageMode === "r2");
   $("storageText").textContent = storageMode === "r2"
-    ? "Storage: Cloudflare R2 · 10 GB free · unlimited streaming"
-    : "Storage: Supabase · 1 GB, 5 GB streaming/month. Connect Cloudflare R2 for more (see README).";
+    ? "Storage: Cloudflare R2 · 10 GB free · max 100 MB per song"
+    : "Storage: Supabase · max 25 MB per song. Connect Cloudflare R2 to allow up to 100 MB (see README).";
   if (!$("drop").classList.contains("has-file")) $("dropHint").textContent = limitText();
   return storageMode;
 }
@@ -927,22 +952,94 @@ function guessFromFilename(name) {
   const m = base.match(/^(.+?)\s+[-–—]\s+(.+)$/);
   return m ? { artist: m[1].trim(), title: m[2].trim() } : { artist: "", title: base };
 }
+function setField(id, v, force) {
+  const el = $(id); if (v == null || v === "") return false;
+  if (!force && el.value.trim() && el.dataset.auto !== "1") return false; // never overwrite what the admin typed
+  if (el.tagName === "SELECT" && ![...el.options].some((o) => o.value === v)) el.add(new Option(v, v));
+  el.value = v; el.dataset.auto = "1"; el.classList.remove("invalid");
+  el.classList.remove("ai-filled"); void el.offsetWidth; el.classList.add("ai-filled");
+  return true;
+}
+function autoState(title, text, done) {
+  const b = $("autoFill"); b.hidden = false; b.classList.toggle("done", !!done);
+  $("afTitle").textContent = title; $("afText").textContent = text;
+}
+let autoRun = 0;
+async function useEmbeddedCover(blob) {
+  if (!blob || coverFile || $("tCoverUrl").value.trim()) return false;
+  const type = /png/i.test(blob.type) ? "image/png" : /webp/i.test(blob.type) ? "image/webp" : "image/jpeg";
+  if (blob.size > MAX_COVER || blob.size < 200) return false;
+  coverFile = new File([blob], "cover." + (type === "image/png" ? "png" : type === "image/webp" ? "webp" : "jpg"), { type });
+  setCoverPreview(URL.createObjectURL(coverFile));
+  $("coverSrc").textContent = "(from the song file)";
+  return true;
+}
+async function lookupDetails(tags, file, force) {
+  const run = ++autoRun;
+  autoState("AI is filling the form…", "Looking up album, year, genre and cover art.");
+  const { data: { session: s } } = await sb.auth.getSession();
+  let j = null;
+  try {
+    const r = await fetch("/api/track-info", {
+      method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + (s?.access_token || "") },
+      body: JSON.stringify({ ...tags, filename: file ? file.name : "" })
+    });
+    j = await r.json().catch(() => null);
+    if (!r.ok) throw new Error(j?.error || "HTTP " + r.status);
+  } catch (e) {
+    if (run !== autoRun) return;
+    autoState("Filled from the file only", "Online lookup failed (" + (e.message || e) + "). Check the fields, then publish.", true);
+    return;
+  }
+  if (run !== autoRun) return; // a newer file was picked meanwhile
+  setField("tTitle", j.title, force); setField("tArtist", j.artist, force);
+  setField("tAlbum", j.album, force); setField("tYear", j.year ? String(j.year) : "", force);
+  setField("tGenre", j.genre, true);
+  let cover = "";
+  if (coverFile) cover = "cover from the song file";
+  else if (j.cover_url && (force || !$("tCoverUrl").value.trim())) {
+    $("tCoverUrl").value = j.cover_url; setCoverPreview(j.cover_url);
+    $("coverSrc").textContent = "(found on " + j.cover_source + ")"; cover = "cover from " + j.cover_source;
+  } else if (!$("tCoverUrl").value.trim()) cover = "no cover found, the site will use the neon artwork";
+  const via = [j.provider ? "AI (" + j.provider + ")" : "", ...(j.sources || [])].filter(Boolean).join(" + ") || "the file name";
+  autoState("Form filled automatically", `Filled using ${via}; ${cover}. Check it, then tap ${tStatus() === "published" ? "Upload & publish" : "Upload as draft"}.`, true);
+}
 async function pickAudio(file) {
   if (!file) return;
   if (!/^audio\//.test(file.type) && !/\.(mp3|m4a|aac|ogg|wav|flac)$/i.test(file.name)) { toast("warning", "Not an audio file", "Choose an MP3, M4A, OGG, WAV or FLAC file."); return; }
-  if (file.size > MAX_AUDIO) { toast("warning", "File too large", `${fmtSize(file.size)}. The limit is ${MAX_AUDIO / 1048576} MB; export a smaller MP3 (e.g. 192–320 kbps).`); return; }
+  await detectStorage();
+  if (file.size > MAX_SONG) { toast("error", "File cannot be uploaded", `This song is ${fmtSize(file.size)}. The maximum is 100 MB per song.`, { duration: 9000 }); $("audioFile").value = ""; return; }
+  if (file.size > MAX_AUDIO) { toast("warning", "File cannot be uploaded yet", `This song is ${fmtSize(file.size)}. The current storage (Supabase) allows ${MAX_AUDIO / 1048576} MB per song. Connect Cloudflare R2 to upload up to 100 MB.`, { duration: 11000 }); $("audioFile").value = ""; return; }
+  // New file: clear values that were auto-filled for the previous file
+  ["tTitle", "tArtist", "tAlbum", "tYear"].forEach((id) => { if ($(id).dataset.auto === "1") { $(id).value = ""; delete $(id).dataset.auto; } });
+  const src = $("coverSrc").textContent; // only drop covers that were found automatically, never the admin's own
+  if (src.startsWith("(found on") || src === "(from the song file)") { coverFile = null; $("coverFile").value = ""; $("tCoverUrl").value = ""; setCoverPreview(""); $("coverSrc").textContent = "(found automatically)"; }
   audioFile = file;
   $("drop").classList.add("has-file");
   $("dropTitle").textContent = file.name;
-  $("dropHint").textContent = fmtSize(file.size) + " · reading duration…";
+  $("dropHint").textContent = fmtSize(file.size) + " · reading…";
   const p = $("upPreview"); if (p.dataset.url) URL.revokeObjectURL(p.dataset.url);
   p.dataset.url = URL.createObjectURL(file); p.src = p.dataset.url; p.hidden = false;
+  autoState("Reading the song…", "Checking the tags embedded in the file.");
+  const [tags, dur] = await Promise.all([window.readAudioTags ? window.readAudioTags(file) : {}, probeDuration(file)]);
+  if (audioFile !== file) return;
+  probedDuration = dur;
+  $("tDur").value = dur ? fmtDur(dur) : "";
+  $("dropHint").textContent = fmtSize(file.size) + (dur ? " · " + fmtDur(dur) : "");
   const g = guessFromFilename(file.name);
-  if (!$("tTitle").value.trim()) $("tTitle").value = g.title;
-  if (!$("tArtist").value.trim() && g.artist) $("tArtist").value = g.artist;
-  probedDuration = await probeDuration(file);
-  $("dropHint").textContent = fmtSize(file.size) + (probedDuration ? " · " + fmtDur(probedDuration) : "");
+  setField("tTitle", tags.title || g.title); setField("tArtist", tags.artist || g.artist);
+  setField("tAlbum", tags.album); setField("tYear", tags.year);
+  await useEmbeddedCover(tags.picture);
+  await lookupDetails({ title: tags.title || "", artist: tags.artist || "", album: tags.album || "", year: tags.year || "", genre: tags.genre || "" }, file, false);
 }
+$("tLookup").onclick = () => {
+  const t = $("tTitle").value.trim(), a = $("tArtist").value.trim();
+  if (!t || !a) { toast("info", "Add a title and artist first", "Then the AI can look up the album, year, genre and cover."); return; }
+  if ($("coverSrc").textContent.startsWith("(found on")) { $("tCoverUrl").value = ""; setCoverPreview(""); }
+  lookupDetails({ title: t, artist: a, album: $("tAlbum").value.trim(), year: $("tYear").value.trim(), genre: "" }, audioFile, false);
+};
+["tTitle", "tArtist", "tAlbum", "tYear", "tGenre"].forEach((id) => $(id).addEventListener("input", () => { delete $(id).dataset.auto; }));
+$("tGenre").addEventListener("change", () => { delete $("tGenre").dataset.auto; });
 $("audioFile").addEventListener("change", (e) => pickAudio(e.target.files[0]));
 ["dragenter", "dragover"].forEach((ev) => $("drop").addEventListener(ev, (e) => { e.preventDefault(); $("drop").classList.add("over"); }));
 ["dragleave", "drop"].forEach((ev) => $("drop").addEventListener(ev, (e) => { e.preventDefault(); $("drop").classList.remove("over"); }));
@@ -953,14 +1050,15 @@ $("coverFile").addEventListener("change", (e) => {
   const f = e.target.files[0]; if (!f) return;
   if (!/^image\/(jpeg|png|webp)$/.test(f.type)) { toast("warning", "Unsupported image", "Use JPG, PNG or WebP."); return; }
   if (f.size > MAX_COVER) { toast("warning", "Image too large", "Keep covers under 5 MB."); return; }
-  coverFile = f; $("tCoverUrl").value = "";
+  coverFile = f; $("tCoverUrl").value = ""; $("coverSrc").textContent = "(your image)";
   setCoverPreview(URL.createObjectURL(f));
 });
-$("tCoverUrl").addEventListener("input", () => { coverFile = null; const v = $("tCoverUrl").value.trim(); setCoverPreview(/^https:\/\//i.test(v) ? v : ""); });
+$("tCoverUrl").addEventListener("input", () => { coverFile = null; $("coverSrc").textContent = "(your link)"; const v = $("tCoverUrl").value.trim(); setCoverPreview(/^https:\/\//i.test(v) ? v : ""); });
 
 function resetTrackForm() {
-  editingTrack = null; audioFile = null; coverFile = null; probedDuration = null;
-  ["tTitle", "tArtist", "tDesc", "tCoverUrl"].forEach((id) => { $(id).value = ""; $(id).classList.remove("invalid"); });
+  editingTrack = null; audioFile = null; coverFile = null; probedDuration = null; autoRun++;
+  ["tTitle", "tArtist", "tAlbum", "tYear", "tDur", "tDesc", "tCoverUrl"].forEach((id) => { $(id).value = ""; $(id).classList.remove("invalid"); delete $(id).dataset.auto; });
+  $("autoFill").hidden = true; $("coverSrc").textContent = "(found automatically)";
   $("tGenre").value = "Underground";
   $("audioFile").value = ""; $("coverFile").value = "";
   $("drop").classList.remove("has-file"); $("dropTitle").textContent = "Drop an MP3 here or tap to choose"; $("dropHint").textContent = limitText();
@@ -973,10 +1071,40 @@ function resetTrackForm() {
 $("tCancel").onclick = resetTrackForm;
 
 const mimeFor = (file, folder) => file.type || (folder === "covers" ? "image/jpeg" : ({ mp3: "audio/mpeg", m4a: "audio/mp4", aac: "audio/aac", ogg: "audio/ogg", wav: "audio/wav", flac: "audio/flac" }[extOf(file, "mp3")] || "audio/mpeg"));
-async function uploadFile(file, folder, fallbackExt) {
+async function uploadChunked(file, folder, ext, token, onProgress) {
+  const auth = { authorization: "Bearer " + token };
+  const call = async (url, init) => {
+    for (let attempt = 0; ; attempt++) {
+      try {
+        const r = await fetch(url, init); const j = await r.json().catch(() => ({}));
+        if (r.ok) return j;
+        if (r.status < 500 || attempt >= 2) throw new Error(j.error || "Upload failed (HTTP " + r.status + ")");
+      } catch (e) { if (attempt >= 2 || /HTTP 4|limit|large|type/i.test(e.message)) throw e; }
+      await new Promise((res) => setTimeout(res, 1200 * (attempt + 1)));
+    }
+  };
+  const { key, uploadId } = await call(`/api/music/mpu/create?folder=${folder}&ext=${encodeURIComponent(ext)}`, {
+    method: "POST", headers: { ...auth, "content-type": mimeFor(file, folder), "x-file-size": String(file.size) }
+  });
+  try {
+    const parts = [], total = Math.ceil(file.size / CHUNK);
+    for (let n = 1; n <= total; n++) {
+      const chunk = file.slice((n - 1) * CHUNK, Math.min(n * CHUNK, file.size));
+      parts.push(await call(`/api/music/mpu/part?key=${encodeURIComponent(key)}&uploadId=${encodeURIComponent(uploadId)}&part=${n}`, { method: "PUT", headers: auth, body: chunk }));
+      onProgress && onProgress(n / total);
+    }
+    const j = await call("/api/music/mpu/complete", { method: "POST", headers: { ...auth, "content-type": "application/json" }, body: JSON.stringify({ key, uploadId, parts }) });
+    return { path: "r2:" + j.key, url: j.url };
+  } catch (e) {
+    fetch("/api/music/mpu/abort", { method: "POST", headers: { ...auth, "content-type": "application/json" }, body: JSON.stringify({ key, uploadId }) }).catch(() => {});
+    throw e;
+  }
+}
+async function uploadFile(file, folder, fallbackExt, onProgress) {
   const ext = extOf(file, fallbackExt);
   if ((await detectStorage()) === "r2") {
     const { data: { session: s } } = await sb.auth.getSession();
+    if (file.size > 2 * CHUNK) return uploadChunked(file, folder, ext, s?.access_token || "", onProgress);
     const r = await fetch(`/api/music/upload?folder=${folder}&ext=${encodeURIComponent(ext)}`, {
       method: "PUT", body: file,
       headers: { "content-type": mimeFor(file, folder), authorization: "Bearer " + (s?.access_token || "") }
@@ -1018,12 +1146,14 @@ $("tSave").onclick = async () => {
     const st = tStatus(), now = new Date().toISOString();
     const payload = {
       title, artist, genre: $("tGenre").value || "Underground", description: $("tDesc").value.trim() || null,
+      album: $("tAlbum").value.trim() || null,
+      release_year: /^(19|20)\d{2}$/.test($("tYear").value.trim()) ? Number($("tYear").value.trim()) : null,
       status: st, updated_at: now,
       published_at: st === "published" ? (editingTrack?.published_at || now) : null
     };
     if (audioFile) {
       label.textContent = `Uploading ${fmtSize(audioFile.size)}…`;
-      const a = await uploadFile(audioFile, "audio", "mp3"); uploaded.push(a.path);
+      const a = await uploadFile(audioFile, "audio", "mp3", (f) => { label.textContent = `Uploading ${fmtSize(audioFile.size)} · ${Math.round(f * 100)}%`; }); uploaded.push(a.path);
       payload.audio_path = a.path; payload.audio_url = a.url; payload.duration_sec = probedDuration;
     }
     if (coverFile) {
@@ -1034,9 +1164,16 @@ $("tSave").onclick = async () => {
       payload.cover_path = null; payload.cover_url = coverUrlTyped || null;
     }
     label.textContent = "Saving…";
-    const res = editingTrack
-      ? await sb.from("tracks").update(payload).eq("id", editingTrack.id).select("*").single()
-      : await sb.from("tracks").insert(payload).select("*").single();
+    const save = (pl) => editingTrack
+      ? sb.from("tracks").update(pl).eq("id", editingTrack.id).select("*").single()
+      : sb.from("tracks").insert(pl).select("*").single();
+    let res = await save(payload);
+    if (res.error && /album|release_year/i.test(res.error.message || "")) {
+      // Database not updated yet: save without the new columns and say how to fix it
+      const { album, release_year, ...rest } = payload;
+      res = await save(rest);
+      if (!res.error) toast("info", "Album and year were not saved", "Run supabase/music-v2.sql once in the Supabase SQL Editor to store them.", { duration: 10000 });
+    }
     if (res.error) throw res.error;
     if (editingTrack) {
       const old = [];
@@ -1107,7 +1244,8 @@ $("trackRows").addEventListener("click", async (e) => {
   if (b.dataset.tedit) {
     resetTrackForm();
     editingTrack = t;
-    $("tTitle").value = t.title; $("tArtist").value = t.artist; $("tGenre").value = t.genre || "Underground"; $("tDesc").value = t.description || "";
+    $("tTitle").value = t.title; $("tArtist").value = t.artist; setField("tGenre", t.genre || "Underground", true); delete $("tGenre").dataset.auto; $("tDesc").value = t.description || "";
+    $("tAlbum").value = t.album || ""; $("tYear").value = t.release_year || ""; $("tDur").value = t.duration_sec ? fmtDur(t.duration_sec) : "";
     $("tCoverUrl").value = t.cover_path ? "" : (t.cover_url || ""); setCoverPreview(t.cover_url || "");
     document.querySelector(`input[name="tstatus"][value="${t.status}"]`).checked = true;
     $("dropTitle").textContent = "Current audio kept · drop a file to replace it"; $("dropHint").textContent = t.duration_sec ? "Length " + fmtDur(t.duration_sec) : "";
