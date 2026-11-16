@@ -517,6 +517,7 @@
   function enter(viewEl) {
     viewEl.classList.remove("entered");
     stagger(viewEl);
+    if (window.UGLaunch) window.UGLaunch.view(viewEl);
     void viewEl.offsetWidth;
     viewEl.classList.add("entered");
     setTimeout(() => { countUp(viewEl); grow(viewEl); }, 180);
@@ -1178,6 +1179,7 @@
   }
   function hideSplash() {
     const s = $("splash"); if (!s || s.classList.contains("out")) return;
+    if (window.UGLaunch && !reduceMotion) { window.UGLaunch.intro(s); return; } // launch motion (assets/launch.js)
     s.classList.add("out");
     setTimeout(() => s.remove(), 750);
   }
