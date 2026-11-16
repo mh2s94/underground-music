@@ -59,7 +59,7 @@ export async function onRequestPost({ request, env }) {
   let sent = 0; const errors = [];
   for (let i = 0; i < recipients.length; i += 100) {
     const chunk = recipients.slice(i, i + 100).map((x) => ({
-      from: env.NEWSLETTER_FROM, to: [x.email], subject: (body.test ? "[Test] " : "") + subject,
+      from: env.NEWSLETTER_FROM, reply_to: env.NEWSLETTER_REPLY_TO || "hello@mikasa.me", to: [x.email], subject: (body.test ? "[Test] " : "") + subject,
       html: html(x.token), text: text(x.token),
       headers: x.token ? { "List-Unsubscribe": `<${SITE}/unsubscribe?t=${x.token}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" } : undefined
     }));
