@@ -177,6 +177,11 @@
 .nl-picks label { display: flex; gap: 10px; align-items: center; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line); cursor: pointer; font-size: 14px; }
 .nl-picks label:has(input:checked) { border-color: var(--accent, #FF2E63); background: rgba(255, 46, 99, .08); }
 .nl-picks input { accent-color: #FF2E63; width: 18px; height: 18px; flex: none; }
+
+.draft-banner { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 12px 0 4px; padding: 12px 14px; border-radius: 12px; background: rgba(61, 245, 167, .08); border: 1px solid rgba(61, 245, 167, .35); font-size: 14px; }
+.draft-banner > span:nth-child(2) { flex: 1; min-width: 180px; }
+.db-dot { width: 8px; height: 8px; border-radius: 50%; background: #3DF5A7; box-shadow: 0 0 10px #3DF5A7; animation: dbBlink 1.2s infinite; }
+@keyframes dbBlink { 50% { opacity: .3; } }
 </style>
 </head>
 <body>
@@ -303,6 +308,7 @@
         <h2 id="listTitle" style="margin:0;font-size:18px">Articles</h2>
         <input class="input" id="search" placeholder="Search titles…" style="max-width:260px;min-height:42px">
       </div>
+      <div class="draft-banner" id="draftBanner" hidden><span class="db-dot" aria-hidden="true"></span><span id="draftBannerText"></span><button class="btn btn-sm" type="button" id="draftBannerBtn">Review</button></div>
       <div class="rows" id="articles"></div>
     </section>
 
@@ -656,14 +662,21 @@ $("slug").addEventListener("input", () => $("slug").classList.remove("invalid"))
 /* ---------- Articles list ---------- */
 async function loadArticles() {
   $("articles").innerHTML = Array.from({ length: 3 }, () => `<div class="row" aria-hidden="true"><div class="thumb skel"></div><div><div class="skel" style="height:14px;width:70%"></div><div class="skel" style="height:10px;width:30%;margin-top:10px"></div></div><div></div></div>`).join("");
-  const { data, error } = await sb.from("articles").select("id,title,slug,status,created_at,published_at,cover_image_url,genre").order("created_at", { ascending: false }).limit(100);
+  const { data, error } = await sb.from("articles").select("id,title,slug,status,created_at,published_at,cover_image_url,genre,content").order("created_at", { ascending: false }).limit(100);
   if (error) { $("articles").innerHTML = ""; toast("error", "Could not load articles", error.message); return; }
   allArticles = data || [];
   renderList();
 }
+let draftsOnly = false;
 function renderList() {
   const q = $("search").value.trim().toLowerCase();
-  const list = q ? allArticles.filter((a) => a.title.toLowerCase().includes(q)) : allArticles;
+  // Banner: AI drafts written by the daily schedule that are waiting for review
+  const waiting = allArticles.filter((a) => a.status === "draft" && /\nSource: \[/.test(a.content || ""));
+  $("draftBanner").hidden = !waiting.length;
+  $("draftBannerText").textContent = waiting.length + (waiting.length === 1 ? " AI draft is" : " AI drafts are") + " waiting for your review";
+  $("draftBannerBtn").textContent = draftsOnly ? "Show all" : "Review";
+  let list = draftsOnly ? allArticles.filter((a) => a.status === "draft") : allArticles;
+  if (q) list = list.filter((a) => a.title.toLowerCase().includes(q));
   if (!list.length) { $("articles").innerHTML = `<p class="muted" style="margin:8px 0 0">${allArticles.length ? "No matches." : "No articles yet. Generate your first one above."}</p>`; return; }
   $("articles").innerHTML = list.map((a, i) => `
     <div class="row" style="--d:${Math.min(i, 10) * 40}ms">
@@ -680,6 +693,7 @@ function renderList() {
   $("articles").querySelectorAll("[data-del]").forEach((b) => b.onclick = () => deleteArticle(b));
 }
 $("search").addEventListener("input", renderList);
+$("draftBannerBtn").addEventListener("click", () => { draftsOnly = !draftsOnly; renderList(); });
 
 async function editArticle(id) {
   const { data: a, error } = await sb.from("articles").select("*").eq("id", id).single();
