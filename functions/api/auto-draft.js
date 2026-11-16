@@ -18,12 +18,18 @@ const same = (a, b) => { if (a.length !== b.length) return false; let d = 0; for
 export async function onRequestPost({ request, env }) {
   const auth = (request.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
   if (!env.AUTODRAFT_TOKEN || !auth || !same(auth, env.AUTODRAFT_TOKEN)) return json({ error: "Not allowed." }, 401);
-  if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) return json({ error: "SUPABASE_SERVICE_ROLE_KEY is not set in Cloudflare Pages." }, 503);
+  // Accept the common names people give this key
+  const NAMES = ["SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_SECRET_KEY", "SUPABASE_SERVICE_KEY", "SUPABASE_SERVICE_ROLE", "SERVICE_ROLE_KEY"];
+  const keyName = NAMES.find((n) => env[n] && String(env[n]).trim());
+  if (!env.SUPABASE_URL || !keyName) {
+    const seen = Object.keys(env).filter((k) => /SUPA|SERVICE|SECRET/i.test(k)); // names only, never values
+    return json({ error: "The Supabase secret key is not set in Cloudflare Pages (Production). Add it as SUPABASE_SERVICE_ROLE_KEY and redeploy.", variables_seen: seen }, 503);
+  }
 
   const url = new URL(request.url);
   const count = Math.max(1, Math.min(3, Number(url.searchParams.get("count") || env.AUTODRAFT_COUNT || 2)));
   // New Supabase secret keys (sb_secret_…) go in the apikey header only; legacy service_role JWTs also as Bearer.
-  const key = env.SUPABASE_SERVICE_ROLE_KEY.trim();
+  const key = String(env[keyName]).trim();
   const sb = key.startsWith("sb_") ? { apikey: key, "content-type": "application/json" } : { apikey: key, Authorization: "Bearer " + key, "content-type": "application/json" };
   const rest = (path, init = {}) => fetch(`${env.SUPABASE_URL}/rest/v1/${path}`, { ...init, headers: { ...sb, ...(init.headers || {}) } });
 
