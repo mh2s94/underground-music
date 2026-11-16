@@ -85,7 +85,7 @@ The admin retries the network call once.
 **Nothing is ever published automatically.**
 
 ## Music metadata: `POST /api/track-info` (admin + 2FA)
-- **Input:** tags read in the browser by `assets/audiotags.js` (title, artist, album, year, genre, filename, duration).
+- **Input:** tags read in the browser by `public/assets/audiotags.js` (title, artist, album, year, genre, filename, duration).
 - **Steps:**
   1. In parallel: the AI cleans names and picks a genre, and the catalogue lookup (iTunes Search, then Deezer) finds album, year, genre and official artwork.
   2. If the first catalogue lookup missed, it is retried with the AI-cleaned names.
@@ -101,7 +101,7 @@ No AI. iTunes, then Deezer, cached 7 days. Admin → Music → **Find missing co
 2. Add a model default and a `<NAME>_MODEL` override in the `m` map.
 3. Add the key name to `DEFAULT_ORDER` if it should run by default.
 4. Add the secret in Cloudflare (Secret type), redeploy, and generate once. The admin toast shows `provider` and any `attempts`.
-5. If the provider's API host is called from the **browser** (it should not be; all calls are server-side), the CSP in `_headers` would also need it.
+5. If the provider's API host is called from the **browser** (it should not be; all calls are server-side), the CSP in `public/_headers` would also need it.
 6. Document it in this file and in [DEPLOYMENT.md](DEPLOYMENT.md#environment-variables).
 
 ## Cost and quota notes

@@ -11,10 +11,10 @@ Audited 2026-11-17. Secret values are never written here.
 | Production branch | `main` |
 | Framework preset | None |
 | Build command | *(empty)*: no build step |
-| Build output directory | `.` (the repository root is served as-is) |
+| Build output directory | `public` (only the website). Root directory: empty (repo root), so `functions/` at the repo root is compiled as Pages Functions |
 | Functions | `functions/` (Pages Functions, file-based routes) |
 | Production domain | `https://music.mikasa.me` (custom domain, VERIFIED active) |
-| Old domain | `https://underground-music.pages.dev`. An inline script in `index.html` and `admin.html` redirects that exact hostname to `music.mikasa.me`, keeping path, query and hash. Preview hostnames (`<branch>.underground-music.pages.dev`) are **not** redirected. |
+| Old domain | `https://underground-music.pages.dev`. An inline script in `public/index.html` and `public/admin.html` redirects that exact hostname to `music.mikasa.me`, keeping path, query and hash. Preview hostnames (`<branch>.underground-music.pages.dev`) are **not** redirected. |
 
 ### How deployment works
 - Every push to `main` deploys production.
@@ -27,7 +27,23 @@ Audited 2026-11-17. Secret values are never written here.
 1. GitHub: the commit's check run named **"Cloudflare Pages"** must be `success`. CLI: `gh api repos/mh2s94/underground-music/commits/<sha>/check-runs`.
 2. If it failed: Cloudflare dashboard → Workers & Pages → underground-music → Deployments → the failed one → **View details** shows the build and function bundling log. Typical causes: a syntax error in a function, an import of a missing file, or a function file exporting nothing routable that is imported incorrectly.
 3. **Redeploy** without code changes: Deployments → the latest production deployment → ⋯ → **Retry deployment**. Needed after changing environment variables or bindings.
-4. After a front-end change, phones may cache old assets. Bump the `?v=` query on the changed CSS or JS in `index.html`.
+4. After a front-end change, phones may cache old assets. Bump the `?v=` query on the changed CSS or JS in `public/index.html`.
+
+### Migration to `public/` (2026-11-17)
+The website files moved from the repo root into `public/` (branch `public-dir`), so `README.md`, `docs/`, `supabase/` and function sources are no longer served. Safe order:
+
+1. Do not merge or push to `main` while this runs.
+2. Cloudflare → underground-music → Settings → Build → **Build output directory** = `public`. Leave Root directory empty.
+   - The live production deployment is not affected: settings apply only to new deployments.
+3. Deployments → the `public-dir` preview → **Retry deployment**. Test `https://public-dir.underground-music.pages.dev`:
+   - pages, `/robots.txt`, `/manifest.webmanifest`, `/sitemap.xml`, `/api/news`, `/api/charts`
+   - `/README.md`, `/docs/…`, `/supabase/…`, `/functions/…` must be **404**
+   - the response headers of `/` must contain CSP and HSTS
+   - secret-dependent features may fail on previews; that is expected
+4. If good: merge `public-dir` into `main`, then re-test on `music.mikasa.me`: login, admin 2FA, Save draft, Security check, music playback, a manual "Daily AI drafts" run, a test newsletter.
+5. **Rollback:**
+   - before the merge: set the output directory back to `.`
+   - after the merge: Deployments → previous production deployment → **Rollback**, then revert the merge commit and set the output directory back to `.`
 
 ### Bindings
 
@@ -35,7 +51,7 @@ Audited 2026-11-17. Secret values are never written here.
 | --- | --- | --- | --- |
 | `AI` | Workers AI | `generate.js`, `track-info.js` (provider `workersai`) | VERIFIED (auto-draft used `workersai`) |
 | `MUSIC` | R2 bucket `underground-music` | `/api/music/*` | PENDING verification (see [MUSIC-SYSTEM.md](MUSIC-SYSTEM.md#storage-r2-first-supabase-fallback)) |
-| `ASSETS` | automatic | `a/[slug].js`, `band/[slug].js` (fetch `index.html`) | built in |
+| `ASSETS` | automatic | `a/[slug].js`, `band/[slug].js` (fetch `public/index.html`) | built in |
 
 ## Environment variables
 
@@ -59,8 +75,8 @@ Set in Cloudflare → Workers & Pages → underground-music → **Settings → V
 
 **Front-end constants (in code, public by design):**
 
-- `SUPABASE_URL`, the Supabase **publishable** key, `SUBMIT_EMAIL` and `TURNSTILE_SITE_KEY` in `assets/bento.js`
-- the URL and publishable key in `admin.html`
+- `SUPABASE_URL`, the Supabase **publishable** key, `SUBMIT_EMAIL` and `TURNSTILE_SITE_KEY` in `public/assets/bento.js`
+- the URL and publishable key in `public/admin.html`
 
 **GitHub Actions secret:** `AUTODRAFT_TOKEN`, with the same value as in Cloudflare.
 
@@ -91,7 +107,7 @@ Cloudflare Web Analytics is enabled by the owner (automatic beacon). The CSP all
 - A branch `radar-audit` (a one-off read-only archive audit, not merged) may still exist on GitHub. It can be deleted. Its workflow only ran on pushes to that branch.
 
 ## Static SEO files
-- `robots.txt`: allow all, disallow `/admin.html` and `/api/`, sitemap link.
+- `public/robots.txt`: allow all, disallow `/admin.html` and `/api/`, sitemap link.
 - `functions/sitemap.xml.js`: home, privacy, terms, published articles, band pages.
-- `manifest.webmanifest` plus the icons and `assets/og.png` share image.
+- `public/manifest.webmanifest` plus the icons and `public/assets/og.png` share image.
 - Google Search Console: Domain property `mikasa.me` verified. Indexing of the site is not yet confirmed (PENDING).

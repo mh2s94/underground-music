@@ -38,12 +38,12 @@ Full write-up: [DATABASE.md §6](DATABASE.md#6-incident-insert-returning-blocked
 
 **Diagnosis:** Security check lines 1–3 show the browser AAL, the token claim and the database claim.
 
-**Fix:** reload `admin.html` and enter the code. If the 2FA screen asks to **set up** again, the factor was removed: scan the new QR code. If line 2 shows `aal2` but line 3 does not, check that `security.sql` was applied unmodified (`ug_mfa_ok` reads `auth.jwt() ->> 'aal'`).
+**Fix:** reload `public/admin.html` and enter the code. If the 2FA screen asks to **set up** again, the factor was removed: scan the new QR code. If line 2 shows `aal2` but line 3 does not, check that `security.sql` was applied unmodified (`ug_mfa_ok` reads `auth.jwt() ->> 'aal'`).
 
 ---
 
 ## Admin cannot get in
-**Symptom:** `admin.html` redirects to the Account page, or shows the 2FA screen with an error.
+**Symptom:** `public/admin.html` redirects to the Account page, or shows the 2FA screen with an error.
 
 **Diagnosis and fix:**
 - **Redirect while signed out:** sign in on the Account page first, then use **Admin panel** on the profile.
@@ -145,7 +145,7 @@ Digests and deals are filtered by `NOT_NEWS` in `auto-draft.js`. Adjust the rege
 - **Diagnosis:** GitHub check run "Cloudflare Pages" fails → Cloudflare → Deployments → View details.
 - **Common causes:** a JavaScript syntax error in `functions/`, an import path typo (`../aal.js` vs `./aal.js`), or the Functions bundle size limit.
 - **Fix:** test-import changed functions locally with `node --input-type=module -e "import('file:///…/functions/api/x.js')"`, fix, push, then confirm the check run.
-- **Site loads but something is blank after a header change:** open the browser console and look for "Content Security Policy" errors. Add the missing host to `_headers`. Never remove the CSP.
+- **Site loads but something is blank after a header change:** open the browser console and look for "Content Security Policy" errors. Add the missing host to `public/_headers`. Never remove the CSP.
 
 ---
 

@@ -59,7 +59,7 @@ sequenceDiagram
 - Deleting a track also deletes its files (`POST /api/music/delete {keys}`, or the Supabase Storage remove for fallback files).
 - Settings → Clean up data → Music uses `POST /api/music/purge` plus `ug_admin_purge(['tracks'])`.
 
-## Metadata (`assets/audiotags.js`)
+## Metadata (`public/assets/audiotags.js`)
 Runs in the browser with no upload. It reads:
 
 - ID3v2.2 / 2.3 / 2.4 (MP3, some WAV and AAC) and ID3v1, including numeric genres
@@ -87,7 +87,7 @@ It returns `{title, artist, album, year, genre, picture}`. The embedded picture 
   - `?group=<group>` or `?genre=<genre>` must match the shared taxonomy (`genres-data.js`); otherwise the route returns 400.
   - Bands are ranked by fans, hits by popularity.
   - Deezer's placeholder images are skipped, and missing covers are filled by `/api/cover`.
-- **Taxonomy:** 30 groups, about 415 genres, in `assets/genres.js` (browser, `window.UG_GENRES`) and `functions/api/genres-data.js` (server, `PROMPT_LIST`, `canonicalGenre`). **The two lists must stay identical.** Edit both in the same commit.
+- **Taxonomy:** 30 groups, about 415 genres, in `public/assets/genres.js` (browser, `window.UG_GENRES`) and `functions/api/genres-data.js` (server, `PROMPT_LIST`, `canonicalGenre`). **The two lists must stay identical.** Edit both in the same commit.
 
 ## Status
 

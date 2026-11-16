@@ -6,7 +6,7 @@
 | --- | --- |
 | Repository | `mh2s94/underground-music` (GitHub) |
 | Production branch | `main` (every push deploys) |
-| Hosting | Cloudflare Pages project `underground-music`, no build step, output = repo root |
+| Hosting | Cloudflare Pages project `underground-music`, no build step, output directory `public` (only the website files; docs, SQL and function sources are not served) |
 | Server code | Cloudflare Pages Functions (`functions/`) |
 | Database / auth | Supabase project `lhhmzfwjznlwkentbakv` (Singapore): Postgres + RLS, Auth with TOTP 2FA |
 | Music files | Cloudflare R2 (binding `MUSIC`), Supabase Storage fallback |
@@ -33,28 +33,29 @@
 ## Repository map
 
 ```
-index.html            Public site shell: all views (home, articles, music, charts, about, account, band),
+public/               THE WEBSITE: the only folder Cloudflare Pages serves (build output directory)
+  index.html          Public site shell: all views (home, articles, music, charts, about, account, band),
                       player markup, search overlay, footer/newsletter, JSON-LD, old-domain redirect.
-admin.html            Admin panel (one file, inline script): 2FA gate, AI generator, article form,
+  admin.html          Admin panel (one file, inline script): 2FA gate, AI generator, article form,
                       Scene Radar (single + batch drafts), article list + "Publish all", demo inbox,
                       Music upload/auto-fill/covers, Settings (Security check, clean-up, newsletter).
-privacy.html, terms.html   Legal pages (UU PDP rights, Resend, analytics, self-deletion).
-_headers              Security headers for static files: CSP, HSTS, X-Frame-Options, etc.
-robots.txt            Disallows /admin.html and /api/, links the sitemap.
-manifest.webmanifest  PWA manifest (icons in assets/).
-
-assets/
-  bento.js            The whole public app: config, routing, data loading, rendering, accounts,
+  privacy.html, terms.html   Legal pages (UU PDP rights, Resend, analytics, self-deletion).
+  _headers            Security headers for static files: CSP, HSTS, X-Frame-Options, etc. (must stay here)
+  robots.txt          Disallows /admin.html and /api/, links the sitemap.
+  manifest.webmanifest  PWA manifest (icons in assets/).
+  assets/
+    bento.js          The whole public app: config, routing, data loading, rendering, accounts,
                       comments, saves, demos, player, charts, ratings, search, newsletter, band pages,
                       Turnstile hook. Uses supabase-js from cdn.jsdelivr.net.
-  bento.css           Main theme and layout.   account.css  Account page (Amp Head, rack slide).
-  launch.js/.css      Launch motion "09 Mosh Pit" (first open + short version on view change).
-  ui.js / ui.css      window.UI: esc() HTML-escaping, toast() notifications.
-  genres.js           window.UG_GENRES: 30 groups / ~415 genres (must match functions/api/genres-data.js).
-  audiotags.js        window.readAudioTags(file): ID3, FLAC and MP4 tags + embedded cover, in the browser.
-  favicon.svg, *.png  Icons and the default share image (og.png).
+    bento.css         Main theme and layout.   account.css  Account page (Amp Head, rack slide).
+    launch.js/.css    Launch motion "09 Mosh Pit" (first open + short version on view change).
+    ui.js / ui.css    window.UI: esc() HTML-escaping, toast() notifications.
+    genres.js         window.UG_GENRES: 30 groups / ~415 genres (must match functions/api/genres-data.js).
+    audiotags.js      window.readAudioTags(file): ID3, FLAC and MP4 tags + embedded cover, in the browser.
+    favicon.svg, *.png  Icons and the default share image (og.png).
 
-functions/            Cloudflare Pages Functions (file path = URL route)
+functions/            Cloudflare Pages Functions (file path = URL route). Stays at the repo root:
+                      Pages compiles it from here; it is not served as files.
   a/[slug].js         /a/<slug>: index.html with the article's meta tags + JSON-LD (SEO, link previews).
   band/[slug].js      /band/<slug>: same for band profiles.
   sitemap.xml.js      /sitemap.xml
@@ -76,7 +77,8 @@ supabase/             SQL to run in the Supabase SQL Editor (idempotent; order i
   community.sql  music.sql  music-v2.sql  charts.sql  extras.sql  security.sql  security-check.sql
 
 .github/workflows/auto-draft.yml   Daily 21:43 UTC (06:43 WIT) POST /api/auto-draft.
-docs/                 This documentation.
+docs/                 This documentation (GitHub only, not served by the website).
+README.md             This file (GitHub only).
 ```
 
 The base tables `articles`, `categories` and `admin_users` were created in the Supabase dashboard and are **not** in `supabase/`. See [docs/DATABASE.md](docs/DATABASE.md).
@@ -110,7 +112,7 @@ Full details are in the linked documents. The order matters.
    - Run `community.sql` → `music.sql` → `music-v2.sql` → `charts.sql` → `extras.sql`.
    - Auth: Email provider with Confirm email on. Site URL `https://music.mikasa.me`, Redirect URL `https://music.mikasa.me/**`. MFA TOTP enabled.
 2. **Cloudflare Pages.**
-   - Connect the repo: no build command, output `.`.
+   - Connect the repo: no build command, build output directory `public` (root directory empty). `functions/` is read from the repo root.
    - Add `SUPABASE_URL` and `SUPABASE_ANON_KEY`, the Workers AI binding `AI`, and optionally the R2 binding `MUSIC` and provider keys ([DEPLOYMENT.md](docs/DEPLOYMENT.md#environment-variables)).
    - Add the custom domain `music.mikasa.me`.
 3. **Admin.**

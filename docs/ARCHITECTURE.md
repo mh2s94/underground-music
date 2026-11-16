@@ -6,7 +6,7 @@ Audited against the code on `main` on 2026-11-17. Status labels are defined in [
 
 UNDERGROUND is a **static site with serverless functions**:
 
-- **No build step.** Cloudflare Pages serves the repository root as-is (build command empty, output directory `.`).
+- **No build step.** Cloudflare Pages serves the `public/` folder as-is (build command empty, output directory `public`). `functions/` stays at the repository root, where Pages looks for it. `README.md`, `docs/`, `supabase/` and `.github/` are not served.
 - **Pages Functions** (`functions/`) handle everything that needs a secret, a server-side API call, or SEO-friendly HTML.
 - **Supabase** (Postgres + Auth + Storage) is the database. The browser talks to it directly with the public publishable key; **Row Level Security (RLS) is what protects the data**, not the frontend.
 - **Cloudflare R2** stores music files (binding `MUSIC`). Supabase Storage is the fallback.
@@ -21,7 +21,7 @@ flowchart LR
     ADMIN["admin.html<br/>admin panel (inline script)"]
   end
   subgraph Cloudflare["Cloudflare Pages: music.mikasa.me"]
-    STATIC["static files<br/>(repo root)"]
+    STATIC["static files<br/>(public/)"]
     FN["Pages Functions<br/>functions/"]
     R2[("R2 bucket<br/>binding MUSIC")]
     WAI["Workers AI<br/>binding AI"]
@@ -54,13 +54,13 @@ flowchart LR
 
 ## 2. Frontend
 
-### Public site: `index.html` + `assets/bento.js`
+### Public site: `public/index.html` + `public/assets/bento.js`
 `bento.js` is one IIFE (about 1,700 lines) that runs the whole site as a single-page app.
 
 | Area | How it works |
 | --- | --- |
 | Config | Top of `bento.js`: `SUPABASE_URL`, the **publishable** key (safe to be public; RLS protects data), `SUBMIT_EMAIL`, `TURNSTILE_SITE_KEY` (empty = captcha off). |
-| Views | `home`, `articles`, `music`, `charts`, `about`, `account`, `band` (`<section id="view-…">` in `index.html`). |
+| Views | `home`, `articles`, `music`, `charts`, `about`, `account`, `band` (`<section id="view-…">` in `public/index.html`). |
 | Routing | Views live in the hash (`/#/music`). Articles have real paths `/a/<slug>`, band pages `/band/<slug>`. `go()` uses `history.pushState`; `route()` handles back/forward. Old `/#/a/<slug>` links are rewritten to `/a/<slug>`. |
 | Articles | Fetched from `articles` where `status = 'published'`, columns in `ACOLS`. Markdown is rendered by the small built-in `md()` after HTML escaping (no external Markdown library). A line that is only a YouTube URL becomes a `youtube-nocookie` embed. |
 | Dashboard numbers | Counts, weekly bars, genre coverage, featured bands are computed in the browser from the published articles. |
@@ -70,14 +70,14 @@ flowchart LR
 | Accounts | Sign in, sign up, reset, profile, saved articles, comments, demos, rating, account deletion. |
 | Search | `/` or Ctrl+K: articles (server `ilike` query), tracks and genres. `?q=` in the URL opens search. |
 | Newsletter | Footer and article forms call RPC `ug_subscribe`. |
-| Motion | `assets/launch.js` + `launch.css`: launch motion "09 Mosh Pit" on first open (short version on view changes). Off with `prefers-reduced-motion`. |
-| Shared UI | `assets/ui.js` exposes `window.UI` (`esc`, `toast`). `assets/genres.js` exposes `window.UG_GENRES`. |
+| Motion | `public/assets/launch.js` + `launch.css`: launch motion "09 Mosh Pit" on first open (short version on view changes). Off with `prefers-reduced-motion`. |
+| Shared UI | `public/assets/ui.js` exposes `window.UI` (`esc`, `toast`). `public/assets/genres.js` exposes `window.UG_GENRES`. |
 
-CSS: `assets/bento.css` (main theme "Neon Basement"), `assets/account.css` (Amp Head account page, rack-slide auth form), `assets/launch.css`, `assets/ui.css` (toasts etc.).
+CSS: `public/assets/bento.css` (main theme "Neon Basement"), `public/assets/account.css` (Amp Head account page, rack-slide auth form), `public/assets/launch.css`, `public/assets/ui.css` (toasts etc.).
 
-Cache busting: asset links carry `?v=` (for example `bento.js?v=ac1`). **Bump the `?v=` value in `index.html` whenever you change a CSS or JS file**, or phones keep the old file.
+Cache busting: asset links carry `?v=` (for example `bento.js?v=ac1`). **Bump the `?v=` value in `public/index.html` whenever you change a CSS or JS file**, or phones keep the old file.
 
-### Admin panel: `admin.html`
+### Admin panel: `public/admin.html`
 One HTML file with an inline `<script>` (about 1,600 lines). Tabs: **Articles** (AI generator, article form, Scene radar with batch drafts, article list, draft banner with Publish all, Demo inbox), **Music** (upload with auto-fill, track list, Find missing covers), **Settings** (Security check, Clean up data, newsletter subscribers and sender). See [SECURITY.md](SECURITY.md#admin-panel-protection) for how the page is protected.
 
 ## 3. Request paths
@@ -117,7 +117,7 @@ sequenceDiagram
   B->>DB: insert into articles (RLS: admin + aal2 via ug_is_admin / ug_mfa_ok)
 ```
 
-1. **Page**: `admin.html` stays invisible (`html.gate`) until the checks pass.
+1. **Page**: `public/admin.html` stays invisible (`html.gate`) until the checks pass.
 2. **Functions**: every admin route checks the token, `admin_users` membership, and the `aal2` claim.
 3. **Database**: RLS rules require admin membership, and with `supabase/security.sql` also `aal2`.
 
@@ -127,7 +127,7 @@ The database layer is the one that matters. The other two give good error messag
 
 | Route | Method | Who | What it does | Status |
 | --- | --- | --- | --- | --- |
-| `/a/<slug>` (`functions/a/[slug].js`) | GET | public | Serves `index.html` with the article's title, description, image, NewsArticle (+ Review) JSON-LD injected with HTMLRewriter | IMPLEMENTED, NOT VERIFIED (Google indexing still pending) |
+| `/a/<slug>` (`functions/a/[slug].js`) | GET | public | Serves `public/index.html` with the article's title, description, image, NewsArticle (+ Review) JSON-LD injected with HTMLRewriter | IMPLEMENTED, NOT VERIFIED (Google indexing still pending) |
 | `/band/<slug>` (`functions/band/[slug].js`) | GET | public | Same for band pages | IMPLEMENTED, NOT VERIFIED |
 | `/sitemap.xml` | GET | public | Home, legal pages, published articles, band pages | IMPLEMENTED, NOT VERIFIED |
 | `/unsubscribe?t=` | GET, POST | public | Calls `ug_unsubscribe(token)`; POST supports one-click unsubscribe | IMPLEMENTED, NOT VERIFIED |

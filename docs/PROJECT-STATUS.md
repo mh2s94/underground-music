@@ -64,14 +64,15 @@ Last audit: **2026-11-17**, against `main`. Update this file with every change.
 5. Confirm the R2 binding `MUSIC` (open `/api/music/status`).
 6. Decide whether to replace or remove New Noise in Scene Radar.
 7. Delete the leftover GitHub branch `radar-audit` (optional).
-8. Decide whether to move the site into a `public/` folder so docs and SQL are no longer downloadable (see below).
+8. `public/` migration: change Cloudflare → Settings → Build → Build output directory to `public` **before** the `public-dir` branch is merged, then test (plan in DEPLOYMENT.md).
 
 ## Known issues and risks
-- **Repo root is the public output directory.** `README.md`, `docs/*` and `supabase/*.sql` are downloadable from the site. They hold no secrets but reveal the architecture. Fix: move the site files into `public/` and change the Pages output directory. Needs approval.
+- **Website served from the repo root until the `public/` migration is live.** Before it, `README.md`, `docs/*`, `supabase/*.sql` (and probably `functions/` sources) were downloadable. No secrets were in them.
+- **`_headers` does not apply to Pages Functions responses** (`/a/`, `/band/`, `/api/*`, `/sitemap.xml`, `/unsubscribe`), per Cloudflare docs. Add security headers in those functions (not done yet).
 - **The base schema is not in the repo:** `articles`, `categories` and `admin_users` were created in the dashboard. Their columns in DATABASE.md are inferred from the code. Export the real definitions when possible.
 - **New Noise** RSS blocked by captcha.
 - **The charts header comment** in `functions/api/charts.js` still describes the old genre-artist method as the default. The code uses Metal playlists first. The comment is stale; the behaviour is correct.
-- **The old admin login form** in `admin.html` is unused (sign-in now happens on the Account page).
+- **The old admin login form** in `public/admin.html` is unused (sign-in now happens on the Account page).
 - **Model defaults** in `generate.js` (for example `gemini-3.8-flash`, `gpt-6-astra`) are not verified against each vendor's current model list.
 
 ## Tests done (2026-11-16/17)

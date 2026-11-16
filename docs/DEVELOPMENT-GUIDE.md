@@ -6,7 +6,7 @@ These rules are permanent. They apply to every AI assistant and developer who wo
 1. **Read `README.md` and the relevant file in `docs/` first.** Then read the actual code you will touch. Do not rely on names alone.
 2. **Audit before changing.** Find every place a feature is used (`grep` the function, table, CSS class, route) before editing it.
 3. **Do not delete existing features to fix a new one.** If two features conflict, stop and ask the owner.
-4. **Never disable RLS, MFA/2FA (`aal2` checks) or security headers (`_headers`, CSP)** as a workaround without the owner's explicit approval. Diagnose instead (admin → Settings → Security check).
+4. **Never disable RLS, MFA/2FA (`aal2` checks) or security headers (`public/_headers`, CSP)** as a workaround without the owner's explicit approval. Diagnose instead (admin → Settings → Security check).
 5. **Never show, log, commit or paste secrets:**
    - API keys
    - the Supabase secret or service key
@@ -37,9 +37,9 @@ These rules are permanent. They apply to every AI assistant and developer who wo
 ## Workflow
 1. `git checkout main && git pull`, then create a branch with a descriptive name.
 2. Make the change.
-3. If you changed CSS or JS, **bump the `?v=` query** of that file in `index.html` (or `admin.html`). Without it, phones keep the old file.
+3. If you changed CSS or JS, **bump the `?v=` query** of that file in `public/index.html` (or `public/admin.html`). Without it, phones keep the old file.
 4. Test locally:
-   - Serve the repo root (`python3 -m http.server`).
+   - Serve the website folder: `python3 -m http.server -d public` (functions do not run this way; stub `/api/*` in tests).
    - Supabase and the APIs can be stubbed in Playwright. Previous sessions stubbed `cdn.jsdelivr.net/npm/@supabase/supabase-js@2` with a fake `window.supabase` and stubbed `/api/news`.
    - Check the console for errors and CSP violations at 412 px and 1280 px.
    - Functions: `node --input-type=module -e "import('file://…/functions/api/x.js')"` catches syntax and import errors.
@@ -54,13 +54,13 @@ These rules are permanent. They apply to every AI assistant and developer who wo
 
 | Change | Files |
 | --- | --- |
-| Public UI or behaviour | `assets/bento.js`, `assets/bento.css` (+ `account.css`, `launch.css`), `index.html` |
-| Admin UI | `admin.html` (inline script) |
+| Public UI or behaviour | `public/assets/bento.js`, `public/assets/bento.css` (+ `account.css`, `launch.css`), `public/index.html` |
+| Admin UI | `public/admin.html` (inline script) |
 | Server logic, secrets, external APIs | `functions/api/*.js` |
 | SEO HTML for a path | `functions/<path>/[param].js` with HTMLRewriter over `env.ASSETS` |
 | Database | new or updated `supabase/*.sql` + DATABASE.md |
-| New external host (script, iframe, font, API from the browser) | `_headers` CSP |
-| Genres | **both** `assets/genres.js` and `functions/api/genres-data.js` |
+| New external host (script, iframe, font, API from the browser) | `public/_headers` CSP |
+| Genres | **both** `public/assets/genres.js` and `functions/api/genres-data.js` |
 | Scheduled job | `.github/workflows/*.yml` + secrets documented in DEPLOYMENT.md |
 
 ## Conventions and gotchas
@@ -70,8 +70,8 @@ These rules are permanent. They apply to every AI assistant and developer who wo
 - **Supabase secret keys `sb_secret_…`** go only in the `apikey` header (not as Bearer).
 - **Deezer preview URLs expire:** never store them. Use `/api/preview?id=`.
 - **Scene Radar** must keep using only headlines, summaries of at most 45 words, and links (copyright).
-- **Visitors never see `admin.html`.** Keep the `html.gate` pattern and the redirects.
-- **Repo root is public:** every file in the repo is downloadable from the site. Never commit anything private.
+- **Visitors never see `public/admin.html`.** Keep the `html.gate` pattern and the redirects.
+- **Only `public/` is served.** Website files go in `public/`. Docs, SQL, scripts and function sources stay outside it. `_headers` must stay in `public/`, or every security header disappears silently. Still never commit secrets: the GitHub repo itself may be visible to others.
 
 ## Testing checklist for releases
 - Home, Articles, an article page `/a/<slug>`, Music (play, seek), Charts (community and global, preview plays), Band page, Search, Account (sign up, sign in, reset), newsletter sign-up, at 412 px and desktop.
