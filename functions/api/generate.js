@@ -14,7 +14,7 @@
 //      with control-character repair), so one malformed reply does not fail.
 
 const GENRES = ["Metalcore", "Hardcore", "Deathcore", "Darkcore", "Post-Hardcore", "Black Metal", "Djent", "Underground"];
-const DEFAULT_ORDER = "gemini,workersai,groq,openrouter,mistral,deepseek,openai,claude";
+export const DEFAULT_ORDER = "gemini,workersai,groq,openrouter,mistral,deepseek,openai,claude";
 const DEADLINE_MS = 75000;         // whole AI phase
 const PROVIDER_TIMEOUT_MS = 50000; // one provider attempt
 const HEDGE_DELAY_MS = 15000;      // start the next provider if the current one is slow
@@ -141,7 +141,7 @@ CONTENT:
 // ===========================================================================
 // Providers. Each run(signal) returns the raw text reply.
 // ===========================================================================
-function buildProviders(env, prompt) {
+export function buildProviders(env, prompt, system = SYSTEM_MSG, opts = {}) {
   const openAICompatible = (url, key, model, extra = {}) => async (signal) => {
     const r = await fetch(url, {
       method: "POST",
@@ -149,7 +149,7 @@ function buildProviders(env, prompt) {
       signal,
       body: JSON.stringify({
         model,
-        messages: [{ role: "system", content: SYSTEM_MSG }, { role: "user", content: prompt }],
+        messages: [{ role: "system", content: system }, { role: "user", content: prompt }],
         ...extra
       })
     });
@@ -157,7 +157,7 @@ function buildProviders(env, prompt) {
     if (!r.ok) throw new Error(errorText(data, r.status));
     return data.choices?.[0]?.message?.content || "";
   };
-  const std = { temperature: 0.5, max_tokens: 2000 };
+  const std = { temperature: opts.temperature ?? 0.5, max_tokens: opts.maxTokens ?? 2000 };
 
   const m = {
     claude: env.CLAUDE_MODEL || "claude-sonnet-5-5",
@@ -177,7 +177,7 @@ function buildProviders(env, prompt) {
         const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m.gemini)}:generateContent?key=${encodeURIComponent(env.GEMINI_API_KEY)}`, {
           method: "POST", headers: { "content-type": "application/json" }, signal,
           body: JSON.stringify({
-            systemInstruction: { parts: [{ text: SYSTEM_MSG }] },
+            systemInstruction: { parts: [{ text: system }] },
             contents: [{ role: "user", parts: [{ text: prompt }] }],
             generationConfig: { temperature: 0.5, maxOutputTokens: 4096, thinkingConfig: { thinkingLevel: "low" } }
           })
@@ -191,7 +191,7 @@ function buildProviders(env, prompt) {
       enabled: !!env.AI, model: m.workersai,
       run: async (signal) => {
         const result = await abortable(env.AI.run(m.workersai, {
-          messages: [{ role: "system", content: SYSTEM_MSG }, { role: "user", content: prompt }],
+          messages: [{ role: "system", content: system }, { role: "user", content: prompt }],
           max_tokens: 2000, temperature: 0.5
         }), signal);
         const out = result?.response ?? result?.choices?.[0]?.message?.content ?? "";
@@ -204,7 +204,7 @@ function buildProviders(env, prompt) {
         const r = await fetch("https://api.anthropic.com/v1/messages", {
           method: "POST", signal,
           headers: { "content-type": "application/json", "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
-          body: JSON.stringify({ model: m.claude, max_tokens: 2000, temperature: 0.5, system: SYSTEM_MSG, messages: [{ role: "user", content: prompt }] })
+          body: JSON.stringify({ model: m.claude, max_tokens: 2000, temperature: 0.5, system: system, messages: [{ role: "user", content: prompt }] })
         });
         const data = await safeJson(r);
         if (!r.ok) throw new Error(errorText(data, r.status));
@@ -373,13 +373,13 @@ async function findYouTube(band, title, env) {
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 const stripQuotes = (s) => s.trim().replace(/^["'“”]+|["'“”]+$/g, "").trim();
 
-async function safeJson(r) {
+export async function safeJson(r) {
   try { return await r.json(); } catch { return {}; }
 }
-function errorText(data, status) {
+export function errorText(data, status) {
   return data?.error?.message || data?.error?.type || (typeof data?.error === "string" ? data.error : "") || `HTTP ${status}`;
 }
-function abortable(promise, signal) {
+export function abortable(promise, signal) {
   if (!signal) return promise;
   return new Promise((resolve, reject) => {
     if (signal.aborted) return reject(signal.reason || new Error("Aborted"));

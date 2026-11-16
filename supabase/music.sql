@@ -33,6 +33,9 @@ create table if not exists public.tracks (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+alter table public.tracks add column if not exists album text;
+alter table public.tracks add column if not exists release_year integer;
+
 create index if not exists tracks_published_idx on public.tracks (status, published_at desc);
 alter table public.tracks enable row level security;
 
