@@ -146,8 +146,8 @@
         <label class="field"><span>Band / artist</span><input class="input" id="band" placeholder="Bring Me The Horizon" autocomplete="off"></label>
         <label class="field"><span>Song / album</span><input class="input" id="album" placeholder="Kingslayer" autocomplete="off"></label>
         <div class="grid-2">
-          <label class="field"><span>Genre</span><select class="select" id="genre"><option>Metalcore</option><option>Hardcore</option><option>Deathcore</option><option>Darkcore</option><option>Post-Hardcore</option><option>Black Metal</option><option>Djent</option><option>Underground</option></select></label>
-          <label class="field"><span>Type</span><select class="select" id="category"><option>Review</option><option>News</option><option>Feature</option><option>Interview</option></select></label>
+          <label class="field"><span>Genre</span><select class="select" id="genre"><option value="">Auto (AI decides)</option><option>Metalcore</option><option>Hardcore</option><option>Deathcore</option><option>Darkcore</option><option>Post-Hardcore</option><option>Black Metal</option><option>Djent</option><option>Underground</option></select></label>
+          <label class="field"><span>Type</span><select class="select" id="category"><option value="">Auto</option><option>Review</option><option>News</option><option>Feature</option><option>Interview</option></select></label>
         </div>
         <label class="field"><span>Extra notes <span class="hint">(optional)</span></span><textarea class="textarea" id="notes" rows="3" placeholder="Facts or an angle you want included"></textarea></label>
         <button class="btn btn-primary" type="button" id="generateBtn"><span id="genLabel">Generate article</span></button>
@@ -199,7 +199,7 @@
     <!-- Scene radar -->
     <section class="panel card-pad" style="margin-top:20px" aria-labelledby="radarTitle">
       <div class="list-head">
-        <div><h2 id="radarTitle" style="margin:0">Scene radar</h2><p class="muted" style="margin:6px 0 0;font-size:14px">Latest headlines from heavy-music sites. Pick one and the generator is filled for you.</p></div>
+        <div><h2 id="radarTitle" style="margin:0">Scene radar</h2><p class="muted" style="margin:6px 0 0;font-size:14px">Latest headlines from heavy-music sites. Tap Auto-write: the AI fills every field, then you only tap Publish now.</p></div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <select class="select" id="radarGenre" aria-label="Filter news by genre" style="max-width:190px;min-height:42px"><option value="">All genres</option><option>Metalcore</option><option>Deathcore</option><option>Hardcore</option><option>Darkcore</option><option>Post-Hardcore</option><option>Black Metal</option><option>Djent</option></select>
           <button class="btn btn-sm" type="button" id="radarRefresh">Refresh</button>
@@ -311,7 +311,8 @@ function resetForm() {
   ["title", "slug", "excerpt", "content", "youtube", "cover", "tags", "band", "album", "notes"].forEach((id) => { $(id).value = ""; $(id).classList.remove("invalid"); });
   delete $("slug").dataset.edited;
   setStatus("draft"); renderYt(""); $("wordCount").textContent = "0 words";
-  $("editingFlag").hidden = true; $("saveLabel").textContent = "Save article";
+  $("genre").value = ""; $("category").value = "";
+  $("editingFlag").hidden = true; updateSaveLabel();
 }
 $("newBtn").onclick = () => { resetForm(); $("band").focus(); window.scrollTo({ top: 0, behavior: "smooth" }); };
 
@@ -361,11 +362,15 @@ $("generateBtn").onclick = async () => {
     $("youtube").value = j.youtube_url || "";
     if (j.cover_image_url) $("cover").value = j.cover_image_url;
     renderYt(j.youtube_url, j.youtube_title);
-    toast("success", "Article generated", `Written by ${j.provider} (${j.model}) in ${Math.round((j.took_ms || 0) / 1000)}s. Review it before saving.`);
+    toast("success", "Ready to publish", `Every field was filled by ${j.provider} in ${Math.round((j.took_ms || 0) / 1000)}s: genre ${j.genre || "Underground"}${j.band ? ", band " + j.band : ""}. Review it, then tap Publish now.`, { duration: 9000 });
     if (j.fallback_used && Array.isArray(j.attempts) && j.attempts.length) {
       toast("warning", "Some providers were skipped", j.attempts.map((x) => "• " + x.provider + ": " + x.reason).join("\n"), { duration: 9000 });
     }
-    if (!j.youtube_url) toast("info", "No video found automatically", "Search YouTube and paste the link into the YouTube URL field.", { duration: 8000 });
+    if (j.band) $("band").value = j.band;
+    if (j.release && !$("album").value.trim()) $("album").value = j.release;
+    if (!$("genre").value) $("genre").value = "Underground";
+    readyToPublish();
+    if (!j.youtube_url) toast("info", "No video found automatically", "You can still publish. To add one, paste a YouTube link into the YouTube URL field.", { duration: 8000 });
   } catch (e) {
     toast("error", "Network error", "Could not reach the server. Check your connection and try again.");
   } finally {
@@ -388,11 +393,11 @@ $("saveBtn").onclick = async () => {
   let body = content;
   if (yt && !body.includes(yt)) body += "\n\n" + yt;
   const st = status();
-  const { data: cat } = await sb.from("categories").select("id").eq("slug", slugify($("genre").value)).maybeSingle();
+  const { data: cat } = await sb.from("categories").select("id").eq("slug", slugify($("genre").value || "Underground")).maybeSingle();
   const now = new Date().toISOString();
   const payload = {
     title, slug: $("slug").value.trim() || slugify(title), excerpt: $("excerpt").value.trim(), content: body,
-    band_name: $("band").value.trim(), album_name: $("album").value.trim(), genre: $("genre").value,
+    band_name: $("band").value.trim(), album_name: $("album").value.trim(), genre: $("genre").value || "Underground",
     category_id: cat?.id || null, cover_image_url: $("cover").value.trim() || null,
     tags: $("tags").value.split(",").map((x) => x.trim()).filter(Boolean),
     status: st,
@@ -408,7 +413,7 @@ $("saveBtn").onclick = async () => {
     : await sb.from("articles").insert({ ...payload, author_id: s.user.id }).select("id,published_at").single();
   btn.disabled = false; btn.querySelector(".spinner")?.remove();
   if (res.error) {
-    $("saveLabel").textContent = editing ? "Update article" : "Save article";
+    updateSaveLabel();
     const dup = res.error.code === "23505";
     toast("error", dup ? "Slug already in use" : "Could not save", dup ? "Change the URL slug and try again." : res.error.message);
     if (dup) { $("slug").classList.add("invalid"); shake($("slug")); }
@@ -416,7 +421,7 @@ $("saveBtn").onclick = async () => {
   }
   editing = { id: res.data.id, published_at: res.data.published_at };
   if (res.data.published_at && !$("pubDate").value) setPubDate(res.data.published_at);
-  $("editingFlag").hidden = false; $("saveLabel").textContent = "Update article";
+  $("editingFlag").hidden = false; updateSaveLabel();
   toast("success", st === "published" ? "Published" : "Saved", st === "published" ? "The article is live on the site." : "Saved as " + st + ".");
   loadArticles();
 };
@@ -465,7 +470,7 @@ async function editArticle(id) {
   $("band").value = a.band_name || ""; $("album").value = a.album_name || "";
   if (a.genre) $("genre").value = a.genre;
   setStatus(a.status || "draft");
-  $("editingFlag").hidden = false; $("saveLabel").textContent = "Update article";
+  $("editingFlag").hidden = false; updateSaveLabel();
   $("editor").scrollIntoView({ behavior: "smooth", block: "start" });
   toast("info", "Editing article", a.title);
 }
@@ -638,32 +643,48 @@ function renderRadar() {
       </div>
       <div class="acts">
         <a class="btn btn-sm btn-ghost" href="${esc(n.link)}" target="_blank" rel="noopener noreferrer">Read ↗</a>
-        <button class="btn btn-sm btn-primary" type="button" data-news="${radarItems.indexOf(n)}">Write article</button>
+        <button class="btn btn-sm btn-primary" type="button" data-news="${radarItems.indexOf(n)}">Auto-write</button>
       </div>
     </div>`).join("");
   $("radar").querySelectorAll("[data-news]").forEach((b) => b.onclick = () => useNews(radarItems[+b.dataset.news]));
 }
 function useNews(n) {
   if (!n) return;
+  if ($("generateBtn").disabled) { toast("warning", "Already writing", "Wait for the current article to finish."); return; }
   resetForm();
-  $("band").value = n.band || "";
+  $("band").value = n.band || n.title.split(/\s+/).slice(0, 3).join(" ");
   $("album").value = "";
   $("category").value = "News";
-  const g = (n.genres || [])[0];
-  if (g && [...$("genre").options].some((o) => o.value === g)) $("genre").value = g;
+  $("genre").value = ""; // the AI decides the genre from the facts
   $("notes").value =
     `News item reported by ${n.source}${n.date ? " on " + new Date(n.date).toDateString() : ""}.\n` +
     `Headline: ${n.title}\n` +
     (n.summary ? `Summary: ${n.summary}\n` : "") +
+    `The band name above was guessed from the headline; correct it in BAND if needed.\n` +
     `Write an original news piece in your own words based only on these facts. Do not copy the source's sentences. Mention that ${n.source} reported it.`;
   pendingSource = { name: n.source, link: n.link, date: n.date || null };
   if (n.date) setPubDate(n.date, `Original publication time from ${n.source}: ${fmtStamp(n.date)}. This will be used when you publish.`);
   else setPubDate(null, `${n.source} did not provide a publication time. The moment you publish will be used.`);
-  $("tags").value = ["news", ...(n.genres || []).map((x) => x.toLowerCase())].join(", ");
   window.scrollTo({ top: 0, behavior: "smooth" });
-  const gb = $("generateBtn"); gb.classList.remove("glow-pulse"); void gb.offsetWidth; gb.classList.add("glow-pulse");
-  toast("info", "Generator filled", (n.band ? "Band: " + n.band + ". " : "") + "Check the band name, then tap Generate article.", { duration: 7000 });
+  toast("info", "Writing the article", "AI is reading the headline and filling every field. This takes up to a minute.", { duration: 5000 });
+  $("generateBtn").click();
 }
+function readyToPublish() {
+  setStatus("published");
+  updateSaveLabel();
+  const btn = $("saveBtn");
+  setTimeout(() => {
+    btn.scrollIntoView({ behavior: "smooth", block: "center" });
+    btn.classList.remove("glow-pulse"); void btn.offsetWidth; btn.classList.add("glow-pulse");
+  }, 300);
+}
+function updateSaveLabel() {
+  if ($("saveBtn").disabled) return;
+  const st = status();
+  $("saveLabel").textContent = editing ? (st === "published" ? "Update & publish" : "Update article") : (st === "published" ? "Publish now" : st === "review" ? "Save for review" : "Save draft");
+}
+document.querySelectorAll('input[name="status"]').forEach((r) => r.addEventListener("change", updateSaveLabel));
+updateSaveLabel();
 $("radarGenre").addEventListener("change", renderRadar);
 $("pubNow").addEventListener("click", () => setPubDate(new Date().toISOString()));
 $("pubClear").addEventListener("click", () => setPubDate(null));
