@@ -1,16 +1,351 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#090909"><meta name="description" content="Independent extreme music magazine covering metalcore, hardcore, deathcore and underground music."><title>UNDERGROUND — Extreme Music Magazine</title><style>
-:root{--bg:#090909;--panel:#141414;--text:#f2f2f2;--muted:#929292;--red:#bd2029;--line:#292929}*{box-sizing:border-box;margin:0;padding:0}body{background:var(--bg);color:var(--text);font-family:Arial,Helvetica,sans-serif;line-height:1.6}a{color:inherit;text-decoration:none}.container{width:min(1120px,92%);margin:auto}header{position:sticky;top:0;z-index:10;background:#090909ee;border-bottom:1px solid var(--line);backdrop-filter:blur(12px)}.nav{min-height:72px;display:flex;align-items:center;justify-content:space-between;gap:20px}.logo{font-size:25px;font-weight:1000;letter-spacing:-1.5px}.logo span,.hero h1 span{color:var(--red)}nav{display:flex;gap:22px;flex-wrap:wrap;font-size:12px;font-weight:bold;text-transform:uppercase}nav a:hover{color:var(--red)}.hero{padding:68px 0 54px;border-bottom:1px solid var(--line)}.tag,.category{color:var(--red);font-size:11px;font-weight:bold;letter-spacing:2px;text-transform:uppercase}.hero h1{font-size:clamp(46px,9vw,94px);line-height:.96;max-width:850px;margin:18px 0;letter-spacing:-4px;font-weight:1000}.hero p{max-width:580px;color:var(--muted);font-size:14px}.section{padding:42px 0}.section-title{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line);padding-bottom:15px;margin-bottom:25px;gap:12px}.section-title h2{font-size:19px;text-transform:uppercase}.section-title span{color:var(--red);font-size:10px;font-weight:bold}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}.article{background:var(--panel);border:1px solid var(--line);transition:.2s}.article:hover{border-color:var(--red);transform:translateY(-3px)}.cover{height:190px;background:linear-gradient(145deg,#50151a,#171717 60%,#080808);display:flex;justify-content:center;align-items:center;color:#ffffff55;font-size:38px;font-weight:1000;letter-spacing:4px;overflow:hidden}.cover img{width:100%;height:100%;object-fit:cover}.article-content{padding:18px}.yt{display:block;position:relative;aspect-ratio:16/9;margin:18px 0}.yt iframe{position:absolute;inset:0;width:100%;height:100%;border:0}.article h3{font-size:18px;line-height:1.3;margin:10px 0}.article p{color:var(--muted);font-size:12px}.read{display:inline-block;margin-top:16px;font-size:11px;font-weight:bold;text-transform:uppercase}.categories{display:flex;flex-wrap:wrap;gap:10px}.categories a{border:1px solid var(--line);padding:10px 16px;font-size:11px;font-weight:bold;text-transform:uppercase}.categories a:hover{background:var(--red);border-color:var(--red)}footer{border-top:1px solid var(--line);padding:30px 0;color:var(--muted);font-size:11px;text-align:center}.empty{color:var(--muted);padding:20px 0}.article-body{max-width:760px;margin:20px auto;color:#ddd}.article-body h2{margin:24px 0 10px}.article-body p{margin:12px 0}@media(max-width:700px){.nav{flex-direction:column;align-items:flex-start;padding:15px 0}.nav nav{gap:14px}.hero{padding:48px 0}.hero h1{letter-spacing:-2px}.grid{grid-template-columns:1fr}.cover{height:175px}}
-</style><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script></head>
-<body><header><div class="container nav"><a class="logo" href="/">UNDER<span>GROUND.</span></a><nav><a href="/">Home</a><a href="#latest">Latest</a><a href="#genres">Genres</a><a href="#about">About</a><a href="/admin.html">Admin</a></nav></div></header>
-<main><section class="hero container"><div class="tag">Independent Extreme Music Magazine</div><h1>BENEATH<br>THE <span>NOISE.</span></h1><p>Exploring the underground world of metalcore, hardcore, deathcore and extreme music. No boundaries. No compromises.</p></section>
-<section class="section container" id="latest"><div class="section-title"><h2>Latest Articles</h2><span>UNDERGROUND CULTURE</span></div><div class="grid" id="articles"><p class="empty">Loading latest stories…</p></div></section>
-<section class="section container" id="genres"><div class="section-title"><h2>Explore Genres</h2><span>FIND YOUR SOUND</span></div><div class="categories"><a href="#latest">Metalcore</a><a href="#latest">Deathcore</a><a href="#latest">Hardcore</a><a href="#latest">Darkcore</a><a href="#latest">Post-Hardcore</a><a href="#latest">Black Metal</a><a href="#latest">Djent</a><a href="#latest">Underground</a></div></section>
-<section class="section container" id="about"><div class="section-title"><h2>About Us</h2></div><p style="color:#929292;max-width:650px;font-size:14px">An independent music publication dedicated to underground culture, extreme sounds and the artists shaping heavy music.</p></section><section class="container article-body" id="story" hidden></section></main><footer><div class="container">UNDERGROUND © 2026 — INDEPENDENT EXTREME MUSIC CULTURE.</div></footer>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0b">
+<meta name="description" content="Independent extreme music magazine covering metalcore, hardcore, deathcore and underground music.">
+<title>UNDERGROUND — Extreme Music Magazine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/assets/ui.css">
+<style>
+/* ---------- Hero ---------- */
+.hero { padding: clamp(56px, 10vw, 120px) 0 clamp(40px, 6vw, 72px); border-bottom: 1px solid var(--line); }
+.hero-grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: clamp(28px, 5vw, 64px); align-items: end; }
+.hero h1 { font-size: clamp(56px, 11vw, 160px); }
+.hero h1 .accent { color: var(--accent); }
+.hero-copy { display: flex; flex-direction: column; gap: 22px; }
+.hero-lede { max-width: 520px; font-size: 18px; color: var(--muted); margin: 0; }
+.hero-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+@media (max-width: 900px) { .hero-grid { grid-template-columns: 1fr; } }
+
+/* Featured card in hero */
+.feature { display: block; position: relative; overflow: hidden; border-radius: var(--r-lg); border: 1px solid var(--line); background: var(--surface); transition: border-color .3s, transform .5s var(--ease); }
+.feature:hover { border-color: var(--line-strong); transform: translateY(-4px); }
+.feature-media { aspect-ratio: 16 / 10; overflow: hidden; background: var(--surface-2); }
+.feature-media img { width: 100%; height: 100%; object-fit: cover; transition: transform 1s var(--ease); filter: saturate(.9) contrast(1.05); }
+.feature:hover .feature-media img { transform: scale(1.05); }
+.feature-body { padding: 18px 20px 20px; display: flex; flex-direction: column; gap: 8px; }
+.feature-body h2 { margin: 0; font-size: 22px; line-height: 1.2; letter-spacing: -.01em; }
+
+/* ---------- Marquee ---------- */
+.marquee { border-bottom: 1px solid var(--line); overflow: hidden; white-space: nowrap; padding: 14px 0; mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); }
+.marquee-track { display: inline-flex; gap: 40px; animation: marquee 38s linear infinite; padding-right: 40px; }
+.marquee span { font-family: var(--font-display); font-stretch: 70%; font-weight: 700; font-size: 22px; text-transform: uppercase; color: var(--faint); display: inline-flex; align-items: center; gap: 40px; }
+.marquee span::after { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+.marquee:hover .marquee-track { animation-play-state: paused; }
+
+/* ---------- Sections ---------- */
+.section { padding: clamp(48px, 7vw, 88px) 0; }
+.section-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 18px; margin-bottom: 28px; }
+.section-head h2 { font-size: clamp(40px, 6vw, 72px); }
+
+/* ---------- Article grid ---------- */
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 22px; }
+.card { display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden; cursor: pointer; text-align: left; padding: 0; color: inherit; transition: transform .5s var(--ease), border-color .3s, box-shadow .5s var(--ease); }
+.card:hover { transform: translateY(-6px); border-color: var(--line-strong); box-shadow: var(--shadow); }
+.card-media { position: relative; aspect-ratio: 16 / 10; overflow: hidden; background: var(--surface-2); }
+.card-media img { width: 100%; height: 100%; object-fit: cover; transition: transform 1s var(--ease); filter: saturate(.9) contrast(1.05); }
+.card:hover .card-media img { transform: scale(1.06); }
+.card-media .num { position: absolute; inset: auto 16px 12px auto; font-family: var(--font-display); font-stretch: 70%; font-weight: 800; font-size: 54px; line-height: 1; color: var(--line-strong); }
+.card-media .play { position: absolute; left: 14px; bottom: 14px; display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px 6px 8px; border-radius: var(--r-pill); background: rgba(10, 10, 11, .75); backdrop-filter: blur(8px); font-size: 12px; font-weight: 600; }
+.card-media .play i { width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; font-style: normal; font-size: 9px; }
+.card-body { padding: 18px 20px 20px; display: flex; flex-direction: column; gap: 10px; flex: 1; }
+.meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+.meta .g { color: var(--accent); }
+.card h3 { margin: 0; font-size: 21px; line-height: 1.25; letter-spacing: -.015em; font-weight: 700; }
+.card p { margin: 0; color: var(--muted); font-size: 15px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.card .more { margin-top: auto; padding-top: 6px; display: inline-flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; }
+.card .more .arrow { transition: transform .3s var(--ease); }
+.card:hover .more .arrow { transform: translateX(5px); }
+@media (min-width: 1000px) {
+  .grid > .card.wide { grid-column: span 2; flex-direction: row; }
+  .grid > .card.wide .card-media { aspect-ratio: auto; width: 58%; min-height: 340px; }
+  .grid > .card.wide h3 { font-size: 30px; }
+}
+.empty { padding: 56px 24px; text-align: center; border: 1px dashed var(--line-strong); border-radius: var(--r-lg); color: var(--muted); }
+
+/* ---------- About ---------- */
+.about { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 40px; align-items: start; border-top: 1px solid var(--line); }
+.about p { font-size: 20px; line-height: 1.6; margin: 0; color: var(--muted); }
+.about p strong { color: var(--text); font-weight: 600; }
+@media (max-width: 800px) { .about { grid-template-columns: 1fr; } }
+
+footer { border-top: 1px solid var(--line); padding: 28px 0 40px; }
+footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; color: var(--muted); font-size: 13px; }
+
+/* ---------- Reader ---------- */
+.reader { position: fixed; inset: 0; z-index: 60; display: flex; justify-content: center; align-items: flex-end; }
+.reader-backdrop { position: absolute; inset: 0; background: rgba(5, 5, 6, .72); backdrop-filter: blur(6px); animation: fadeIn .3s both; }
+.reader-sheet { position: relative; width: min(860px, 100%); max-height: calc(100dvh - 24px); overflow-y: auto; overscroll-behavior: contain; background: var(--bg); border: 1px solid var(--line); border-bottom: 0; border-radius: 24px 24px 0 0; animation: sheetUp .55s var(--spring) both; }
+.reader-bar { position: sticky; top: 0; z-index: 2; display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 16px; background: rgba(10, 10, 11, .85); backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); }
+.reader-progress { position: absolute; left: 0; bottom: -1px; height: 2px; background: var(--accent); width: 0; }
+.reader-inner { padding: clamp(24px, 5vw, 56px) clamp(20px, 6vw, 72px) 72px; }
+.reader h1 { font-size: clamp(30px, 5vw, 52px); line-height: 1.08; letter-spacing: -.02em; margin: 14px 0 18px; font-weight: 800; }
+.reader .lede { font-size: 19px; color: var(--muted); margin: 0 0 28px; }
+.reader .media { border-radius: var(--r-md); overflow: hidden; border: 1px solid var(--line); background: var(--surface); margin-bottom: 32px; }
+.reader .media img { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; }
+.yt { position: relative; aspect-ratio: 16 / 9; }
+.yt iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.prose { font-size: 18px; line-height: 1.75; color: #dedbd4; }
+.prose h2 { font-size: 26px; line-height: 1.25; letter-spacing: -.015em; margin: 40px 0 12px; color: var(--text); }
+.prose h3 { font-size: 21px; margin: 32px 0 10px; color: var(--text); }
+.prose p { margin: 0 0 18px; }
+.prose ul { margin: 0 0 18px; padding-left: 22px; }
+.prose li { margin: 6px 0; }
+.prose li::marker { color: var(--accent); }
+.prose blockquote { margin: 28px 0; padding: 4px 0 4px 20px; border-left: 2px solid var(--accent); font-size: 21px; color: var(--text); }
+.prose strong { color: var(--text); }
+.prose .yt { border-radius: var(--r-md); overflow: hidden; margin: 28px 0; }
+.tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 36px; padding-top: 24px; border-top: 1px solid var(--line); }
+.tags span { font-family: var(--font-mono); font-size: 12px; color: var(--muted); padding: 6px 12px; border: 1px solid var(--line-strong); border-radius: var(--r-pill); }
+body.locked { overflow: hidden; }
+</style>
+</head>
+<body>
+<a class="sr-only" href="#latest">Skip to articles</a>
+
+<header class="topbar">
+  <div class="wrap">
+    <a class="brand" href="/" aria-label="Underground home"><span class="dot live" aria-hidden="true"></span><span>UNDER<b>GROUND</b></span></a>
+    <nav class="nav" aria-label="Main">
+      <a href="#latest">Latest</a>
+      <a href="#genres">Genres</a>
+      <a href="#about">About</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <section class="hero">
+    <div class="wrap hero-grid">
+      <div class="hero-copy">
+        <span class="eyebrow"><span class="dot" aria-hidden="true"></span>Independent extreme music magazine</span>
+        <h1 class="display">
+          <span class="line-mask"><span>Beneath</span></span>
+          <span class="line-mask"><span style="--d:120ms">the <span class="accent">noise.</span></span></span>
+        </h1>
+        <p class="hero-lede reveal" style="--d:250ms">Metalcore, hardcore, deathcore and the sounds beneath them. Reviews, features and new releases from the underground, no boundaries, no compromises.</p>
+        <div class="hero-actions reveal" style="--d:350ms">
+          <a class="btn btn-primary" href="#latest">Read latest <span class="arrow" aria-hidden="true">→</span></a>
+          <a class="btn" href="#genres">Explore genres</a>
+        </div>
+      </div>
+      <div id="featured" class="reveal" style="--d:450ms">
+        <div class="feature" aria-hidden="true">
+          <div class="feature-media skel" style="border-radius:0"></div>
+          <div class="feature-body"><div class="skel" style="height:12px;width:40%"></div><div class="skel" style="height:22px;width:85%"></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="marquee" aria-hidden="true">
+    <div class="marquee-track">
+      <span>Metalcore</span><span>Deathcore</span><span>Hardcore</span><span>Darkcore</span><span>Post-Hardcore</span><span>Black Metal</span><span>Djent</span><span>Underground</span>
+      <span>Metalcore</span><span>Deathcore</span><span>Hardcore</span><span>Darkcore</span><span>Post-Hardcore</span><span>Black Metal</span><span>Djent</span><span>Underground</span>
+    </div>
+  </div>
+
+  <section class="section" id="latest">
+    <div class="wrap">
+      <div class="section-head">
+        <h2 class="display reveal">Latest</h2>
+        <div id="genres" class="chips reveal" role="group" aria-label="Filter by genre" style="--d:100ms"></div>
+      </div>
+      <div class="grid" id="articles" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <section class="section" id="about">
+    <div class="wrap about" style="padding-top:clamp(48px,7vw,88px)">
+      <h2 class="display reveal" style="font-size:clamp(40px,6vw,72px)">About</h2>
+      <p class="reveal" style="--d:120ms"><strong>UNDERGROUND</strong> is an independent publication for the heavy end of music: the bands, records and scenes shaping metalcore, hardcore, deathcore and everything louder.</p>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap"><span>© <span id="year">2026</span> UNDERGROUND</span><span class="mono">Independent extreme music culture</span></div>
+</footer>
+
+<div id="reader" class="reader" hidden>
+  <div class="reader-backdrop" data-close></div>
+  <article class="reader-sheet" role="dialog" aria-modal="true" aria-labelledby="readerTitle" tabindex="-1">
+    <div class="reader-bar">
+      <span class="eyebrow" id="readerMeta"></span>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-sm" type="button" id="shareBtn">Copy link</button>
+        <button class="btn btn-icon btn-ghost" type="button" data-close aria-label="Close article"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      </div>
+      <div class="reader-progress" id="readerProgress"></div>
+    </div>
+    <div class="reader-inner" id="readerBody"></div>
+  </article>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/assets/ui.js"></script>
 <script>
-const db=window.supabase.createClient("https://lhhmzfwjznlwkentbakv.supabase.co","sb_publishable_MQDqmSmPb3qiSODbBOSKmA_U7aBEFtN"),el=document.getElementById('articles');
-const esc=s=>String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-function md(s){return '<p>'+esc(s).replace(/^https:\/\/(?:www\.|m\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]{11})\S*$/gm,'<span class="yt"><iframe src="https://www.youtube-nocookie.com/embed/$1" title="YouTube video" loading="lazy" allow="accelerometer; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></span>').replace(/^### (.*)$/gm,'<h3>$1</h3>').replace(/^## (.*)$/gm,'<h2>$1</h2>').replace(/^# (.*)$/gm,'<h2>$1</h2>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/\*(.*?)\*/g,'<em>$1</em>').replace(/\n\n/g,'</p><p>').replace(/\n/g,'<br>')+'</p>'}
-async function load(){const {data,error}=await db.from('articles').select('id,title,excerpt,content,cover_image_url,genre,published_at').eq('status','published').order('published_at',{ascending:false}).limit(12);if(error||!data?.length){el.innerHTML='<p class="empty">No published stories yet. New editorial coverage will appear here soon.</p>';return}el.innerHTML=data.map((a,i)=>'<article class="article"><div class="cover">'+(a.cover_image_url?'<img loading="lazy" src="'+esc(a.cover_image_url)+'" alt="">':String(i+1).padStart(2,'0'))+'</div><div class="article-content"><div class="category">'+esc(a.genre||'Underground')+'</div><h3>'+esc(a.title)+'</h3><p>'+esc(a.excerpt)+'</p><a class="read" href="#story" data-id="'+a.id+'">Read Article →</a></div></article>').join('');el.querySelectorAll('[data-id]').forEach(a=>a.onclick=async()=>{const {data}=await db.from('articles').select('title,content,genre,published_at').eq('id',a.dataset.id).single();if(data){const s=document.getElementById('story');s.hidden=false;s.innerHTML='<div class="category">'+esc(data.genre)+'</div><h1>'+esc(data.title)+'</h1><p class="empty">'+new Date(data.published_at).toLocaleDateString()+'</p>'+md(data.content);window.scrollTo({top:s.offsetTop-80,behavior:'smooth'})}})}
+const db = window.supabase.createClient("https://lhhmzfwjznlwkentbakv.supabase.co", "sb_publishable_MQDqmSmPb3qiSODbBOSKmA_U7aBEFtN");
+const { esc, toast, reveal } = window.UI;
+const GENRES = ["All", "Metalcore", "Deathcore", "Hardcore", "Darkcore", "Post-Hardcore", "Black Metal", "Djent", "Underground"];
+const YT_RE = /^https:\/\/(?:www\.|m\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]{11})\S*$/m;
+const $ = (id) => document.getElementById(id);
+let articles = [];
+let activeGenre = "All";
+document.getElementById("year").textContent = new Date().getFullYear();
+
+/* ---------- Helpers ---------- */
+const fmtDate = (d) => d ? new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "";
+const readTime = (s) => Math.max(1, Math.round(String(s || "").trim().split(/\s+/).length / 220)) + " min read";
+const ytId = (s) => (String(s || "").match(YT_RE) || [])[1] || "";
+const cover = (a) => a.cover_image_url || (ytId(a.content) ? `https://i.ytimg.com/vi/${ytId(a.content)}/hqdefault.jpg` : "");
+
+function inline(s) {
+  return s.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/(^|[^*])\*(?!\s)(.+?)\*/g, "$1<em>$2</em>");
+}
+function md(src, { skipVideo } = {}) {
+  const lines = esc(src).split(/\n/);
+  let html = "", para = [], list = false;
+  const flush = () => { if (para.length) { html += "<p>" + inline(para.join(" ")) + "</p>"; para = []; } };
+  const endList = () => { if (list) { html += "</ul>"; list = false; } };
+  for (const raw of lines) {
+    const l = raw.trim(); let m;
+    if (!l) { flush(); endList(); continue; }
+    if ((m = l.match(/^https:\/\/(?:www\.|m\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]{11})\S*$/))) {
+      flush(); endList();
+      if (!(skipVideo && m[1] === skipVideo)) html += ytEmbed(m[1]);
+      continue;
+    }
+    if ((m = l.match(/^(#{1,3})\s+(.*)$/))) { flush(); endList(); const t = m[1].length === 3 ? "h3" : "h2"; html += `<${t}>${inline(m[2])}</${t}>`; continue; }
+    if ((m = l.match(/^&gt;\s?(.*)$/))) { flush(); endList(); html += "<blockquote>" + inline(m[1]) + "</blockquote>"; continue; }
+    if ((m = l.match(/^[-*•]\s+(.*)$/))) { flush(); if (!list) { html += "<ul>"; list = true; } html += "<li>" + inline(m[1]) + "</li>"; continue; }
+    endList(); para.push(l);
+  }
+  flush(); endList();
+  return html;
+}
+const ytEmbed = (id) => `<div class="yt"><iframe src="https://www.youtube-nocookie.com/embed/${id}" title="YouTube video player" loading="lazy" allow="accelerometer; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
+
+/* ---------- Genre filter ---------- */
+function renderChips() {
+  $("genres").innerHTML = GENRES.map((g) => `<button class="chip" type="button" aria-pressed="${g === activeGenre}" data-g="${esc(g)}">${esc(g)}</button>`).join("");
+  $("genres").querySelectorAll("[data-g]").forEach((b) => b.onclick = () => { activeGenre = b.dataset.g; renderChips(); renderGrid(); });
+}
+
+/* ---------- Grid ---------- */
+function skeletonGrid() {
+  $("articles").innerHTML = Array.from({ length: 3 }, () =>
+    `<div class="card" aria-hidden="true" style="cursor:default;pointer-events:none"><div class="card-media skel" style="border-radius:0"></div><div class="card-body"><div class="skel" style="height:12px;width:45%"></div><div class="skel" style="height:22px;width:90%"></div><div class="skel" style="height:14px;width:100%"></div><div class="skel" style="height:14px;width:70%"></div></div></div>`).join("");
+}
+function cardHtml(a, i, wide) {
+  const img = cover(a);
+  return `<a class="card reveal${wide ? " wide" : ""}" style="--d:${(i % 6) * 80}ms" href="#/a/${encodeURIComponent(a.slug || a.id)}">
+    <div class="card-media">${img ? `<img src="${esc(img)}" alt="" loading="lazy" onerror="this.remove()">` : `<span class="num">${String(i + 1).padStart(2, "0")}</span>`}
+      ${ytId(a.content) ? `<span class="play"><i aria-hidden="true">▶</i>Listen</span>` : ""}</div>
+    <div class="card-body">
+      <div class="meta"><span class="g">${esc(a.genre || "Underground")}</span><span aria-hidden="true">·</span><span>${fmtDate(a.published_at)}</span><span aria-hidden="true">·</span><span>${readTime(a.content)}</span></div>
+      <h3>${esc(a.title)}</h3>
+      ${a.excerpt ? `<p>${esc(a.excerpt)}</p>` : ""}
+      <span class="more">Read article <span class="arrow" aria-hidden="true">→</span></span>
+    </div></a>`;
+}
+function renderGrid() {
+  const list = activeGenre === "All" ? articles : articles.filter((a) => (a.genre || "").toLowerCase() === activeGenre.toLowerCase());
+  if (!list.length) {
+    $("articles").innerHTML = `<div class="empty" style="grid-column:1/-1">${articles.length ? "No " + esc(activeGenre) + " stories yet." : "No published stories yet. New coverage is on the way."}</div>`;
+    return;
+  }
+  $("articles").innerHTML = list.map((a, i) => cardHtml(a, i, i === 0 && activeGenre === "All" && list.length > 2)).join("");
+  reveal($("articles"));
+}
+function renderFeatured() {
+  const a = articles[0];
+  if (!a) { $("featured").innerHTML = ""; return; }
+  const img = cover(a);
+  $("featured").innerHTML = `<a class="feature" href="#/a/${encodeURIComponent(a.slug || a.id)}">
+    <div class="feature-media">${img ? `<img src="${esc(img)}" alt="" onerror="this.remove()">` : ""}</div>
+    <div class="feature-body"><span class="eyebrow"><span class="dot" aria-hidden="true"></span>Latest story · ${esc(a.genre || "Underground")}</span><h2>${esc(a.title)}</h2></div></a>`;
+}
+
+async function load() {
+  skeletonGrid();
+  const { data, error } = await db.from("articles")
+    .select("id,slug,title,excerpt,content,cover_image_url,genre,tags,published_at")
+    .eq("status", "published").order("published_at", { ascending: false }).limit(30);
+  if (error) {
+    articles = [];
+    $("articles").innerHTML = `<div class="empty" style="grid-column:1/-1">Stories could not be loaded right now.</div>`;
+    toast("error", "Could not load stories", "Check your connection and refresh the page.");
+    renderFeatured();
+    return;
+  }
+  articles = data || [];
+  renderFeatured(); renderGrid(); route();
+}
+
+/* ---------- Reader ---------- */
+let lastFocus = null;
+async function showArticle(key) {
+  let a = articles.find((x) => x.slug === key || String(x.id) === key);
+  if (!a) {
+    const q = db.from("articles").select("id,slug,title,excerpt,content,cover_image_url,genre,tags,published_at").eq("status", "published");
+    const { data } = await (/^\d+$|^[0-9a-f-]{36}$/i.test(key) ? q.eq("id", key) : q.eq("slug", key)).maybeSingle();
+    a = data;
+  }
+  if (!a) { toast("warning", "Story not found", "It may have been moved or unpublished."); closeReader(); return; }
+  const vid = ytId(a.content);
+  const img = cover(a);
+  $("readerMeta").innerHTML = `<span class="dot" aria-hidden="true"></span>${esc(a.genre || "Underground")} · ${readTime(a.content)}`;
+  $("readerBody").innerHTML = `
+    <div class="meta">${fmtDate(a.published_at)}</div>
+    <h1 id="readerTitle">${esc(a.title)}</h1>
+    ${a.excerpt ? `<p class="lede">${esc(a.excerpt)}</p>` : ""}
+    ${vid ? `<div class="media">${ytEmbed(vid)}</div>` : img ? `<div class="media"><img src="${esc(img)}" alt="" onerror="this.parentNode.remove()"></div>` : ""}
+    <div class="prose">${md(a.content, { skipVideo: vid })}</div>
+    ${Array.isArray(a.tags) && a.tags.length ? `<div class="tags">${a.tags.map((t) => `<span>#${esc(t)}</span>`).join("")}</div>` : ""}`;
+  document.title = a.title + " — UNDERGROUND";
+  if ($("reader").hidden) {
+    lastFocus = document.activeElement;
+    $("reader").hidden = false;
+    document.body.classList.add("locked");
+  }
+  const sheet = $("reader").querySelector(".reader-sheet");
+  sheet.scrollTop = 0; $("readerProgress").style.width = "0";
+  sheet.focus({ preventScroll: true });
+}
+function closeReader() {
+  if ($("reader").hidden) return;
+  $("reader").hidden = true;
+  document.body.classList.remove("locked");
+  document.title = "UNDERGROUND — Extreme Music Magazine";
+  if (location.hash.startsWith("#/a/")) history.replaceState(null, "", location.pathname + location.search);
+  lastFocus?.focus?.();
+}
+function route() {
+  const m = location.hash.match(/^#\/a\/(.+)$/);
+  if (m) showArticle(decodeURIComponent(m[1])); else closeReader();
+}
+window.addEventListener("hashchange", route);
+$("reader").addEventListener("click", (e) => { if (e.target.closest("[data-close]")) closeReader(); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeReader(); });
+$("reader").querySelector(".reader-sheet").addEventListener("scroll", (e) => {
+  const s = e.currentTarget; const max = s.scrollHeight - s.clientHeight;
+  $("readerProgress").style.width = (max > 0 ? (s.scrollTop / max) * 100 : 0) + "%";
+}, { passive: true });
+$("shareBtn").onclick = async () => {
+  try {
+    if (navigator.share) await navigator.share({ title: document.title, url: location.href });
+    else { await navigator.clipboard.writeText(location.href); toast("success", "Link copied", "Share it anywhere."); }
+  } catch (e) { if (e?.name !== "AbortError") toast("warning", "Could not copy the link", location.href); }
+};
+
+renderChips();
+reveal();
 load();
-</script></body></html>
+</script>
+</body>
+</html>
