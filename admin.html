@@ -421,6 +421,11 @@
 
     <!-- ======================= SETTINGS ======================= -->
     <div class="tab-panel" id="panel-settings" role="tabpanel" aria-labelledby="tab-settings" data-panel="settings" hidden>
+      <section class="panel card-pad" aria-labelledby="secTitle" style="margin-bottom:20px">
+        <div class="card-head"><h2 id="secTitle">Security check</h2><button class="btn btn-sm btn-primary" type="button" id="secRun">Run check</button></div>
+        <p class="muted" style="margin:0">Checks two-step verification in this browser, the session token, and what the database sees. Two test drafts are written and always rolled back: nothing is saved.</p>
+        <pre class="mono" id="secOut" hidden style="margin:12px 0 0;padding:12px;border-radius:10px;background:var(--surface-2,#15121f);font-size:11px;line-height:1.5;white-space:pre-wrap;word-break:break-word;max-height:420px;overflow:auto"></pre>
+      </section>
       <section class="panel card-pad" aria-labelledby="purgeTitle">
         <div class="card-head"><h2 id="purgeTitle">Clean up data</h2><button class="btn btn-sm btn-ghost" type="button" id="purgeRefresh">Refresh counts</button></div>
         <p class="muted" style="margin:0">Choose what to delete permanently. Member accounts, admin access and site settings are never deleted.</p>
@@ -515,6 +520,27 @@ async function session() {
 }
 // Visitors never see this panel: not signed in or not an admin -> the visitor's own account page.
 // Admins sign in on the site (Account page) and open "Admin panel" from their profile.
+/* ---------- Security check (Settings) ---------- */
+const jwtClaims = (t) => { try { let b = t.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"); b += "=".repeat((4 - b.length % 4) % 4); return JSON.parse(atob(b)); } catch { return {}; } };
+$("secRun").addEventListener("click", async () => {
+  const out = $("secOut"); out.hidden = false; out.textContent = "Checking…";
+  const lines = [];
+  const { data: aal, error: aalErr } = await sb.auth.mfa.getAuthenticatorAssuranceLevel();
+  lines.push("1. Browser assurance level: " + (aalErr ? "error " + aalErr.message : aal.currentLevel + " (next: " + aal.nextLevel + ")"));
+  const { data: { session: s } } = await sb.auth.getSession();
+  const c = s ? jwtClaims(s.access_token) : {};
+  lines.push("2. Access token claim aal: " + (c.aal || "missing") + " · expires in " + (c.exp ? Math.round(c.exp - Date.now() / 1000) + " s" : "?") + " · session " + (c.session_id || "?"));
+  const { data, error } = await sb.rpc("ug_security_check");
+  if (error) lines.push("3. Database check: " + (/ug_security_check/.test(error.message) ? "not installed yet. Run supabase/security-check.sql in Supabase → SQL Editor, then try again." : error.message));
+  else {
+    lines.push("3. Database sees aal: " + data.aal_claim_in_database + " · admin row: " + data.admin_row + " · ug_is_admin(): " + data.ug_is_admin + " · ug_mfa_ok(): " + data.ug_mfa_ok);
+    lines.push("4. Test insert (INSERT rules only): " + data.insert_without_returning);
+    lines.push("5. Test insert with RETURNING (as the panel saves): " + data.insert_with_returning);
+    if (data.article_policies) lines.push("", "Article rules:", ...data.article_policies.map((p) => `• [${p.cmd}] ${p.name} (${p.permissive})\n    using: ${p.using || "—"}\n    check: ${p.check || "—"}`));
+  }
+  out.textContent = lines.join("\n");
+});
+
 /* ---------- Two-step verification (TOTP) for admins ---------- */
 let mfaFactor = null;
 async function requireMfa() {
