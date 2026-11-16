@@ -46,6 +46,11 @@ Static Cloudflare Pages site with a Supabase-backed editorial workflow and multi
 ## Admin settings: clean up data
 Admin → **Settings** shows counts and lets you delete articles, comments, saved articles, music (with files) or demo submissions, or **Reset everything**. Every deletion asks you to type DELETE / RESET first. Member accounts, admin access and categories are never deleted.
 
+## Security
+- **Admin 2FA:** opening `admin.html` as an admin requires a 6-digit code from an authenticator app (Supabase MFA, TOTP). The first time, the page shows a QR code to scan. Admin API routes (`/api/generate`, `/api/track-info`, `/api/music/*`, `/api/newsletter/send`) refuse sessions without the second step (`functions/api/aal.js`). After setting up 2FA, run `supabase/security.sql` once so the database rules require it too.
+- **Captcha (optional):** put your Cloudflare Turnstile site key in `TURNSTILE_SITE_KEY` (`assets/bento.js`), deploy, then enable Supabase → Authentication → Attack Protection → Captcha → Turnstile with the secret key. Order matters: code first, then Supabase.
+- **Headers:** `_headers` sets CSP, HSTS, frame and content-type protections. A new external script, font, iframe or API host must be added to the CSP there.
+
 ## Scene radar (music news)
 `functions/api/news.js` reads the public RSS feeds of heavy-music sites (Metal Injection, MetalSucks, Theprp, Decibel, Loudwire metal, New Noise, Distorted Sound), tags each headline with our genres, guesses the band name, and caches the list for 15 minutes. No API key needed. The public "Underground wire" shows headlines linking to the original sites; the admin **Scene radar** panel has a **Write article** button that fills the AI generator with the facts and adds a source credit. Only headlines, short summaries and links are used — full articles stay on the original sites. Edit the `SOURCES` list in that file to add or remove feeds.
 

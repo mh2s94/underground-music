@@ -14,6 +14,7 @@
 //      with control-character repair), so one malformed reply does not fail.
 
 import { PROMPT_LIST, canonicalGenre } from "./genres-data.js";
+import { isAal2, MFA_ERROR } from "./aal.js";
 export const DEFAULT_ORDER = "gemini,workersai,groq,openrouter,mistral,deepseek,openai,claude";
 const DEADLINE_MS = 75000;         // whole AI phase
 const PROVIDER_TIMEOUT_MS = 50000; // one provider attempt
@@ -49,6 +50,7 @@ export async function onRequestPost({ request, env }) {
       headers: sbHeaders, signal: AbortSignal.timeout(8000)
     });
     if (!r.ok || !(await r.json()).length) return json({ error: "Administrator access required." }, 403);
+    if (!isAal2(request)) return json({ error: MFA_ERROR, mfa: true }, 403);
   } catch {
     return json({ error: "Could not verify administrator access. Try again." }, 502);
   }

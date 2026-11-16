@@ -204,6 +204,22 @@
   </div>
 </header>
 
+<!-- Two-step verification (admins only) -->
+<section id="mfa" class="login" hidden>
+  <form class="panel login-card" id="mfaForm" novalidate>
+    <span class="eyebrow"><span class="dot" aria-hidden="true"></span>Two-step verification</span>
+    <h1 class="display" id="mfaTitle">Enter code</h1>
+    <p class="muted" id="mfaText" style="margin:0"></p>
+    <div id="mfaSetup" hidden style="display:grid;gap:8px;justify-items:center">
+      <img id="mfaQr" alt="QR code for your authenticator app" width="200" height="200" style="background:#fff;border-radius:12px;padding:10px">
+      <p class="mono muted" style="margin:0;font-size:12px;word-break:break-all;text-align:center">Can't scan? Enter this key: <span id="mfaSecret"></span></p>
+    </div>
+    <label class="field"><span>6-digit code</span><input class="input" id="mfaCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required></label>
+    <button class="btn btn-primary" type="submit" id="mfaBtn">Verify <span class="arrow" aria-hidden="true">→</span></button>
+    <button class="btn btn-ghost" type="button" id="mfaOut">Sign out</button>
+  </form>
+</section>
+
 <!-- Login -->
 <section id="login" class="login" hidden>
   <form class="panel login-card" id="loginForm" novalidate>
@@ -487,6 +503,7 @@ async function session() {
   if (!s) return showLogin();
   const { data: admin, error } = await sb.from("admin_users").select("user_id").eq("user_id", s.user.id).maybeSingle();
   if (error || !admin) { showLogin(); return; } // members stay signed in and land on their profile
+  if (!(await requireMfa())) return; // admins always pass two-step verification first
   $("login").hidden = true; $("app").hidden = false; $("userBar").hidden = false;
   document.documentElement.classList.remove("gate");
   $("userEmail").textContent = s.user.email || "";
@@ -498,6 +515,50 @@ async function session() {
 }
 // Visitors never see this panel: not signed in or not an admin -> the visitor's own account page.
 // Admins sign in on the site (Account page) and open "Admin panel" from their profile.
+/* ---------- Two-step verification (TOTP) for admins ---------- */
+let mfaFactor = null;
+async function requireMfa() {
+  const { data: aal, error } = await sb.auth.mfa.getAuthenticatorAssuranceLevel();
+  if (!error && aal && aal.currentLevel === "aal2") { $("mfa").hidden = true; return true; }
+  const { data: f } = await sb.auth.mfa.listFactors();
+  const verified = (f?.totp || []).find((x) => x.status === "verified");
+  $("app").hidden = true; $("userBar").hidden = true; $("mfa").hidden = false;
+  document.documentElement.classList.remove("gate");
+  $("mfaBtn").disabled = false;
+  if (verified) {
+    mfaFactor = verified.id;
+    $("mfaTitle").textContent = "Enter code"; $("mfaSetup").hidden = true;
+    $("mfaText").textContent = "Open your authenticator app and enter the 6-digit code for UNDERGROUND.";
+  } else {
+    for (const x of (f?.all || [])) if (x.status !== "verified") await sb.auth.mfa.unenroll({ factorId: x.id });
+    const { data: en, error: e2 } = await sb.auth.mfa.enroll({ factorType: "totp", friendlyName: "UNDERGROUND admin" });
+    $("mfaTitle").textContent = "Set up 2FA";
+    if (e2) {
+      $("mfaSetup").hidden = true; $("mfaBtn").disabled = true;
+      $("mfaText").textContent = "Could not start two-step setup (" + e2.message + "). In Supabase → Authentication → Multi-Factor, make sure TOTP is enabled, then reload this page.";
+      return false;
+    }
+    mfaFactor = en.id;
+    $("mfaQr").src = en.totp.qr_code; $("mfaSecret").textContent = en.totp.secret; $("mfaSetup").hidden = false;
+    $("mfaText").textContent = "Admin access now needs a second step. Scan this QR code with Google Authenticator, Authy or 1Password, then enter the 6-digit code it shows. You only do this once.";
+  }
+  $("mfaCode").value = ""; setTimeout(() => $("mfaCode").focus(), 50);
+  return false;
+}
+$("mfaForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const code = $("mfaCode").value.replace(/\D/g, "");
+  if (code.length !== 6) { toast("warning", "Enter the 6-digit code", "It is shown in your authenticator app."); return; }
+  $("mfaBtn").disabled = true;
+  const { error } = await sb.auth.mfa.challengeAndVerify({ factorId: mfaFactor, code });
+  $("mfaBtn").disabled = false;
+  if (error) { toast("error", "Code not accepted", "Check that your phone's time is correct and try the newest code."); $("mfaCode").value = ""; $("mfaCode").focus(); return; }
+  $("mfa").hidden = true;
+  toast("success", "Verified", "Two-step verification passed.");
+  session();
+});
+$("mfaOut").addEventListener("click", async () => { await sb.auth.signOut(); location.replace("/"); });
+
 function showLogin() { $("app").hidden = true; location.replace("/#/account"); }
 
 $("loginForm").onsubmit = async (e) => {
