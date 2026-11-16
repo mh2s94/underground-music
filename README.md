@@ -23,19 +23,14 @@ RLS is enabled. Published articles are public; article writes require membership
 4. In Cloudflare Pages → Settings → Variables and Secrets, add these as **Secrets**:
    - `SUPABASE_URL` = `https://lhhmzfwjznlwkentbakv.supabase.co`
    - `SUPABASE_ANON_KEY` = your Supabase publishable key (or legacy anon key)
-5. Add one or more AI provider API keys as **Secrets**. The router tries configured providers in order and automatically falls back after a provider error, timeout, rate limit, or quota failure:
-   - `ANTHROPIC_API_KEY` — Claude
-   - `GEMINI_API_KEY` — Google Gemini
-   - `OPENAI_API_KEY` — OpenAI
-   - `DEEPSEEK_API_KEY` — DeepSeek
-   - `MISTRAL_API_KEY` — Mistral
-   - `GROQ_API_KEY` — Groq
-   - `OPENROUTER_API_KEY` — OpenRouter
+5. AI providers. The generator works with any of these; configure at least one:
+   - **Cloudflare Workers AI (free, no key)**: Pages → Settings → Bindings → add a Workers AI binding named `AI`.
+   - Secrets: `GEMINI_API_KEY`, `GROQ_API_KEY`, `OPENROUTER_API_KEY`, `MISTRAL_API_KEY`, `DEEPSEEK_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`.
+   The generator uses hedged requests: it starts the first provider, starts the next one immediately if it fails or after 15 s if it is slow, and returns the first valid article (all within ~75 s). Replies are requested in a simple tagged text format and parsed tolerantly, so a malformed reply from one model does not fail the request.
 6. Optional plain-text configuration variables:
-   - `AI_PROVIDER_ORDER` = `claude,gemini,openai,deepseek,mistral,groq,openrouter,workersai`
-   - Model overrides: `CLAUDE_MODEL`, `GEMINI_MODEL`, `OPENAI_MODEL`, `DEEPSEEK_MODEL`, `MISTRAL_MODEL`, `GROQ_MODEL`, `OPENROUTER_MODEL`, `WORKERSAI_MODEL`
-6b. Optional free fallback without an API key: Cloudflare Workers AI. In Cloudflare Pages → Settings → Bindings, add a **Workers AI** binding with variable name `AI` (for Production and Preview), then redeploy. It uses Cloudflare's free daily Neuron allocation; default model `@cf/meta/llama-3.3-70b-instruct-fp8-fast`.
-6c. Optional: `YOUTUBE_API_KEY` (Secret, YouTube Data API v3) for more reliable video lookup. Without it, the generator reads YouTube's public search page and falls back to a search link if no video is found.
+   - `AI_PROVIDER_ORDER` (default `gemini,workersai,groq,openrouter,mistral,deepseek,openai,claude`)
+   - Model overrides: `GEMINI_MODEL`, `WORKERSAI_MODEL`, `GROQ_MODEL`, `OPENROUTER_MODEL`, `MISTRAL_MODEL`, `DEEPSEEK_MODEL`, `OPENAI_MODEL`, `CLAUDE_MODEL`
+   - `YOUTUBE_API_KEY` (Secret, optional, YouTube Data API v3) for more reliable video lookup. Without it, the generator reads YouTube's public search page and falls back to a search link if no video is found.
 7. Redeploy the latest commit after changing environment variables.
 8. Open `/admin.html` and sign in.
 
