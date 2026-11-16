@@ -12,6 +12,9 @@ Static Cloudflare Pages site with a Supabase-backed editorial workflow and multi
 ## Public site
 `index.html` + `assets/bento.css` + `assets/bento.js`: a "Neon Basement" bento dashboard (Bebas Neue / Inter / Space Mono, neon pink #FF2E63 + UV #7B5CFF, VHS scanlines) with four views (Dashboard, Articles, About, Account), splash screen, animated counters and charts, and an article reader at `#/a/<slug>`. All numbers and charts are computed from published articles. To enable the "Submit your demo" and "Contact" buttons, set `SUBMIT_EMAIL` at the top of `assets/bento.js`.
 
+## Scene radar (music news)
+`functions/api/news.js` reads the public RSS feeds of heavy-music sites (Metal Injection, MetalSucks, Theprp, Decibel, Loudwire metal, New Noise, Distorted Sound), tags each headline with our genres, guesses the band name, and caches the list for 15 minutes. No API key needed. The public "Underground wire" shows headlines linking to the original sites; the admin **Scene radar** panel has a **Write article** button that fills the AI generator with the facts and adds a source credit. Only headlines, short summaries and links are used — full articles stay on the original sites. Edit the `SOURCES` list in that file to add or remove feeds.
+
 ## Visitor accounts (sign up, saved articles, comments, demo submissions)
 1. Supabase Dashboard → SQL Editor → paste and run `supabase/community.sql` (safe to re-run).
 2. Authentication → Sign In / Providers → Email: enable **Allow new users to sign up** and keep **Confirm email** on.
