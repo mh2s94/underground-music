@@ -12,6 +12,14 @@
 <meta property="og:url" content="https://music.mikasa.me/">
 <meta property="og:title" content="UNDERGROUND — Independent Extreme Music Magazine">
 <meta property="og:description" content="News, reviews, charts and basement radio for metalcore, deathcore, hardcore and the sounds beneath them.">
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta property="og:image" content="https://music.mikasa.me/assets/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://music.mikasa.me/assets/og.png">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#050409">
 <meta name="description" content="UNDERGROUND — an independent extreme music magazine covering metalcore, hardcore, deathcore and the sounds beneath them.">
@@ -55,7 +63,11 @@
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/></svg>
         <span class="nav-tip">Charts</span>
       </button>
-      <button class="nav-btn" type="button" data-view="about" aria-label="About">
+      <button class="nav-btn nav-search" type="button" id="navSearch" aria-label="Search" aria-keyshortcuts="/ Control+K">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+        <span class="nav-tip">Search</span>
+      </button>
+      <button class="nav-btn nav-about" type="button" data-view="about" aria-label="About">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5"/><path d="M12 7.5v.5"/></svg>
         <span class="nav-tip">About</span>
       </button>
@@ -308,6 +320,7 @@
               <div class="ft-mono ft-h">Contact</div>
               <ul>
                 <li><a href="https://www.instagram.com/mh2s___/" target="_blank" rel="noopener noreferrer">Instagram · @mh2s___</a></li>
+                <li><a href="mailto:hello@mikasa.me">hello@mikasa.me</a></li>
                 <li><button type="button" class="ft-linkbtn" data-demo>Demo submissions</button></li>
               </ul>
             </div>
@@ -316,7 +329,7 @@
       </div>
       <div class="ft-bar">
         <span>© <span id="ftYear">2026</span> UNDERGROUND Magazine. All rights reserved.</span>
-        <span>Founded and edited by Mauliyadi Hamsa. Headlines in the wire belong to their original publishers.</span>
+        <span>Founded and edited by Mauliyadi Hamsa. Headlines in the wire belong to their original publishers. <a href="/privacy.html" class="ft-legal">Privacy</a> · <a href="/terms.html" class="ft-legal">Terms</a></span>
         <button class="ft-top" type="button" id="ftTop"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>Back to top</button>
       </div>
     </footer>
@@ -349,6 +362,19 @@
     </div>
   </div>
   <audio id="audio" preload="none"></audio>
+  </div>
+</div>
+
+<!-- Search -->
+<div class="search" id="search" hidden>
+  <div class="search-backdrop" data-close-search></div>
+  <div class="search-sheet" role="dialog" aria-modal="true" aria-label="Search UNDERGROUND">
+    <div class="search-bar">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+      <input id="searchInput" type="search" placeholder="Bands, songs, articles, genres…" autocomplete="off" spellcheck="false" aria-controls="searchResults" enterkeyhint="search">
+      <button class="search-close" type="button" data-close-search aria-label="Close search">Close</button>
+    </div>
+    <div class="search-results" id="searchResults" aria-live="polite"></div>
   </div>
 </div>
 

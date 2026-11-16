@@ -6,7 +6,7 @@
   const SUPABASE_URL = "https://lhhmzfwjznlwkentbakv.supabase.co";
   const SUPABASE_KEY = "sb_publishable_MQDqmSmPb3qiSODbBOSKmA_U7aBEFtN";
   // Where "Submit your demo" and "Contact" send people. Leave empty to show a "coming soon" note.
-  const SUBMIT_EMAIL = "";
+  const SUBMIT_EMAIL = "hello@mikasa.me";
 
   const GENRES = ["Metalcore", "Deathcore", "Hardcore", "Darkcore", "Post-Hardcore", "Black Metal", "Djent", "Underground"];
   const WARM = new Set(["deathcore", "hardcore", "darkcore", "black metal"]);
@@ -189,7 +189,7 @@
       const img = coverOf(a);
       const fresh = now - new Date(a.published_at) < 14 * DAY;
       const initials = name.split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase();
-      return `<a class="avatar" href="#/a/${keyOf(a)}" title="${esc(name)}"><span class="ring"><span class="face">${esc(initials)}${img ? `<img src="${esc(img)}" alt="" loading="lazy" onerror="this.remove()">` : ""}</span>${fresh ? '<span class="status" aria-label="New"></span>' : ""}</span><span class="name">${esc(name)}</span></a>`;
+      return `<a class="avatar" href="/a/${keyOf(a)}" title="${esc(name)}"><span class="ring"><span class="face">${esc(initials)}${img ? `<img src="${esc(img)}" alt="" loading="lazy" onerror="this.remove()">` : ""}</span>${fresh ? '<span class="status" aria-label="New"></span>' : ""}</span><span class="name">${esc(name)}</span></a>`;
     }).join("") : `<div class="empty-note" style="width:100%">Bands appear here as stories are published.</div>`;
 
     $("kpi30").dataset.count = articles.filter((a) => now - new Date(a.published_at) < 30 * DAY).length;
@@ -200,7 +200,7 @@
 
     const vids = articles.filter((a) => ytId(a.content)).slice(0, 4);
     $("sessions").innerHTML = vids.length ? vids.map((a) => `
-      <a class="session" href="#/a/${keyOf(a)}">
+      <a class="session" href="/a/${keyOf(a)}">
         ${art(a.id)}<img src="https://i.ytimg.com/vi/${ytId(a.content)}/hqdefault.jpg" alt="" loading="lazy" onerror="this.remove()">
         <span class="shade"></span><span class="play" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l13-7.5z"/></svg></span>
         <span class="cap">${esc(a.title)}</span></a>`).join("")
@@ -209,7 +209,7 @@
 
     const icoReview = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg>';
     $("wire").innerHTML = articles.length ? articles.slice(0, 6).map((a) => `
-      <li><a href="#/a/${keyOf(a)}"><span class="ico${isWarm(a.genre) ? " warm" : ""}">${icoReview}</span>
+      <li><a href="/a/${keyOf(a)}"><span class="ico${isWarm(a.genre) ? " warm" : ""}">${icoReview}</span>
       <span style="min-width:0"><div class="t">${esc(a.title)}</div><div class="time">${esc(a.genre || "Underground")} · ${timeAgo(a.published_at)}</div></span></a></li>`).join("")
       : `<li><div class="empty-note">No updates yet.</div></li>`;
   }
@@ -452,7 +452,7 @@
   function renderGrid(animate) {
     const list = genre === "All" ? articles : articles.filter((a) => (a.genre || "Underground").toLowerCase() === genre.toLowerCase());
     $("grid").innerHTML = list.length ? list.map((a) => `
-      <a class="card lift acard bento-item" href="#/a/${keyOf(a)}">
+      <a class="card lift acard bento-item" href="/a/${keyOf(a)}">
         <div class="art-wrap">${media(a)}${ytId(a.content) ? `<span class="vid"><svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"/></svg>Video</span>` : ""}</div>
         <div class="body">${tagHtml(a.genre)}<h3>${esc(a.title)}</h3>${a.excerpt ? `<p>${esc(a.excerpt)}</p>` : ""}
           <div class="meta"><span>${fmtDate(a.published_at)}</span><span>${readTime(a.content)}</span></div></div>
@@ -524,15 +524,34 @@
     if (name === "charts" && changed) loadCharts();
     if (changed) { $("main").scrollTop = 0; enter($("view-" + name)); }
   }
-  document.querySelectorAll(".nav-btn").forEach((b) => b.addEventListener("click", () => { location.hash = "/" + b.dataset.view; }));
+  // Views live in the hash (#/music); articles have real paths (/a/<slug>) that Google and link previews can read.
+  function go(target) { // target: "/music" or "/a/slug"
+    if (target.startsWith("/a/")) history.pushState(null, "", target);
+    else if (location.pathname !== "/") history.pushState(null, "", "/#" + target);
+    else { location.hash = target; return; }
+    route();
+  }
+  document.querySelectorAll(".nav-btn[data-view]").forEach((b) => b.addEventListener("click", () => go("/" + b.dataset.view)));
+  document.addEventListener("click", (e) => {
+    const a = e.target.closest('a[href^="/a/"], a[href^="#/"]');
+    if (!a || e.defaultPrevented || e.button || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || a.target === "_blank") return;
+    const href = a.getAttribute("href");
+    if (href.startsWith("#/") && location.pathname === "/") return; // plain hash link: browser handles it
+    e.preventDefault(); go(href.startsWith("#") ? href.slice(1) : href);
+  });
+  window.addEventListener("popstate", route);
   window.addEventListener("resize", movePill);
 
   function route() {
     const h = location.hash;
-    const m = h.match(/^#\/a\/(.+)$/);
-    if (m) { if (!document.querySelector(".view.entered")) showView(view); openArticle(decodeURIComponent(m[1])); return; }
-    closeReader(true);
+    const legacy = h.match(/^#\/a\/(.+)$/); // old share links: /#/a/slug → /a/slug
+    if (legacy) { history.replaceState(null, "", "/a/" + legacy[1]); return route(); }
+    const pm = location.pathname.match(/^\/a\/([^/]+)\/?$/);
     const v = (h.match(/^#\/(\w+)/) || [])[1];
+    if (pm && v) { history.replaceState(null, "", "/" + h); } // a view was requested while on an article path
+    else if (pm) { if (!document.querySelector(".view.entered")) showView(view); openArticle(decodeURIComponent(pm[1])); return; }
+    else if (location.pathname !== "/" && location.pathname !== "/index.html") { history.replaceState(null, "", "/" + h); }
+    closeReader(true);
     showView(v || "home");
   }
   window.addEventListener("hashchange", route);
@@ -545,7 +564,7 @@
       const { data } = await (/^[0-9a-f-]{36}$|^\d+$/i.test(key) ? q.eq("id", key) : q.eq("slug", key)).maybeSingle();
       a = data;
     }
-    if (!a) { toast("warning", "Story not found", "It may have been moved or unpublished."); location.hash = "/" + view; return; }
+    if (!a) { toast("warning", "Story not found", "It may have been moved or unpublished."); history.replaceState(null, "", "/#/" + view); route(); return; }
     currentArticle = a;
     updateSaveBtn();
     renderComments(a);
@@ -570,7 +589,7 @@
     $("reader").hidden = true;
     document.body.classList.remove("locked");
     document.title = "UNDERGROUND — Independent Extreme Music Magazine";
-    if (!silent && location.hash.startsWith("#/a/")) location.hash = "/" + view;
+    if (!silent && location.pathname.startsWith("/a/")) history.pushState(null, "", "/#/" + view);
     currentArticle = null;
     lastFocus?.focus?.();
   }
@@ -592,7 +611,7 @@
   };
 
   // ---- Buttons -------------------------------------------------------------
-  $("readLatest").onclick = () => { if (articles[0]) location.hash = "/a/" + keyOf(articles[0]); else toast("info", "No stories yet", "The first articles are on their way."); };
+  $("readLatest").onclick = () => { if (articles[0]) go("/a/" + keyOf(articles[0])); else toast("info", "No stories yet", "The first articles are on their way."); };
   document.querySelectorAll("[data-demo]").forEach((b) => b.onclick = () => openDemo());
 
   // ---- Footer ----------------------------------------------------------------
@@ -643,7 +662,7 @@
     else { btn.disabled = false; if (btn.dataset.html) btn.innerHTML = btn.dataset.html; }
   }
   function requireAuth(reason, then) {
-    sessionStorage.setItem("ug_return", location.hash || "#/home");
+    sessionStorage.setItem("ug_return", location.pathname.startsWith("/a/") ? location.pathname : (location.hash || "#/home"));
     if (then) sessionStorage.setItem("ug_then", then);
     toast("info", "Sign in to " + reason, "It's free and takes less than a minute.", { duration: 4500 });
     authTab = "signin";
@@ -683,7 +702,7 @@
     const then = sessionStorage.getItem("ug_then");
     sessionStorage.removeItem("ug_return"); sessionStorage.removeItem("ug_then");
     if (fromEmail && !recovery) toast("success", "You're in", "Your account is ready. Welcome to UNDERGROUND.");
-    if (back && back !== "#/account" && !recovery) location.hash = back.slice(1);
+    if (back && back !== "#/account" && !recovery) go(back.startsWith("#") ? back.slice(1) : back);
     if (then === "demo") setTimeout(openDemo, 350);
   }
 
@@ -729,6 +748,7 @@
         <div class="strength" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
         <p class="fine" id="pwHint" style="margin:-6px 0 0">At least 8 characters. Mix letters, numbers and symbols for a stronger password.</p>
         <div class="form-error" role="alert" hidden></div>
+        <p class="hint" style="margin:0;text-transform:none;letter-spacing:.02em">By creating an account you agree to our <a href="/terms.html" target="_blank" style="color:var(--uv-hi)">Terms</a> and <a href="/privacy.html" target="_blank" style="color:var(--uv-hi)">Privacy policy</a>.</p>
         <button class="btn btn-forest" type="submit">Create account <span class="arr" aria-hidden="true">→</span></button>
         <p class="fine" style="margin:0;text-align:center">By joining you agree to keep comments respectful.</p>
       </form>`;
@@ -805,7 +825,7 @@
           <div class="card pad bento-item">
             <div class="card-title"><h2>Saved articles</h2><span class="hint">${saved.length} saved</span></div>
             ${saved.length ? `<div class="saved-grid">${saved.map((a) => `
-              <a class="card lift acard" href="#/a/${keyOf(a)}"><div class="art-wrap">${media(a)}</div>
+              <a class="card lift acard" href="/a/${keyOf(a)}"><div class="art-wrap">${media(a)}</div>
               <div class="body">${tagHtml(a.genre)}<h3>${esc(a.title)}</h3><div class="meta"><span>${fmtDate(a.published_at)}</span><span>${readTime(a.content)}</span></div></div></a>`).join("")}</div>`
               : `<div class="empty-note">Tap <b>Save</b> on any article and it will wait for you here.</div>`}
           </div>
@@ -902,7 +922,7 @@
       toast("success", "Welcome back", "You're signed in.");
       const back = sessionStorage.getItem("ug_return"); const then = sessionStorage.getItem("ug_then");
       sessionStorage.removeItem("ug_return"); sessionStorage.removeItem("ug_then");
-      if (back && back !== "#/account") location.hash = back.slice(1);
+      if (back && back !== "#/account") go(back.startsWith("#") ? back.slice(1) : back);
       if (then === "demo") setTimeout(openDemo, 400);
       return;
     }
@@ -1312,6 +1332,101 @@
     if (view === "charts") loadCharts();
     loadPeek();
   });
+
+  // ---- Search ----------------------------------------------------------------
+  // Articles (published, searched on the server), songs from Basement radio, and genres.
+  let searchRun = 0, searchTimer = null, searchItems = [];
+  const ytThumb = (a) => { const v = ytId(a.content); return v ? `https://i.ytimg.com/vi/${v}/mqdefault.jpg` : ""; };
+  const hl = (text, q) => {
+    const t = esc(text || ""); if (!q) return t;
+    const words = q.split(/\s+/).filter((w) => w.length > 1).map((w) => esc(w).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+    return words.length ? t.replace(new RegExp("(" + words.join("|") + ")", "gi"), "<mark>$1</mark>") : t;
+  };
+  const thumb = (src, seed) => `<span class="sr-thumb">${src ? `<img src="${esc(src)}" alt="" loading="lazy" onerror="this.remove()">` : ""}${art(seed)}</span>`;
+  function openSearch() {
+    if (!$("search").hidden) return;
+    lastFocus = document.activeElement;
+    $("search").hidden = false; document.body.classList.add("locked");
+    $("searchInput").value = ""; renderSearch("");
+    setTimeout(() => $("searchInput").focus(), 30);
+  }
+  function closeSearch() {
+    if ($("search").hidden) return;
+    $("search").hidden = true;
+    if ($("reader").hidden) document.body.classList.remove("locked");
+    lastFocus?.focus?.();
+  }
+  function openChartsGenre(g) {
+    if (!UGG) return;
+    const grp = UGG.GROUPS.find((x) => x.name.toLowerCase() === g.toLowerCase());
+    if (grp) { chartGroup = grp.name; chartGenre = null; } else { chartGroup = UGG.groupOf(g); chartGenre = g; }
+    renderGenreNav();
+    if (view === "charts" && location.pathname === "/") loadCharts(); else go("/charts");
+  }
+  async function renderSearch(raw) {
+    const q = raw.trim(), run = ++searchRun, low = q.toLowerCase();
+    if (!q) {
+      const latest = articles.slice(0, 4);
+      const popular = ["Deathcore", "Metalcore", "Black Metal", "Hardcore Punk", "Djent", "Doom Metal", "Nu Metal", "Post-Hardcore"];
+      $("searchResults").innerHTML = (latest.length ? `<div class="sr-h">Latest stories</div>` + latest.map((a) => `<a class="sr-item" href="/a/${keyOf(a)}" data-sr>${thumb(a.cover_image_url || ytThumb(a), a.id)}<span><span class="sr-t">${esc(a.title)}</span><span class="sr-s">${esc(a.band_name || a.genre || "")}</span></span><span class="sr-k">Story</span></a>`).join("") : "")
+        + `<div class="sr-h">Browse charts by genre</div><div class="sr-chips">${popular.map((g) => `<button class="pill" type="button" data-sr-genre="${esc(g)}">${esc(g)}</button>`).join("")}</div>`;
+      return;
+    }
+    // Instant local results
+    const match = (...f) => f.some((x) => String(x || "").toLowerCase().includes(low));
+    const localArts = articles.filter((a) => match(a.title, a.band_name, a.album_name, a.excerpt, a.genre, (a.tags || []).join(" ")));
+    const songs = tracks.filter((t) => match(t.title, t.artist, t.album, t.genre)).slice(0, 6);
+    const genres = UGG ? [...UGG.GROUPS.map((g) => g.name), ...UGG.ALL].filter((g, i, arr) => g.toLowerCase().includes(low) && arr.findIndex((x) => x.toLowerCase() === g.toLowerCase()) === i).slice(0, 8) : [];
+    const paint = (arts) => {
+      if (run !== searchRun) return;
+      searchItems = [];
+      let html = "";
+      if (arts.length) html += `<div class="sr-h">Stories</div>` + arts.slice(0, 8).map((a) => `<a class="sr-item" href="/a/${keyOf(a)}" data-sr>${thumb(a.cover_image_url || ytThumb(a), a.id)}<span><span class="sr-t">${hl(a.title, q)}</span><span class="sr-s">${hl([a.band_name, a.genre].filter(Boolean).join(" · "), q)}</span></span><span class="sr-k">Story</span></a>`).join("");
+      if (songs.length) html += `<div class="sr-h">Songs on Basement radio</div>` + songs.map((t) => `<button class="sr-item" type="button" data-sr data-sr-track="${esc(t.id)}">${thumb(t.cover_url, t.id)}<span><span class="sr-t">${hl(t.title, q)}</span><span class="sr-s">${hl(t.artist + (t.genre ? " · " + t.genre : ""), q)}</span></span><span class="sr-k">Play</span></button>`).join("");
+      if (genres.length) html += `<div class="sr-h">Genres</div><div class="sr-chips">${genres.map((g) => `<button class="pill" type="button" data-sr-genre="${esc(g)}">${hl(g, q)}</button>`).join("")}</div>`;
+      $("searchResults").innerHTML = html || `<div class="sr-empty"><strong>No results for “${esc(q)}”</strong>Try a band name, a song or a genre like deathcore.</div>`;
+      hydrateCovers($("searchResults"));
+    };
+    paint(localArts);
+    // Older stories that aren't loaded yet come from the server
+    const term = q.replace(/[^\p{L}\p{N}\s'-]/gu, " ").replace(/\s+/g, " ").trim().slice(0, 60);
+    if (term.length < 2) return;
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(async () => {
+      const like = `*${term}*`;
+      let data = null;
+      try { ({ data } = await db.from("articles").select("id,slug,title,excerpt,content,cover_image_url,genre,tags,published_at,band_name,album_name")
+        .eq("status", "published").or(`title.ilike.${like},band_name.ilike.${like},album_name.ilike.${like},excerpt.ilike.${like}`)
+        .order("published_at", { ascending: false }).limit(10)); } catch { return; }
+      if (run !== searchRun || !data) return;
+      const seen = new Set(localArts.map((a) => a.id));
+      paint([...localArts, ...data.filter((a) => !seen.has(a.id))]);
+    }, 250);
+  }
+  $("navSearch").addEventListener("click", openSearch);
+  $("searchInput").addEventListener("input", (e) => renderSearch(e.target.value));
+  $("searchInput").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); $("searchResults").querySelector("[data-sr], [data-sr-genre]")?.click(); }
+    if (e.key === "ArrowDown") { e.preventDefault(); $("searchResults").querySelector("[data-sr]")?.focus(); }
+  });
+  $("searchResults").addEventListener("keydown", (e) => {
+    if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+    const items = [...$("searchResults").querySelectorAll("[data-sr]")]; const i = items.indexOf(document.activeElement);
+    if (i < 0) return; e.preventDefault();
+    if (e.key === "ArrowUp" && i === 0) $("searchInput").focus(); else items[Math.max(0, Math.min(items.length - 1, i + (e.key === "ArrowDown" ? 1 : -1)))].focus();
+  });
+  $("search").addEventListener("click", (e) => {
+    if (e.target.closest("[data-close-search]")) { closeSearch(); return; }
+    const g = e.target.closest("[data-sr-genre]"); if (g) { closeSearch(); openChartsGenre(g.dataset.srGenre); return; }
+    const t = e.target.closest("[data-sr-track]");
+    if (t) { closeSearch(); const i = tracks.findIndex((x) => String(x.id) === t.dataset.srTrack); if (i >= 0) playFrom(tracks, i); return; }
+    if (e.target.closest("a[data-sr]")) closeSearch(); // the global link handler opens the story
+  });
+  document.addEventListener("keydown", (e) => {
+    const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName || "") || document.activeElement?.isContentEditable;
+    if ((e.key === "/" && !typing) || (e.key.toLowerCase() === "k" && (e.ctrlKey || e.metaKey))) { e.preventDefault(); openSearch(); }
+    else if (e.key === "Escape" && !$("search").hidden) { e.stopImmediatePropagation(); closeSearch(); }
+  }, true);
 
   heroFloor($("heroFloor"));
   recTimer();

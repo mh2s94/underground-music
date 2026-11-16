@@ -6,6 +6,9 @@
   // Official address is music.mikasa.me: move visitors from the old pages.dev address (keeps the page they asked for)
   if (location.hostname === "underground-music.pages.dev") location.replace("https://music.mikasa.me" + location.pathname + location.search + location.hash);
 </script>
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#050409">
 <meta name="robots" content="noindex">
@@ -629,7 +632,7 @@ function renderList() {
       <div style="min-width:0"><div class="t">${esc(a.title)}</div>
         <div class="sub"><span class="badge ${esc(a.status)}">${esc(a.status)}</span><span class="mono muted">${esc(a.genre || "")} · ${new Date(a.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span></div></div>
       <div class="actions">
-        ${a.status === "published" ? `<a class="btn btn-sm btn-ghost" href="/#/a/${encodeURIComponent(a.slug || a.id)}" target="_blank" rel="noopener">View</a>` : ""}
+        ${a.status === "published" ? `<a class="btn btn-sm btn-ghost" href="/a/${encodeURIComponent(a.slug || a.id)}" target="_blank" rel="noopener">View</a>` : ""}
         <button class="btn btn-sm" type="button" data-edit="${esc(a.id)}">Edit</button>
         <button class="btn btn-sm btn-danger" type="button" data-del="${esc(a.id)}">Delete</button>
       </div>
