@@ -12,6 +12,14 @@ Static Cloudflare Pages site with a Supabase-backed editorial workflow and multi
 ## Public site
 `index.html` + `assets/bento.css` + `assets/bento.js`: a bento-grid dashboard with three views (Dashboard, Articles, About), splash screen, animated counters and charts, and an article reader at `#/a/<slug>`. All numbers and charts are computed from published articles. To enable the "Submit your demo" and "Contact" buttons, set `SUBMIT_EMAIL` at the top of `assets/bento.js`.
 
+## Visitor accounts (sign up, saved articles, comments, demo submissions)
+1. Supabase Dashboard → SQL Editor → paste and run `supabase/community.sql` (safe to re-run).
+2. Authentication → Sign In / Providers → Email: enable **Allow new users to sign up** and keep **Confirm email** on.
+3. Authentication → URL Configuration: set **Site URL** to `https://underground-music.pages.dev` and add `https://underground-music.pages.dev/**` to **Redirect URLs** (plus your custom domain if you add one).
+4. Optional: Authentication → Emails → customise the confirmation and reset-password templates with the UNDERGROUND name.
+
+Members can save articles, comment (5 per minute limit), and submit up to 3 demos per day. Admins can delete any comment from the article reader and manage demos in the admin **Demo inbox**.
+
 ## Supabase
 Project ref: lhhmzfwjznlwkentbakv
 Region: Singapore

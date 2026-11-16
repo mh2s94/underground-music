@@ -150,6 +150,17 @@
       </div>
       <div class="rows" id="articles"></div>
     </section>
+
+    <!-- Demo inbox -->
+    <section class="panel card-pad" style="margin-top:20px" aria-labelledby="demoTitle">
+      <div class="list-head">
+        <h2 id="demoTitle" style="margin:0;font-size:18px">Demo inbox <span class="badge" id="demoNew" hidden></span></h2>
+        <select class="select" id="demoFilter" style="max-width:200px;min-height:42px" aria-label="Filter demos by status">
+          <option value="">All statuses</option><option value="new">New</option><option value="listened">Listened</option><option value="featured">Featured</option><option value="declined">Declined</option>
+        </select>
+      </div>
+      <div class="rows" id="demos"></div>
+    </section>
   </div>
 </main>
 
@@ -182,6 +193,7 @@ async function session() {
   $("login").hidden = true; $("app").hidden = false; $("userBar").hidden = false;
   $("userEmail").textContent = s.user.email || "";
   loadArticles();
+  loadDemos();
 }
 function showLogin() { $("login").hidden = false; $("app").hidden = true; $("userBar").hidden = true; setTimeout(() => $("email").focus(), 50); }
 
@@ -387,6 +399,50 @@ function deleteArticle(btn) {
   btn.dataset.armed = "1"; btn.textContent = "Confirm?"; btn.style.borderColor = "var(--danger)"; btn.style.color = "var(--danger)";
   btn._t = setTimeout(() => { delete btn.dataset.armed; btn.textContent = "Delete"; btn.style.borderColor = ""; btn.style.color = ""; }, 3000);
 }
+
+/* ---------- Demo inbox ---------- */
+let allDemos = [];
+async function loadDemos() {
+  const { data, error } = await sb.from("demo_submissions").select("*").order("created_at", { ascending: false }).limit(200);
+  if (error) {
+    const missing = /does not exist|schema cache/i.test(error.message || "") || error.code === "42P01" || error.code === "PGRST205";
+    $("demos").innerHTML = `<p class="muted" style="margin:8px 0 0">${missing ? "Run <span class=\"mono\">supabase/community.sql</span> in the Supabase SQL Editor to enable visitor accounts and the demo inbox." : esc(error.message)}</p>`;
+    return;
+  }
+  allDemos = data || [];
+  const fresh = allDemos.filter((d) => d.status === "new").length;
+  $("demoNew").hidden = !fresh; $("demoNew").textContent = fresh + " new";
+  renderDemos();
+}
+function renderDemos() {
+  const f = $("demoFilter").value;
+  const list = f ? allDemos.filter((d) => d.status === f) : allDemos;
+  if (!list.length) { $("demos").innerHTML = `<p class="muted" style="margin:8px 0 0">${allDemos.length ? "No demos with this status." : "No demo submissions yet."}</p>`; return; }
+  $("demos").innerHTML = list.map((d, i) => `
+    <div class="row" style="--d:${Math.min(i, 10) * 40}ms;grid-template-columns:minmax(0,1fr) auto">
+      <div style="min-width:0">
+        <div class="t">${esc(d.band_name)} <span class="muted" style="font-weight:400">· ${esc(d.genre || "")}${d.country ? " · " + esc(d.country) : ""}</span></div>
+        ${d.message ? `<div class="muted" style="font-size:14px;margin-top:4px;white-space:pre-line">${esc(d.message)}</div>` : ""}
+        <div class="sub">
+          <a class="btn btn-sm" href="${esc(d.link)}" target="_blank" rel="noopener noreferrer">Listen ↗</a>
+          <a class="btn btn-sm btn-ghost" href="mailto:${esc(d.contact_email)}?subject=${encodeURIComponent("Your demo for UNDERGROUND: " + d.band_name)}">${esc(d.contact_email)}</a>
+          <span class="mono muted">${new Date(d.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span>
+        </div>
+      </div>
+      <select class="select" data-demo-status="${esc(d.id)}" aria-label="Status for ${esc(d.band_name)}" style="min-height:42px;width:150px">
+        ${["new", "listened", "featured", "declined"].map((s) => `<option value="${s}"${s === d.status ? " selected" : ""}>${s[0].toUpperCase() + s.slice(1)}</option>`).join("")}
+      </select>
+    </div>`).join("");
+  $("demos").querySelectorAll("[data-demo-status]").forEach((sel) => sel.onchange = async () => {
+    const { error } = await sb.from("demo_submissions").update({ status: sel.value }).eq("id", sel.dataset.demoStatus);
+    if (error) { toast("error", "Could not update status", error.message); return; }
+    const d = allDemos.find((x) => x.id === sel.dataset.demoStatus); if (d) d.status = sel.value;
+    const fresh = allDemos.filter((x) => x.status === "new").length;
+    $("demoNew").hidden = !fresh; $("demoNew").textContent = fresh + " new";
+    toast("success", "Status updated", d ? d.band_name + " → " + sel.value : "");
+  });
+}
+$("demoFilter").addEventListener("change", renderDemos);
 
 sb.auth.onAuthStateChange((evt) => { if (evt === "SIGNED_OUT") showLogin(); });
 session();
