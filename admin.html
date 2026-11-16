@@ -1,39 +1,395 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#090909"><title>Admin — UNDERGROUND</title><style>
-:root{color-scheme:dark;--bg:#090909;--panel:#151515;--line:#303030;--red:#bd2029;--muted:#999}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:#f3f3f3;font:15px/1.5 Arial,sans-serif}.wrap{width:min(1000px,92%);margin:32px auto}.brand{font-weight:1000;font-size:25px;letter-spacing:-1px}.brand span{color:var(--red)}h1{font-size:28px;margin:25px 0 6px}p,.muted{color:var(--muted)}.panel{background:var(--panel);border:1px solid var(--line);padding:22px;margin:18px 0;border-radius:4px}label{display:block;font-size:12px;text-transform:uppercase;letter-spacing:1px;margin:14px 0 6px;color:#bbb}input,textarea,select{width:100%;background:#090909;color:white;border:1px solid #444;padding:12px;font:inherit;border-radius:2px}textarea{min-height:120px;resize:vertical}button,.btn{background:var(--red);color:white;border:0;padding:12px 17px;font-weight:bold;text-transform:uppercase;letter-spacing:.5px;cursor:pointer;display:inline-block;text-decoration:none;margin:12px 8px 0 0}button.secondary{background:#333}button:disabled{opacity:.5}.row{display:grid;grid-template-columns:1fr 1fr;gap:14px}.hidden{display:none!important}.msg{padding:10px;background:#242424;margin-top:12px;white-space:pre-wrap}.item{border-top:1px solid var(--line);padding:14px 0;display:flex;justify-content:space-between;gap:12px;align-items:center}.item small{color:var(--muted)}@media(max-width:650px){.row{grid-template-columns:1fr}.wrap{margin:20px auto}.panel{padding:15px}}
-</style><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script></head>
-<body><main class="wrap"><a class="brand" href="/">UNDER<span>GROUND.</span></a><h1>Editorial Control Room</h1><p>Draft, generate, review and publish underground music coverage.</p>
-<section id="login" class="panel"><h2>Admin sign in</h2><label>Email</label><input id="email" type="email" autocomplete="username"><label>Password</label><input id="password" type="password" autocomplete="current-password"><button id="loginBtn">Sign in</button><div id="loginMsg" class="msg hidden"></div></section>
-<section id="app" class="hidden">
-<div class="panel"><div style="display:flex;justify-content:space-between;gap:12px;align-items:center"><b>New article</b><button class="secondary" id="logoutBtn">Sign out</button></div>
-<div class="row"><div><label>Band / artist</label><input id="band" placeholder="Band name"></div><div><label>Song / album title</label><input id="album" placeholder="e.g. Kingslayer"></div></div>
-<div class="row"><div><label>Genre</label><select id="genre"><option>Metalcore</option><option>Hardcore</option><option>Deathcore</option><option>Darkcore</option><option>Post-Hardcore</option><option>Black Metal</option><option>Djent</option><option>Underground</option></select></div><div><label>Article category</label><input id="category" placeholder="News, Review, Interview..." value="Review"></div></div>
-<label>Extra notes (optional)</label><textarea id="notes" placeholder="Optional: facts, angle or details you want the AI to include"></textarea>
-<button id="generateBtn">Generate English draft with AI</button><div id="aiMsg" class="msg hidden"></div>
-<label>Article title</label><input id="title" placeholder="Article headline">
-<label>URL slug</label><input id="slug" placeholder="article-url-slug">
-<label>Short excerpt</label><textarea id="excerpt" style="min-height:70px"></textarea>
-<label>Article body (English)</label><textarea id="content" style="min-height:320px"></textarea>
-<label>YouTube URL</label><input id="youtube" placeholder="https://www.youtube.com/watch?v=..."><div id="ytInfo" class="muted" style="font-size:13px;margin-top:4px"></div>
-<div class="row"><div><label>Cover image URL (optional)</label><input id="cover" placeholder="https://..."></div><div><label>Tags (comma separated)</label><input id="tags" placeholder="new release, review, underground"></div></div>
-<label>Status</label><select id="status"><option value="draft">Draft</option><option value="review">Needs review</option><option value="published">Publish now</option></select>
-<button id="saveBtn">Save article</button><div id="saveMsg" class="msg hidden"></div></div>
-<div class="panel"><h2>Articles</h2><div id="articles">Loading…</div></div></section></main>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0b">
+<meta name="robots" content="noindex">
+<title>Control Room — UNDERGROUND</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/assets/ui.css">
+<style>
+.page { padding: 32px 0 80px; }
+.page-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 28px; }
+.page-head h1 { font-size: clamp(44px, 7vw, 84px); }
+
+/* Login */
+.login { min-height: calc(100dvh - 65px); display: grid; place-items: center; padding: 32px 0; }
+.login-card { width: min(420px, 100% - 40px); padding: 32px; display: flex; flex-direction: column; gap: 18px; animation: sheetUp .6s var(--spring) both; }
+.login-card h1 { font-size: 56px; }
+
+/* Workspace */
+.workspace { display: grid; grid-template-columns: minmax(0, 380px) minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 980px) { .workspace { grid-template-columns: 1fr; } }
+.card-pad { padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+.card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.card-head h2 { margin: 0; font-size: 18px; font-weight: 700; letter-spacing: -.01em; }
+.gen { position: sticky; top: 84px; }
+@media (max-width: 980px) { .gen { position: static; } }
+.gen .btn-primary { width: 100%; min-height: 54px; font-size: 16px; }
+.phase { font-family: var(--font-mono); font-size: 12px; color: var(--muted); min-height: 18px; }
+.phase.active::before { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); margin-right: 8px; vertical-align: middle; animation: pulse 1.6s infinite; }
+
+.editor { position: relative; }
+.editor-body { display: flex; flex-direction: column; gap: 16px; }
+.editor.loading .editor-body { visibility: hidden; }
+.editor-skeleton { position: absolute; inset: 72px 24px 24px; display: none; flex-direction: column; gap: 14px; }
+.editor.loading .editor-skeleton { display: flex; }
+.counter { font-family: var(--font-mono); font-size: 11px; color: var(--faint); }
+.yt-preview { display: flex; gap: 12px; align-items: center; padding: 10px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--bg); animation: sheetUp .45s var(--spring) both; }
+.yt-preview img { width: 120px; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 8px; flex: none; }
+.yt-preview div { min-width: 0; font-size: 14px; }
+.yt-preview a { color: var(--accent); font-weight: 600; }
+.editing-flag { display: inline-flex; align-items: center; gap: 8px; }
+.save-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; padding-top: 6px; border-top: 1px solid var(--line); margin-top: 4px; padding-top: 18px; }
+
+/* Articles list */
+.list-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; }
+.rows { display: flex; flex-direction: column; }
+.row { display: grid; grid-template-columns: 72px minmax(0, 1fr) auto; gap: 16px; align-items: center; padding: 14px 0; border-top: 1px solid var(--line); animation: sheetUp .45s var(--spring) both; animation-delay: var(--d, 0ms); }
+.row .thumb { width: 72px; aspect-ratio: 16 / 10; border-radius: 8px; object-fit: cover; background: var(--surface-2); }
+.row .t { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row .sub { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 6px; }
+.row .actions { display: flex; gap: 6px; }
+@media (max-width: 640px) { .row { grid-template-columns: 56px minmax(0, 1fr); } .row .thumb { width: 56px; } .row .actions { grid-column: 1 / -1; } }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap">
+    <a class="brand" href="/" aria-label="Back to site"><span class="dot live" aria-hidden="true"></span><span>UNDER<b>GROUND</b></span></a>
+    <div id="userBar" style="display:flex;align-items:center;gap:10px" hidden>
+      <span class="mono muted" id="userEmail"></span>
+      <button class="btn btn-sm" type="button" id="logoutBtn">Sign out</button>
+    </div>
+  </div>
+</header>
+
+<!-- Login -->
+<section id="login" class="login" hidden>
+  <form class="panel login-card" id="loginForm" novalidate>
+    <span class="eyebrow"><span class="dot" aria-hidden="true"></span>Editorial access</span>
+    <h1 class="display">Control<br>room</h1>
+    <label class="field"><span>Email</span><input class="input" id="email" type="email" autocomplete="username" required></label>
+    <label class="field"><span>Password</span><input class="input" id="password" type="password" autocomplete="current-password" required></label>
+    <button class="btn btn-primary" type="submit" id="loginBtn">Sign in <span class="arrow" aria-hidden="true">→</span></button>
+  </form>
+</section>
+
+<!-- App -->
+<main id="app" class="page" hidden>
+  <div class="wrap">
+    <div class="page-head">
+      <div>
+        <span class="eyebrow"><span class="dot" aria-hidden="true"></span>Editorial control room</span>
+        <h1 class="display" style="margin-top:12px">Newsroom</h1>
+      </div>
+      <button class="btn" type="button" id="newBtn">+ New article</button>
+    </div>
+
+    <div class="workspace">
+      <!-- Generator -->
+      <section class="panel card-pad gen" aria-labelledby="genTitle">
+        <div class="card-head"><h2 id="genTitle">AI generator</h2><span class="badge">1 click</span></div>
+        <div id="genAlert" class="alert error" role="alert" hidden>
+          <span style="color:var(--danger)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v6"/><path d="M12 16.5v.5"/></svg></span>
+          <div><strong>Band / artist is required</strong><span class="muted">Type the band name, then generate.</span></div>
+        </div>
+        <label class="field"><span>Band / artist</span><input class="input" id="band" placeholder="Bring Me The Horizon" autocomplete="off"></label>
+        <label class="field"><span>Song / album</span><input class="input" id="album" placeholder="Kingslayer" autocomplete="off"></label>
+        <div class="grid-2">
+          <label class="field"><span>Genre</span><select class="select" id="genre"><option>Metalcore</option><option>Hardcore</option><option>Deathcore</option><option>Darkcore</option><option>Post-Hardcore</option><option>Black Metal</option><option>Djent</option><option>Underground</option></select></label>
+          <label class="field"><span>Type</span><select class="select" id="category"><option>Review</option><option>News</option><option>Feature</option><option>Interview</option></select></label>
+        </div>
+        <label class="field"><span>Extra notes <span class="hint">(optional)</span></span><textarea class="textarea" id="notes" rows="3" placeholder="Facts or an angle you want included"></textarea></label>
+        <button class="btn btn-primary" type="button" id="generateBtn"><span id="genLabel">Generate article</span></button>
+        <div class="phase" id="phase" aria-live="polite"></div>
+      </section>
+
+      <!-- Editor -->
+      <section class="panel card-pad editor" id="editor" aria-labelledby="edTitle">
+        <div class="card-head">
+          <h2 id="edTitle">Article</h2>
+          <span id="editingFlag" class="badge" hidden>Editing</span>
+        </div>
+        <div class="editor-skeleton" aria-hidden="true">
+          <div class="skel" style="height:48px"></div><div class="skel" style="height:48px;width:70%"></div><div class="skel" style="height:72px"></div>
+          <div class="skel" style="height:14px"></div><div class="skel" style="height:14px;width:94%"></div><div class="skel" style="height:14px;width:88%"></div><div class="skel" style="height:14px;width:96%"></div><div class="skel" style="height:14px;width:60%"></div>
+        </div>
+        <div class="editor-body">
+          <label class="field"><span>Title</span><input class="input" id="title" placeholder="Headline"></label>
+          <label class="field"><span>URL slug</span><input class="input mono" id="slug" placeholder="article-url-slug" style="font-size:14px"></label>
+          <label class="field"><span>Excerpt</span><textarea class="textarea" id="excerpt" rows="2" placeholder="One or two sentences shown on the card"></textarea></label>
+          <label class="field"><span style="display:flex;justify-content:space-between">Body (Markdown)<span class="counter" id="wordCount">0 words</span></span><textarea class="textarea" id="content" rows="16" placeholder="Article body"></textarea></label>
+          <label class="field"><span>YouTube URL</span><input class="input" id="youtube" placeholder="https://www.youtube.com/watch?v=…"></label>
+          <div id="ytPreview"></div>
+          <div class="grid-2">
+            <label class="field"><span>Cover image URL</span><input class="input" id="cover" placeholder="https://…"></label>
+            <label class="field"><span>Tags</span><input class="input" id="tags" placeholder="metalcore, review"></label>
+          </div>
+          <div class="save-row">
+            <div class="segmented" role="radiogroup" aria-label="Status">
+              <label><input type="radio" name="status" value="draft" checked><span>Draft</span></label>
+              <label><input type="radio" name="status" value="review"><span>Review</span></label>
+              <label><input type="radio" name="status" value="published"><span>Publish</span></label>
+            </div>
+            <button class="btn btn-primary" type="button" id="saveBtn"><span id="saveLabel">Save article</span></button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- Articles -->
+    <section class="panel card-pad" style="margin-top:20px" aria-labelledby="listTitle">
+      <div class="list-head">
+        <h2 id="listTitle" style="margin:0;font-size:18px">Articles</h2>
+        <input class="input" id="search" placeholder="Search titles…" style="max-width:260px;min-height:42px">
+      </div>
+      <div class="rows" id="articles"></div>
+    </section>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/assets/ui.js"></script>
 <script>
-const SB_URL="https://lhhmzfwjznlwkentbakv.supabase.co";
-const SB_KEY="sb_publishable_MQDqmSmPb3qiSODbBOSKmA_U7aBEFtN";
-const sb=window.supabase.createClient(SB_URL,SB_KEY);
-const $=id=>document.getElementById(id);
-function msg(id,text){$(id).textContent=text;$(id).classList.remove('hidden')}
-function slugify(s){return s.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}
-async function session(){const {data:{session}}=await sb.auth.getSession();if(!session){$('login').classList.remove('hidden');$('app').classList.add('hidden');return}const {data:admin,error}=await sb.from('admin_users').select('user_id').eq('user_id',session.user.id).maybeSingle();if(error||!admin){await sb.auth.signOut();$('login').classList.remove('hidden');$('app').classList.add('hidden');msg('loginMsg','This account is not enabled as an administrator.');return}$('login').classList.add('hidden');$('app').classList.remove('hidden');loadArticles()}
-$('loginBtn').onclick=async()=>{const {error}=await sb.auth.signInWithPassword({email:$('email').value,password:$('password').value});if(error)msg('loginMsg',error.message);else session()};
-$('logoutBtn').onclick=async()=>{await sb.auth.signOut();session()};
-$('title').oninput=()=>{if(!$('slug').dataset.edited)$('slug').value=slugify($('title').value)};
-$('slug').oninput=()=>{$('slug').dataset.edited='1'};
-$('generateBtn').onclick=async()=>{const {data:{session:s}}=await sb.auth.getSession();if(!s)return;if(!$('band').value.trim()){msg('aiMsg','Fill in the band / artist first.');return}const btn=$('generateBtn');btn.disabled=true;msg('aiMsg','Generating article and finding the YouTube video… (up to 1 minute)');const body=JSON.stringify({band:$('band').value,album:$('album').value,genre:$('genre').value,category:$('category').value,notes:$('notes').value});const call=()=>fetch('/api/generate',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+s.access_token},body});try{let r;try{r=await call()}catch(netErr){msg('aiMsg','Connection dropped, retrying…');r=await call()}const j=await r.json().catch(()=>({error:'Server returned an unexpected response (HTTP '+r.status+'). Try again.'}));if(!r.ok){const detail=Array.isArray(j.attempts)?'\n'+j.attempts.map(x=>x.provider+': '+x.reason).join('\n'):'';throw new Error((j.error||'Generation failed')+detail)}$('title').value=j.title||'';$('slug').value=slugify(j.title||'');delete $('slug').dataset.edited;$('excerpt').value=j.excerpt||'';$('content').value=j.content||'';if(Array.isArray(j.tags)&&j.tags.length)$('tags').value=j.tags.join(', ');if(j.genre&&[...$('genre').options].some(o=>o.value===j.genre))$('genre').value=j.genre;$('youtube').value=j.youtube_url||'';if(j.cover_image_url)$('cover').value=j.cover_image_url;$('ytInfo').innerHTML=j.youtube_url?'Found: '+escapeHtml(j.youtube_title||j.youtube_url)+' — <a href="'+escapeHtml(j.youtube_url)+'" target="_blank" rel="noopener" style="color:#e55">check video</a>':'No video found automatically. <a href="'+escapeHtml(j.youtube_search_url||'#')+'" target="_blank" rel="noopener" style="color:#e55">Search YouTube</a> and paste the link.';msg('aiMsg','Article generated by '+(j.provider||'AI')+' ('+(j.model||'model')+'). Review it, check the video, then save.')}catch(e){msg('aiMsg',e.message==='Failed to fetch'?'Network error: could not reach the server. Check your connection and try again.':e.message)}finally{btn.disabled=false}};
-$('saveBtn').onclick=async()=>{const {data:{session:s}}=await sb.auth.getSession();if(!s)return;const title=$('title').value.trim();if(!title||!$('content').value.trim()){msg('saveMsg','Title and article body are required.');return}const {data:cat}=await sb.from('categories').select('id').eq('slug',slugify($('genre').value)).maybeSingle();const status=$('status').value;const yt=$('youtube').value.trim();let body=$('content').value.trim();if(yt&&!body.includes(yt))body+='\n\n'+yt;const payload={title,slug:$('slug').value.trim()||slugify(title),excerpt:$('excerpt').value,content:body,band_name:$('band').value,album_name:$('album').value,genre:$('genre').value,category_id:cat?.id||null,cover_image_url:$('cover').value||null,tags:$('tags').value.split(',').map(x=>x.trim()).filter(Boolean),status,author_id:s.user.id,published_at:status==='published'?new Date().toISOString():null,updated_at:new Date().toISOString()};const {error}=await sb.from('articles').insert(payload);if(error)msg('saveMsg',error.message);else{msg('saveMsg','Article saved.');loadArticles()}};
-async function loadArticles(){const {data,error}=await sb.from('articles').select('id,title,status,created_at').order('created_at',{ascending:false}).limit(30);if(error){$('articles').textContent=error.message;return}$('articles').innerHTML=data.length?data.map(a=>'<div class="item"><div><b>'+escapeHtml(a.title)+'</b><br><small>'+a.status+' · '+new Date(a.created_at).toLocaleDateString()+'</small></div><button class="secondary" data-del="'+a.id+'">Delete</button></div>').join(''):'No articles yet.';$('articles').querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{if(!confirm('Delete this article?'))return;const {error}=await sb.from('articles').delete().eq('id',b.dataset.del);if(error)alert(error.message);else loadArticles()})}
-function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-sb.auth.onAuthStateChange(()=>setTimeout(session,0));session();
-</script></body></html>
+const sb = window.supabase.createClient("https://lhhmzfwjznlwkentbakv.supabase.co", "sb_publishable_MQDqmSmPb3qiSODbBOSKmA_U7aBEFtN");
+const { toast, shake, esc } = window.UI;
+const $ = (id) => document.getElementById(id);
+const YT_RE = /https:\/\/(?:www\.|m\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]{11})\S*/;
+let editing = null;      // { id, published_at } when editing an existing article
+let allArticles = [];
+
+const slugify = (s) => String(s || "").toLowerCase().normalize("NFKD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 90);
+const status = () => document.querySelector('input[name="status"]:checked').value;
+const setStatus = (v) => { const r = document.querySelector(`input[name="status"][value="${v}"]`); if (r) r.checked = true; };
+const words = (s) => (String(s).trim().match(/\S+/g) || []).length;
+
+/* ---------- Session ---------- */
+async function session() {
+  const { data: { session: s } } = await sb.auth.getSession();
+  if (!s) return showLogin();
+  const { data: admin, error } = await sb.from("admin_users").select("user_id").eq("user_id", s.user.id).maybeSingle();
+  if (error || !admin) {
+    await sb.auth.signOut();
+    showLogin();
+    toast("error", "Access denied", "This account is not enabled as an administrator.");
+    return;
+  }
+  $("login").hidden = true; $("app").hidden = false; $("userBar").hidden = false;
+  $("userEmail").textContent = s.user.email || "";
+  loadArticles();
+}
+function showLogin() { $("login").hidden = false; $("app").hidden = true; $("userBar").hidden = true; setTimeout(() => $("email").focus(), 50); }
+
+$("loginForm").onsubmit = async (e) => {
+  e.preventDefault();
+  const email = $("email"), pass = $("password");
+  email.classList.toggle("invalid", !email.value.trim()); pass.classList.toggle("invalid", !pass.value);
+  if (!email.value.trim() || !pass.value) { shake($("loginForm")); return; }
+  const btn = $("loginBtn"); btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Signing in…';
+  const { error } = await sb.auth.signInWithPassword({ email: email.value.trim(), password: pass.value });
+  btn.disabled = false; btn.innerHTML = 'Sign in <span class="arrow" aria-hidden="true">→</span>';
+  if (error) { shake($("loginForm")); toast("error", "Sign in failed", error.message); return; }
+  toast("success", "Welcome back", "Signed in to the control room.");
+  session();
+};
+$("logoutBtn").onclick = async () => { await sb.auth.signOut(); showLogin(); toast("info", "Signed out"); };
+["email", "password"].forEach((id) => $(id).addEventListener("input", () => $(id).classList.remove("invalid")));
+
+/* ---------- Editor helpers ---------- */
+$("title").addEventListener("input", () => { if (!$("slug").dataset.edited) $("slug").value = slugify($("title").value); $("title").classList.remove("invalid"); });
+$("slug").addEventListener("input", () => { $("slug").dataset.edited = "1"; });
+$("content").addEventListener("input", () => { $("wordCount").textContent = words($("content").value) + " words"; $("content").classList.remove("invalid"); });
+$("youtube").addEventListener("change", () => renderYt($("youtube").value.trim()));
+$("band").addEventListener("input", () => { $("band").classList.remove("invalid"); $("genAlert").hidden = true; });
+
+function renderYt(url, title = "") {
+  const id = (String(url).match(YT_RE) || [])[1];
+  if (!id) { $("ytPreview").innerHTML = ""; return; }
+  $("ytPreview").innerHTML = `<div class="yt-preview"><img src="https://i.ytimg.com/vi/${id}/mqdefault.jpg" alt=""><div><div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(title || "YouTube video")}</div><a href="https://www.youtube.com/watch?v=${id}" target="_blank" rel="noopener">Check the video ↗</a></div></div>`;
+}
+function resetForm() {
+  editing = null;
+  ["title", "slug", "excerpt", "content", "youtube", "cover", "tags", "band", "album", "notes"].forEach((id) => { $(id).value = ""; $(id).classList.remove("invalid"); });
+  delete $("slug").dataset.edited;
+  setStatus("draft"); renderYt(""); $("wordCount").textContent = "0 words";
+  $("editingFlag").hidden = true; $("saveLabel").textContent = "Save article";
+}
+$("newBtn").onclick = () => { resetForm(); $("band").focus(); window.scrollTo({ top: 0, behavior: "smooth" }); };
+
+/* ---------- Generate ---------- */
+const PHASES = ["Contacting AI providers…", "Writing the article…", "Finding the YouTube video…", "Polishing the draft…", "Almost there…"];
+let phaseTimer;
+function setGenerating(on) {
+  const btn = $("generateBtn");
+  btn.disabled = on;
+  $("editor").classList.toggle("loading", on);
+  $("genLabel").textContent = on ? "Generating…" : "Generate article";
+  btn.querySelector(".spinner")?.remove();
+  if (on) btn.insertAdjacentHTML("afterbegin", '<span class="spinner" aria-hidden="true"></span>');
+  clearInterval(phaseTimer);
+  const ph = $("phase");
+  if (on) {
+    let i = 0; ph.textContent = PHASES[0]; ph.classList.add("active");
+    phaseTimer = setInterval(() => { i = Math.min(i + 1, PHASES.length - 1); ph.textContent = PHASES[i]; }, 7000);
+  } else { ph.textContent = ""; ph.classList.remove("active"); }
+}
+
+$("generateBtn").onclick = async () => {
+  const { data: { session: s } } = await sb.auth.getSession();
+  if (!s) return showLogin();
+  if (!$("band").value.trim()) {
+    $("genAlert").hidden = false; shake($("genAlert")); $("band").classList.add("invalid"); $("band").focus();
+    return;
+  }
+  setGenerating(true);
+  const body = JSON.stringify({ band: $("band").value, album: $("album").value, genre: $("genre").value, category: $("category").value, notes: $("notes").value });
+  const call = () => fetch("/api/generate", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + s.access_token }, body });
+  try {
+    let r;
+    try { r = await call(); }
+    catch { toast("warning", "Connection dropped", "Retrying once…", { duration: 3500 }); r = await call(); }
+    const j = await r.json().catch(() => ({ error: "Unexpected server response (HTTP " + r.status + ")." }));
+    if (!r.ok) {
+      const detail = Array.isArray(j.attempts) && j.attempts.length ? j.attempts.map((x) => "• " + x.provider + ": " + x.reason).join("\n") : "";
+      toast("error", j.error || "Generation failed", detail, { duration: 12000 });
+      return;
+    }
+    $("title").value = j.title || ""; $("slug").value = slugify(j.title); delete $("slug").dataset.edited;
+    $("excerpt").value = j.excerpt || ""; $("content").value = j.content || "";
+    $("wordCount").textContent = words(j.content || "") + " words";
+    if (Array.isArray(j.tags) && j.tags.length) $("tags").value = j.tags.join(", ");
+    if (j.genre && [...$("genre").options].some((o) => o.value === j.genre)) $("genre").value = j.genre;
+    $("youtube").value = j.youtube_url || "";
+    if (j.cover_image_url) $("cover").value = j.cover_image_url;
+    renderYt(j.youtube_url, j.youtube_title);
+    toast("success", "Article generated", `Written by ${j.provider} (${j.model}) in ${Math.round((j.took_ms || 0) / 1000)}s. Review it before saving.`);
+    if (j.fallback_used && Array.isArray(j.attempts) && j.attempts.length) {
+      toast("warning", "Some providers were skipped", j.attempts.map((x) => "• " + x.provider + ": " + x.reason).join("\n"), { duration: 9000 });
+    }
+    if (!j.youtube_url) toast("info", "No video found automatically", "Search YouTube and paste the link into the YouTube URL field.", { duration: 8000 });
+  } catch (e) {
+    toast("error", "Network error", "Could not reach the server. Check your connection and try again.");
+  } finally {
+    setGenerating(false);
+  }
+};
+
+/* ---------- Save ---------- */
+$("saveBtn").onclick = async () => {
+  const { data: { session: s } } = await sb.auth.getSession();
+  if (!s) return showLogin();
+  const title = $("title").value.trim();
+  const content = $("content").value.trim();
+  const missing = [];
+  if (!title) { $("title").classList.add("invalid"); shake($("title")); missing.push("title"); }
+  if (!content) { $("content").classList.add("invalid"); shake($("content")); missing.push("article body"); }
+  if (missing.length) { toast("warning", "Missing " + missing.join(" and "), "Fill in the highlighted fields first."); return; }
+
+  const yt = $("youtube").value.trim();
+  let body = content;
+  if (yt && !body.includes(yt)) body += "\n\n" + yt;
+  const st = status();
+  const { data: cat } = await sb.from("categories").select("id").eq("slug", slugify($("genre").value)).maybeSingle();
+  const now = new Date().toISOString();
+  const payload = {
+    title, slug: $("slug").value.trim() || slugify(title), excerpt: $("excerpt").value.trim(), content: body,
+    band_name: $("band").value.trim(), album_name: $("album").value.trim(), genre: $("genre").value,
+    category_id: cat?.id || null, cover_image_url: $("cover").value.trim() || null,
+    tags: $("tags").value.split(",").map((x) => x.trim()).filter(Boolean),
+    status: st,
+    published_at: st === "published" ? (editing?.published_at || now) : null,
+    updated_at: now
+  };
+
+  const btn = $("saveBtn"); btn.disabled = true; $("saveLabel").textContent = "Saving…"; btn.insertAdjacentHTML("afterbegin", '<span class="spinner" aria-hidden="true"></span>');
+  const res = editing
+    ? await sb.from("articles").update(payload).eq("id", editing.id).select("id,published_at").single()
+    : await sb.from("articles").insert({ ...payload, author_id: s.user.id }).select("id,published_at").single();
+  btn.disabled = false; btn.querySelector(".spinner")?.remove();
+  if (res.error) {
+    $("saveLabel").textContent = editing ? "Update article" : "Save article";
+    const dup = res.error.code === "23505";
+    toast("error", dup ? "Slug already in use" : "Could not save", dup ? "Change the URL slug and try again." : res.error.message);
+    if (dup) { $("slug").classList.add("invalid"); shake($("slug")); }
+    return;
+  }
+  editing = { id: res.data.id, published_at: res.data.published_at };
+  $("editingFlag").hidden = false; $("saveLabel").textContent = "Update article";
+  toast("success", st === "published" ? "Published" : "Saved", st === "published" ? "The article is live on the site." : "Saved as " + st + ".");
+  loadArticles();
+};
+$("slug").addEventListener("input", () => $("slug").classList.remove("invalid"));
+
+/* ---------- Articles list ---------- */
+async function loadArticles() {
+  $("articles").innerHTML = Array.from({ length: 3 }, () => `<div class="row" aria-hidden="true"><div class="thumb skel"></div><div><div class="skel" style="height:14px;width:70%"></div><div class="skel" style="height:10px;width:30%;margin-top:10px"></div></div><div></div></div>`).join("");
+  const { data, error } = await sb.from("articles").select("id,title,slug,status,created_at,published_at,cover_image_url,genre").order("created_at", { ascending: false }).limit(100);
+  if (error) { $("articles").innerHTML = ""; toast("error", "Could not load articles", error.message); return; }
+  allArticles = data || [];
+  renderList();
+}
+function renderList() {
+  const q = $("search").value.trim().toLowerCase();
+  const list = q ? allArticles.filter((a) => a.title.toLowerCase().includes(q)) : allArticles;
+  if (!list.length) { $("articles").innerHTML = `<p class="muted" style="margin:8px 0 0">${allArticles.length ? "No matches." : "No articles yet. Generate your first one above."}</p>`; return; }
+  $("articles").innerHTML = list.map((a, i) => `
+    <div class="row" style="--d:${Math.min(i, 10) * 40}ms">
+      ${a.cover_image_url ? `<img class="thumb" src="${esc(a.cover_image_url)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : `<div class="thumb"></div>`}
+      <div style="min-width:0"><div class="t">${esc(a.title)}</div>
+        <div class="sub"><span class="badge ${esc(a.status)}">${esc(a.status)}</span><span class="mono muted">${esc(a.genre || "")} · ${new Date(a.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span></div></div>
+      <div class="actions">
+        ${a.status === "published" ? `<a class="btn btn-sm btn-ghost" href="/#/a/${encodeURIComponent(a.slug || a.id)}" target="_blank" rel="noopener">View</a>` : ""}
+        <button class="btn btn-sm" type="button" data-edit="${esc(a.id)}">Edit</button>
+        <button class="btn btn-sm btn-danger" type="button" data-del="${esc(a.id)}">Delete</button>
+      </div>
+    </div>`).join("");
+  $("articles").querySelectorAll("[data-edit]").forEach((b) => b.onclick = () => editArticle(b.dataset.edit));
+  $("articles").querySelectorAll("[data-del]").forEach((b) => b.onclick = () => deleteArticle(b));
+}
+$("search").addEventListener("input", renderList);
+
+async function editArticle(id) {
+  const { data: a, error } = await sb.from("articles").select("*").eq("id", id).single();
+  if (error) { toast("error", "Could not open article", error.message); return; }
+  resetForm();
+  editing = { id: a.id, published_at: a.published_at };
+  const yt = (String(a.content || "").match(YT_RE) || [])[0] || "";
+  const content = yt ? String(a.content).replace(new RegExp("\\n*" + yt.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\s*$"), "") : a.content || "";
+  $("title").value = a.title || ""; $("slug").value = a.slug || ""; $("slug").dataset.edited = "1";
+  $("excerpt").value = a.excerpt || ""; $("content").value = content; $("wordCount").textContent = words(content) + " words";
+  $("youtube").value = yt; renderYt(yt);
+  $("cover").value = a.cover_image_url || ""; $("tags").value = (a.tags || []).join(", ");
+  $("band").value = a.band_name || ""; $("album").value = a.album_name || "";
+  if (a.genre) $("genre").value = a.genre;
+  setStatus(a.status || "draft");
+  $("editingFlag").hidden = false; $("saveLabel").textContent = "Update article";
+  $("editor").scrollIntoView({ behavior: "smooth", block: "start" });
+  toast("info", "Editing article", a.title);
+}
+
+function deleteArticle(btn) {
+  if (btn.dataset.armed) {
+    clearTimeout(btn._t);
+    btn.disabled = true;
+    sb.from("articles").delete().eq("id", btn.dataset.del).then(({ error }) => {
+      if (error) { btn.disabled = false; toast("error", "Could not delete", error.message); return; }
+      if (String(editing?.id) === btn.dataset.del) resetForm();
+      toast("success", "Article deleted");
+      loadArticles();
+    });
+    return;
+  }
+  btn.dataset.armed = "1"; btn.textContent = "Confirm?"; btn.style.borderColor = "var(--danger)"; btn.style.color = "var(--danger)";
+  btn._t = setTimeout(() => { delete btn.dataset.armed; btn.textContent = "Delete"; btn.style.borderColor = ""; btn.style.color = ""; }, 3000);
+}
+
+sb.auth.onAuthStateChange((evt) => { if (evt === "SIGNED_OUT") showLogin(); });
+session();
+</script>
+</body>
+</html>
