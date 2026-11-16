@@ -36,6 +36,11 @@ Static Cloudflare Pages site with a Supabase-backed editorial workflow and multi
 
    The free plan allows 100 emails/day and 3,000/month. Unsubscribe links go to `/unsubscribe?t=…`.
 2m. **DMARC for @mikasa.me:** add a TXT record named `_dmarc` with `v=DMARC1; p=quarantine; adkim=r; aspf=r`.
+2n. **Daily AI drafts:** every morning at 06:43 WIT, `.github/workflows/auto-draft.yml` calls `POST /api/auto-draft`. The AI writes 2 drafts from the newest Scene Radar headlines, using the same generator as Auto-write, and skips headlines already written up. Nothing is published automatically: admin → Articles shows "N AI drafts are waiting", so you can review and publish them. Setup:
+   - Cloudflare Pages secrets: `AUTODRAFT_TOKEN` (any long random string) and `SUPABASE_SERVICE_ROLE_KEY` (Supabase → Settings → API → service_role).
+   - GitHub → repo Settings → Secrets and variables → Actions: add `AUTODRAFT_TOKEN` with the same value.
+   - Optional: `AUTODRAFT_COUNT` (1–3) and `AUTODRAFT_NOTIFY`, an email that gets a summary through Resend.
+   - Use Actions → "Daily AI drafts" → Run workflow to test.
 3. Visitors play tracks from the **Music** view; the mini player keeps playing while they browse, with lock-screen controls on phones.
 
 ## Admin settings: clean up data

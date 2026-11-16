@@ -61,29 +61,28 @@ export async function onRequestPost({ request, env }) {
   const song = clean(input.album, 200);
   if (!band) return json({ error: "Band / artist is required." }, 400);
 
+  const out = await writeArticle(env, { band, song, category: clean(input.category, 100), genre: clean(input.genre, 100), notes: clean(input.notes) });
+  return json(out.body, out.status);
+}
+
+// Shared by /api/generate (admin button) and /api/auto-draft (daily schedule).
+// Returns { status, body } where body is the article (status 200) or { error, attempts }.
+export async function writeArticle(env, { band, song = "", category = "", genre = "", notes = "" }) {
   const youtubePromise = findYouTube(band, song, env).catch(() => null);
 
   // ---- 3. AI -------------------------------------------------------------
-  const prompt = buildPrompt({
-    band, song,
-    category: clean(input.category, 100),
-    genre: clean(input.genre, 100),
-    notes: clean(input.notes)
-  });
+  const prompt = buildPrompt({ band, song, category, genre, notes });
   const providers = buildProviders(env, prompt);
   const order = (env.AI_PROVIDER_ORDER || DEFAULT_ORDER)
     .split(",").map(x => x.trim().toLowerCase()).filter(x => providers[x]);
   const configured = [...new Set(order)].filter(name => providers[name].enabled);
   if (!configured.length) {
-    return json({ error: "No AI provider is configured. Add the Workers AI binding (AI) or at least one provider API key in Cloudflare Pages settings." }, 503);
+    return { status: 503, body: { error: "No AI provider is configured. Add the Workers AI binding (AI) or at least one provider API key in Cloudflare Pages settings." } };
   }
 
   const { result, failures } = await hedgedRace(configured, providers);
   if (!result) {
-    return json({
-      error: "All AI providers failed. Try again in a minute; if it keeps failing, check API keys and quotas.",
-      attempts: failures
-    }, 502);
+    return { status: 502, body: { error: "All AI providers failed. Try again in a minute; if it keeps failing, check API keys and quotas.", attempts: failures } };
   }
 
   // ---- 4. YouTube + response ---------------------------------------------
@@ -95,7 +94,7 @@ export async function onRequestPost({ request, env }) {
     const second = await Promise.race([findYouTube(aiBand, aiRelease, env).catch(() => null), sleep(5000).then(() => null)]);
     if (second) yt = second;
   }
-  return json({
+  return { status: 200, body: {
     ...art,
     band: aiBand,
     release: aiRelease,
@@ -108,7 +107,7 @@ export async function onRequestPost({ request, env }) {
     took_ms: result.ms,
     fallback_used: failures.length > 0,
     attempts: failures
-  });
+  } };
 }
 
 // ===========================================================================
