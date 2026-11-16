@@ -660,6 +660,8 @@
   let savedIds = new Set();
   let currentArticle = null;
   let authTab = "signin", pendingEmail = "";
+  let authOpen = false, authAnim = false; // minimal account page: the form opens only after Sign in / Create account
+  const finePointer = window.matchMedia("(hover: hover) and (pointer: fine)").matches; // no auto-focus on phones: the keyboard would cover the form
   let demoLastFocus = null;
   const AUTH_REDIRECT = location.origin + "/?auth=1";
   const DEFAULT_ACCOUNT_ICON = $("accountIcon").innerHTML;
@@ -689,7 +691,7 @@
     sessionStorage.setItem("ug_return", location.pathname.startsWith("/a/") ? location.pathname : (location.hash || "#/home"));
     if (then) sessionStorage.setItem("ug_then", then);
     toast("info", "Sign in to " + reason, "It's free and takes less than a minute.", { duration: 4500 });
-    authTab = "signin";
+    authTab = "signin"; authOpen = true;
     location.hash = "/account";
     return false;
   }
@@ -703,6 +705,7 @@
   }
 
   async function refreshUser() {
+    if (user) authOpen = false;
     if (!user) { profile = null; isAdmin = false; savedIds = new Set(); }
     else {
       const [p, adm, sv] = await Promise.all([
@@ -796,22 +799,24 @@
         <button type="button" role="tab" aria-selected="${authTab === "signin"}" data-tab-btn="signin">Sign in</button>
         <button type="button" role="tab" aria-selected="${authTab === "signup"}" data-tab-btn="signup">Create account</button>
       </div>` : "";
-    return `
-      <div class="auth-wrap">
-        <div class="card join bento-item">
-          <svg class="wave" viewBox="0 0 600 300" preserveAspectRatio="none" aria-hidden="true"></svg>
-          <span class="badge-dark"><i aria-hidden="true"></i>Free membership</span>
-          <h1>Join the <em>underground</em>.</h1>
-          <p>One free account to save stories, join the conversation and put your music in front of our editors.</p>
-          <ul class="perks">
+    const perks = `<ul class="perks">
             <li><i>${ic("bookmark")}</i>Save articles</li>
             <li><i>${ic("chat")}</i>Comment on stories</li>
             <li><i>${ic("music")}</i>Submit your demo</li>
             <li><i>${ic("star")}</i>Follow your genres</li>
-          </ul>
-        </div>
-        <div class="card auth-card bento-item">${tabs}${form}</div>
-      </div>`;
+          </ul>`;
+    const land = `
+          <span class="badge-dark"><i aria-hidden="true"></i>Free membership</span>
+          <h1>Join the <em>underground</em>.</h1>
+          <p>One free account to save stories, join the conversation and put your music in front of our editors.</p>
+          ${perks}
+          <div class="amp-cta"><button class="btn btn-forest" type="button" data-open="signin">Sign in</button><button class="btn btn-outline" type="button" data-open="signup">Create account</button></div>`;
+    const open = authOpen || authTab === "check" || authTab === "forgot";
+    const back = `<button class="amp-back" type="button" data-auth-close aria-label="Back">← Back</button>`;
+    const on = open && !authAnim ? " is-open" : "";
+    // Rack slide: the panel with the two choices slides left, the form slides in from the right.
+    return `<div class="amp-wrap"><div class="amp-stage bento-item${on}" data-mode="slide"><div class="amp-track">
+          <div class="card amp-land amp-face">${land}</div><div class="amp-face amp-back-face">${open ? `<div class="card auth-card amp-form">${back}${tabs}${form}</div>` : ""}</div></div></div></div>`;
   }
 
   function recoveryHtml() {
@@ -883,6 +888,11 @@
   function renderAccount() {
     const el = $("view-account");
     el.innerHTML = user ? (recovery ? recoveryHtml() : memberHtml()) : guestHtml();
+    if (!user && authAnim) {
+      authAnim = false;
+      const st = el.querySelector(".amp-stage");
+      if (st) requestAnimationFrame(() => requestAnimationFrame(() => { st.classList.add("is-open"); if (finePointer) setTimeout(() => st.querySelector(".amp-form input")?.focus({ preventScroll: true }), 600); }));
+    }
     const w = el.querySelector(".wave");
     if (w) wave(w, 600, w.viewBox.baseVal.height || 300, 6);
     if (user && !recovery) loadMyDemos();
@@ -909,9 +919,19 @@
 
   const acct = $("view-account");
   acct.addEventListener("click", async (e) => {
-    const t = e.target.closest("[data-tab-btn],[data-action],[data-demo-open],.pw-toggle,[data-fav]");
+    const t = e.target.closest("[data-tab-btn],[data-open],[data-auth-close],[data-action],[data-demo-open],.pw-toggle,[data-fav]");
     if (!t) return;
-    if (t.dataset.tabBtn) { authTab = t.dataset.tabBtn; renderAccount(); acct.querySelector("input")?.focus(); return; }
+    if (t.dataset.tabBtn) { authTab = t.dataset.tabBtn; renderAccount(); if (finePointer) acct.querySelector(".amp-form input, input")?.focus(); return; }
+    if (t.dataset.open) {
+      authTab = t.dataset.open;
+      const was = authOpen; authOpen = true; authAnim = !was; renderAccount(); return;
+    }
+    if (t.hasAttribute("data-auth-close")) {
+      const st = acct.querySelector(".amp-stage");
+      const done = () => { authOpen = false; authTab = "signin"; renderAccount(); };
+      if (st) { st.classList.remove("is-open"); setTimeout(done, reduceMotion ? 0 : 420); } else done();
+      return;
+    }
     if (t.dataset.action === "delete-account") {
       const box = t.closest(".danger-zone"), conf = box.querySelector(".dz-confirm"), input = box.querySelector("[name=dzWord]");
       if (conf.hidden) { conf.hidden = false; t.textContent = "Delete permanently"; input.focus(); return; }
