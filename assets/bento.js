@@ -291,12 +291,13 @@
     if (btn) $("navPill").style.transform = `translate(${btn.offsetLeft}px, ${btn.offsetTop}px)`;
   }
   function showView(name) {
-    if (!["home", "articles", "about"].includes(name)) name = "home";
+    if (!["home", "articles", "about", "account"].includes(name)) name = "home";
     const changed = name !== view || !document.querySelector(".view.entered");
     view = name;
     document.querySelectorAll(".view").forEach((v) => { v.hidden = v.dataset.view !== name; });
     document.querySelectorAll(".nav-btn").forEach((b) => { if (b.dataset.view === name) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); });
     movePill();
+    if (name === "account" && changed) renderAccount();
     if (changed) { $("main").scrollTop = 0; enter($("view-" + name)); }
   }
   document.querySelectorAll(".nav-btn").forEach((b) => b.addEventListener("click", () => { location.hash = "/" + b.dataset.view; }));
@@ -321,6 +322,9 @@
       a = data;
     }
     if (!a) { toast("warning", "Story not found", "It may have been moved or unpublished."); location.hash = "/" + view; return; }
+    currentArticle = a;
+    updateSaveBtn();
+    renderComments(a);
     const vid = ytId(a.content);
     $("readerTag").innerHTML = tagHtml(a.genre);
     $("readerBody").innerHTML = `
@@ -343,10 +347,15 @@
     document.body.classList.remove("locked");
     document.title = "UNDERGROUND — Independent Extreme Music Magazine";
     if (!silent && location.hash.startsWith("#/a/")) location.hash = "/" + view;
+    currentArticle = null;
     lastFocus?.focus?.();
   }
   $("reader").addEventListener("click", (e) => { if (e.target.closest("[data-close]")) closeReader(); });
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("reader").hidden) closeReader(); });
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    if (!$("demoModal").hidden) closeDemo();
+    else if (!$("reader").hidden) closeReader();
+  });
   $("reader").querySelector(".reader-sheet").addEventListener("scroll", (e) => {
     const s = e.currentTarget, max = s.scrollHeight - s.clientHeight;
     $("readerProgress").style.width = (max > 0 ? (s.scrollTop / max) * 100 : 0) + "%";
@@ -360,13 +369,496 @@
 
   // ---- Buttons -------------------------------------------------------------
   $("readLatest").onclick = () => { if (articles[0]) location.hash = "/a/" + keyOf(articles[0]); else toast("info", "No stories yet", "The first articles are on their way."); };
-  document.querySelectorAll("[data-demo]").forEach((b) => b.onclick = () => {
-    if (SUBMIT_EMAIL) location.href = `mailto:${SUBMIT_EMAIL}?subject=${encodeURIComponent("Demo submission: [Band name]")}&body=${encodeURIComponent("Band:\nCountry:\nGenre:\nLink:\nTwo lines about the music:\n")}`;
-    else toast("info", "Demo submissions open soon", "Follow the magazine for the submission address.");
-  });
+  document.querySelectorAll("[data-demo]").forEach((b) => b.onclick = () => openDemo());
   document.querySelectorAll("[data-contact]").forEach((b) => b.onclick = () => {
     if (SUBMIT_EMAIL) location.href = `mailto:${SUBMIT_EMAIL}`;
     else toast("info", "Contact details coming soon");
+  });
+
+  // ---- Community: accounts, saved articles, comments, demos ----------------
+  let user = null, profile = null, isAdmin = false, recovery = false;
+  let savedIds = new Set();
+  let currentArticle = null;
+  let authTab = "signin", pendingEmail = "";
+  let demoLastFocus = null;
+  const AUTH_REDIRECT = location.origin + "/?auth=1";
+  const DEFAULT_ACCOUNT_ICON = $("accountIcon").innerHTML;
+  const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+  const initials = (n) => String(n || "").trim().split(/\s+/).filter(Boolean).map((w) => w[0]).join("").slice(0, 2).toUpperCase() || "U";
+  const colorFor = (s) => ["#40A887", "#C68B59", "#1B3C36", "#62C3A5", "#8A5A2E", "#2E7D66"][hash(s) % 6];
+  const myName = () => profile?.display_name || user?.user_metadata?.display_name || (user?.email || "").split("@")[0] || "Reader";
+  const notReady = (err) => !!err && (err.code === "42P01" || err.code === "PGRST205" || err.code === "PGRST200" || /does not exist|schema cache|relationship/i.test(err.message || ""));
+  function friendly(err) {
+    const m = err?.message || "Something went wrong. Please try again.";
+    if (/Invalid login credentials/i.test(m)) return "Wrong email or password.";
+    if (/Email not confirmed/i.test(m)) return "Please confirm your email first. Check your inbox for our link.";
+    if (/already registered|already been registered/i.test(m)) return "An account with this email already exists. Sign in instead.";
+    if (/Password should be|weak password/i.test(m)) return "Please choose a stronger password (at least 8 characters).";
+    if (/rate limit|too many/i.test(m)) return "Too many attempts. Please wait a moment and try again.";
+    if (/Signups not allowed|signup is disabled/i.test(m)) return "New sign-ups are closed at the moment.";
+    if (/Failed to fetch|NetworkError/i.test(m)) return "Network error. Check your connection and try again.";
+    return m;
+  }
+  function shakeEl(el) { if (!el) return; el.classList.remove("shake"); void el.offsetWidth; el.classList.add("shake"); }
+  function busy(btn, on, label) {
+    if (!btn) return;
+    if (on) { btn.dataset.html = btn.innerHTML; btn.disabled = true; btn.innerHTML = `<span class="spinner" aria-hidden="true"></span>${esc(label || "Please wait…")}`; }
+    else { btn.disabled = false; if (btn.dataset.html) btn.innerHTML = btn.dataset.html; }
+  }
+  function requireAuth(reason, then) {
+    sessionStorage.setItem("ug_return", location.hash || "#/home");
+    if (then) sessionStorage.setItem("ug_then", then);
+    toast("info", "Sign in to " + reason, "It's free and takes less than a minute.", { duration: 4500 });
+    authTab = "signin";
+    location.hash = "/account";
+    return false;
+  }
+
+  // Sidebar account button + admin shortcut
+  function updateNav() {
+    $("accountIcon").innerHTML = user ? `<span class="nav-avatar">${esc(initials(myName()))}</span>` : DEFAULT_ACCOUNT_ICON;
+    $("accountTip").textContent = user ? myName() : "Sign in";
+    $("accountNav").setAttribute("aria-label", user ? "Your account" : "Sign in or create account");
+    $("adminLink").hidden = !isAdmin;
+  }
+
+  async function refreshUser() {
+    if (!user) { profile = null; isAdmin = false; savedIds = new Set(); }
+    else {
+      const [p, adm, sv] = await Promise.all([
+        db.from("profiles").select("display_name,favorite_genres,created_at").eq("id", user.id).maybeSingle(),
+        db.from("admin_users").select("user_id").eq("user_id", user.id).maybeSingle(),
+        db.from("saved_articles").select("article_id").eq("user_id", user.id)
+      ]);
+      profile = p.data || { display_name: myName(), favorite_genres: [], created_at: user.created_at };
+      isAdmin = !!adm.data;
+      savedIds = new Set((sv.data || []).map((x) => String(x.article_id)));
+    }
+    updateNav(); updateSaveBtn();
+    if (view === "account" && !$("view-account").hidden) { renderAccount(); enter($("view-account")); }
+    if (currentArticle && !$("reader").hidden) renderComments(currentArticle);
+  }
+
+  function afterSignIn() {
+    const fromEmail = new URLSearchParams(location.search).has("auth");
+    if (fromEmail) history.replaceState(null, "", location.pathname + location.hash);
+    const back = sessionStorage.getItem("ug_return");
+    const then = sessionStorage.getItem("ug_then");
+    sessionStorage.removeItem("ug_return"); sessionStorage.removeItem("ug_then");
+    if (fromEmail && !recovery) toast("success", "You're in", "Your account is ready. Welcome to UNDERGROUND.");
+    if (back && back !== "#/account" && !recovery) location.hash = back.slice(1);
+    if (then === "demo") setTimeout(openDemo, 350);
+  }
+
+  db.auth.onAuthStateChange((evt, session) => {
+    const prev = user?.id || null;
+    user = session?.user || null;
+    if (evt === "PASSWORD_RECOVERY") { recovery = true; location.hash = "/account"; }
+    if (evt === "SIGNED_OUT") recovery = false;
+    if (prev !== (user?.id || null) || evt === "PASSWORD_RECOVERY" || evt === "USER_UPDATED") {
+      setTimeout(async () => { await refreshUser(); if (evt === "SIGNED_IN" && !prev) afterSignIn(); }, 0);
+    }
+  });
+
+  // ---- Account view --------------------------------------------------------
+  const ICON = {
+    bookmark: '<path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4.5L5 21V4a1 1 0 0 1 1-1z"/>',
+    chat: '<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/>',
+    music: '<path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/>',
+    star: '<path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.4 6.8 19.1l1-5.8L3.5 9.2l5.9-.9z"/>',
+    eye: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+    mail: '<rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3.5 7l8.5 6 8.5-6"/>'
+  };
+  const ic = (k, s = 16) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k]}</svg>`;
+  const pwField = (name, label, auto, extra = "") => `<label class="field"><span>${label}</span><span class="pw-wrap"><input class="input" name="${name}" type="password" autocomplete="${auto}" minlength="8" required ${extra}><button class="pw-toggle" type="button" aria-label="Show password">${ic("eye")}</button></span></label>`;
+
+  function guestHtml() {
+    let form = "";
+    if (authTab === "signin") form = `
+      <form class="auth-form" data-form="signin" novalidate>
+        <div><h2>Welcome back</h2><p class="muted-p">Sign in to your UNDERGROUND account.</p></div>
+        <label class="field"><span>Email</span><input class="input" name="email" type="email" autocomplete="email" required></label>
+        ${pwField("password", "Password", "current-password")}
+        <div class="form-error" role="alert" hidden></div>
+        <button class="btn btn-forest" type="submit">Sign in <span class="arr" aria-hidden="true">→</span></button>
+        <p class="fine" style="margin:0;text-align:center"><button class="text-btn" type="button" data-tab-btn="forgot">Forgot your password?</button></p>
+      </form>`;
+    else if (authTab === "signup") form = `
+      <form class="auth-form" data-form="signup" novalidate>
+        <div><h2>Create your account</h2><p class="muted-p">Free forever. No spam.</p></div>
+        <label class="field"><span>Display name</span><input class="input" name="name" autocomplete="nickname" maxlength="40" placeholder="How you'll appear in comments" required></label>
+        <label class="field"><span>Email</span><input class="input" name="email" type="email" autocomplete="email" required></label>
+        ${pwField("password", "Password", "new-password", 'data-strength')}
+        <div class="strength" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+        <p class="fine" id="pwHint" style="margin:-6px 0 0">At least 8 characters. Mix letters, numbers and symbols for a stronger password.</p>
+        <div class="form-error" role="alert" hidden></div>
+        <button class="btn btn-forest" type="submit">Create account <span class="arr" aria-hidden="true">→</span></button>
+        <p class="fine" style="margin:0;text-align:center">By joining you agree to keep comments respectful.</p>
+      </form>`;
+    else if (authTab === "forgot") form = `
+      <form class="auth-form" data-form="forgot" novalidate>
+        <div><h2>Reset your password</h2><p class="muted-p">We'll email you a link to choose a new one.</p></div>
+        <label class="field"><span>Email</span><input class="input" name="email" type="email" autocomplete="email" required></label>
+        <div class="form-error" role="alert" hidden></div>
+        <button class="btn btn-forest" type="submit">Send reset link</button>
+        <p class="fine" style="margin:0;text-align:center"><button class="text-btn" type="button" data-tab-btn="signin">Back to sign in</button></p>
+      </form>`;
+    else form = `
+      <div class="auth-form" style="text-align:center;align-items:center;padding:12px 0">
+        <span class="big-avatar" style="background:var(--mint-soft);color:var(--mint-ink)">${ic("mail", 28)}</span>
+        <h2>Check your inbox</h2>
+        <p class="muted-p">We sent a link to <b style="color:var(--text)">${esc(pendingEmail)}</b>. Open it on this device to continue. It can take a minute, and may land in spam.</p>
+        <button class="btn btn-outline" type="button" data-tab-btn="signin">Back to sign in</button>
+      </div>`;
+    const tabs = (authTab === "signin" || authTab === "signup") ? `
+      <div class="tabs" role="tablist" aria-label="Account" data-tab="${authTab}"><span class="tab-pill" aria-hidden="true"></span>
+        <button type="button" role="tab" aria-selected="${authTab === "signin"}" data-tab-btn="signin">Sign in</button>
+        <button type="button" role="tab" aria-selected="${authTab === "signup"}" data-tab-btn="signup">Create account</button>
+      </div>` : "";
+    return `
+      <div class="auth-wrap">
+        <div class="card join bento-item">
+          <svg class="wave" viewBox="0 0 600 300" preserveAspectRatio="none" aria-hidden="true"></svg>
+          <span class="badge-dark"><i aria-hidden="true"></i>Free membership</span>
+          <h1>Join the <em>underground</em>.</h1>
+          <p>One free account to save stories, join the conversation and put your music in front of our editors.</p>
+          <ul class="perks">
+            <li><i>${ic("bookmark")}</i>Save articles</li>
+            <li><i>${ic("chat")}</i>Comment on stories</li>
+            <li><i>${ic("music")}</i>Submit your demo</li>
+            <li><i>${ic("star")}</i>Follow your genres</li>
+          </ul>
+        </div>
+        <div class="card auth-card bento-item">${tabs}${form}</div>
+      </div>`;
+  }
+
+  function recoveryHtml() {
+    return `
+      <div class="auth-wrap" style="grid-template-columns:minmax(0,520px);justify-content:center">
+        <div class="card auth-card bento-item">
+          <form class="auth-form" data-form="recover" novalidate>
+            <div><h2>Choose a new password</h2><p class="muted-p">You're signed in from your reset link. Set a new password to finish.</p></div>
+            ${pwField("password", "New password", "new-password", 'data-strength')}
+            <div class="strength" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+            ${pwField("confirm", "Repeat new password", "new-password")}
+            <div class="form-error" role="alert" hidden></div>
+            <button class="btn btn-forest" type="submit">Save new password</button>
+          </form>
+        </div>
+      </div>`;
+  }
+
+  function memberHtml() {
+    const name = myName();
+    const since = new Date(profile?.created_at || user.created_at).toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+    const saved = articles.filter((a) => savedIds.has(String(a.id)));
+    const favs = new Set(profile?.favorite_genres || []);
+    return `
+      <div class="card me bento-item">
+        <svg class="wave" viewBox="0 0 600 160" preserveAspectRatio="none" aria-hidden="true"></svg>
+        <div class="who"><div class="big-avatar">${esc(initials(name))}</div><div><h1>${esc(name)}</h1><p>${esc(user.email || "")} · Member since ${since}</p></div></div>
+        <div style="display:flex;flex-wrap:wrap;gap:10px;position:relative">
+          ${isAdmin ? `<a class="btn btn-ghost-dark" href="/admin.html">Admin panel</a>` : ""}
+          <button class="btn btn-white" type="button" data-action="signout">Sign out</button>
+        </div>
+      </div>
+      <div class="acct" style="margin-top:18px">
+        <div class="col">
+          <div class="card pad bento-item">
+            <div class="card-title"><h2>Saved articles</h2><span class="hint">${saved.length} saved</span></div>
+            ${saved.length ? `<div class="saved-grid">${saved.map((a) => `
+              <a class="card lift acard" href="#/a/${keyOf(a)}"><div class="art-wrap">${art(a.id)}</div>
+              <div class="body">${tagHtml(a.genre)}<h3>${esc(a.title)}</h3><div class="meta"><span>${fmtDate(a.published_at)}</span><span>${readTime(a.content)}</span></div></div></a>`).join("")}</div>`
+              : `<div class="empty-note">Tap <b>Save</b> on any article and it will wait for you here.</div>`}
+          </div>
+          <div class="card pad bento-item">
+            <div class="card-title"><h2>Your demos</h2><button class="link" type="button" data-demo-open>+ Submit a demo</button></div>
+            <ul class="demo-list" id="myDemos"><li><div class="skel" style="height:18px;width:60%"></div></li></ul>
+          </div>
+        </div>
+        <div class="col">
+          <form class="card pad bento-item" data-form="profile" novalidate style="display:flex;flex-direction:column;gap:14px">
+            <div class="card-title" style="margin:0"><h2>Profile</h2></div>
+            <label class="field"><span>Display name</span><input class="input" name="name" maxlength="40" value="${esc(name)}" required></label>
+            <div class="field"><span>Favourite genres</span>
+              <div class="pills genre-picker" role="group" aria-label="Favourite genres">${GENRES.map((g) => `<button class="pill" type="button" data-fav="${esc(g)}" aria-pressed="${favs.has(g)}">${esc(g)}</button>`).join("")}</div>
+            </div>
+            <div class="form-error" role="alert" hidden></div>
+            <button class="btn btn-forest" type="submit" style="align-self:flex-start">Save profile</button>
+          </form>
+        </div>
+      </div>`;
+  }
+
+  function renderAccount() {
+    const el = $("view-account");
+    el.innerHTML = user ? (recovery ? recoveryHtml() : memberHtml()) : guestHtml();
+    const w = el.querySelector(".wave");
+    if (w) wave(w, 600, w.viewBox.baseVal.height || 300, 6);
+    if (user && !recovery) loadMyDemos();
+  }
+
+  async function loadMyDemos() {
+    const box = $("myDemos"); if (!box) return;
+    const { data, error } = await db.from("demo_submissions").select("id,band_name,genre,status,created_at").eq("user_id", user.id).order("created_at", { ascending: false }).limit(20);
+    if (!$("myDemos")) return;
+    if (error) { box.innerHTML = `<li><div class="empty-note" style="width:100%">${notReady(error) ? "Demo submissions are being set up." : "Could not load your demos."}</div></li>`; return; }
+    box.innerHTML = (data || []).length ? data.map((d) => `
+      <li><div style="min-width:0"><div style="font-weight:700">${esc(d.band_name)}</div><div class="fine">${esc(d.genre || "")} · sent ${fmtDate(d.created_at)}</div></div><span class="status ${esc(d.status)}">${esc(d.status)}</span></li>`).join("")
+      : `<li><div class="empty-note" style="width:100%">No demos yet. Send us your best song.</div></li>`;
+  }
+
+  function strength(pw) {
+    let s = 0;
+    if (pw.length >= 8) s++;
+    if (pw.length >= 12) s++;
+    if (/[a-z]/.test(pw) && /[A-Z]/.test(pw)) s++;
+    if (/\d/.test(pw) && /[^A-Za-z0-9]/.test(pw)) s++;
+    return Math.min(4, s);
+  }
+
+  const acct = $("view-account");
+  acct.addEventListener("click", async (e) => {
+    const t = e.target.closest("[data-tab-btn],[data-action],[data-demo-open],.pw-toggle,[data-fav]");
+    if (!t) return;
+    if (t.dataset.tabBtn) { authTab = t.dataset.tabBtn; renderAccount(); acct.querySelector("input")?.focus(); return; }
+    if (t.dataset.action === "signout") { busy(t, true, "Signing out…"); await db.auth.signOut(); toast("info", "Signed out", "See you at the next show."); return; }
+    if (t.hasAttribute("data-demo-open")) { openDemo(); return; }
+    if (t.classList.contains("pw-toggle")) {
+      const i = t.parentElement.querySelector("input"); const show = i.type === "password";
+      i.type = show ? "text" : "password"; t.setAttribute("aria-label", show ? "Hide password" : "Show password"); return;
+    }
+    if (t.dataset.fav) t.setAttribute("aria-pressed", t.getAttribute("aria-pressed") === "true" ? "false" : "true");
+  });
+  acct.addEventListener("input", (e) => {
+    e.target.classList.remove("invalid");
+    if (e.target.matches("[data-strength]")) {
+      const s = strength(e.target.value);
+      const colors = ["#E5EAE8", "#C68B59", "#E2A878", "#62C3A5", "#40A887"];
+      e.target.closest("form").querySelectorAll(".strength span").forEach((b, i) => { b.style.background = i < s ? colors[s] : ""; });
+    }
+  });
+  acct.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const form = e.target, kind = form.dataset.form;
+    const err = form.querySelector(".form-error"), btn = form.querySelector('[type="submit"]');
+    const val = (n) => (form.elements[n]?.value || "").trim();
+    form.querySelectorAll(".invalid").forEach((i) => i.classList.remove("invalid"));
+    err.hidden = true;
+    const fail = (msg, field) => {
+      err.textContent = msg; err.hidden = false; shakeEl(err);
+      if (field) { const i = form.elements[field]; i?.classList.add("invalid"); i?.focus(); }
+    };
+
+    if (kind === "signin") {
+      if (!EMAIL_RE.test(val("email"))) return fail("Enter a valid email address.", "email");
+      if (!form.elements.password.value) return fail("Enter your password.", "password");
+      busy(btn, true, "Signing in…");
+      const { error } = await db.auth.signInWithPassword({ email: val("email"), password: form.elements.password.value });
+      busy(btn, false);
+      if (error) return fail(friendly(error));
+      toast("success", "Welcome back", "You're signed in.");
+      const back = sessionStorage.getItem("ug_return"); const then = sessionStorage.getItem("ug_then");
+      sessionStorage.removeItem("ug_return"); sessionStorage.removeItem("ug_then");
+      if (back && back !== "#/account") location.hash = back.slice(1);
+      if (then === "demo") setTimeout(openDemo, 400);
+      return;
+    }
+    if (kind === "signup") {
+      const name = val("name");
+      if (name.length < 2 || name.length > 40) return fail("Display name must be 2 to 40 characters.", "name");
+      if (!EMAIL_RE.test(val("email"))) return fail("Enter a valid email address.", "email");
+      if (form.elements.password.value.length < 8) return fail("Password must be at least 8 characters.", "password");
+      busy(btn, true, "Creating account…");
+      const { data, error } = await db.auth.signUp({ email: val("email"), password: form.elements.password.value, options: { data: { display_name: name }, emailRedirectTo: AUTH_REDIRECT } });
+      busy(btn, false);
+      if (error) return fail(friendly(error));
+      if (data?.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) return fail("An account with this email already exists. Sign in instead.", "email");
+      if (!data?.session) { pendingEmail = val("email"); authTab = "check"; renderAccount(); toast("success", "Almost there", "Confirm your email to activate the account."); }
+      else toast("success", "Account created", "Welcome to UNDERGROUND, " + name + ".");
+      return;
+    }
+    if (kind === "forgot") {
+      if (!EMAIL_RE.test(val("email"))) return fail("Enter a valid email address.", "email");
+      busy(btn, true, "Sending…");
+      const { error } = await db.auth.resetPasswordForEmail(val("email"), { redirectTo: AUTH_REDIRECT });
+      busy(btn, false);
+      if (error) return fail(friendly(error));
+      pendingEmail = val("email"); authTab = "check"; renderAccount();
+      return;
+    }
+    if (kind === "recover") {
+      const pw = form.elements.password.value;
+      if (pw.length < 8) return fail("Password must be at least 8 characters.", "password");
+      if (pw !== form.elements.confirm.value) return fail("The two passwords don't match.", "confirm");
+      busy(btn, true, "Saving…");
+      const { error } = await db.auth.updateUser({ password: pw });
+      busy(btn, false);
+      if (error) return fail(friendly(error));
+      recovery = false;
+      history.replaceState(null, "", location.pathname + location.hash);
+      toast("success", "Password updated", "Use your new password next time you sign in.");
+      renderAccount(); enter(acct);
+      return;
+    }
+    if (kind === "profile") {
+      const name = val("name");
+      if (name.length < 2 || name.length > 40) return fail("Display name must be 2 to 40 characters.", "name");
+      const favorite_genres = [...form.querySelectorAll('[data-fav][aria-pressed="true"]')].map((b) => b.dataset.fav);
+      busy(btn, true, "Saving…");
+      const { error } = await db.from("profiles").upsert({ id: user.id, display_name: name, favorite_genres, updated_at: new Date().toISOString() });
+      busy(btn, false);
+      if (error) return fail(notReady(error) ? "Profiles are still being set up. Please try again later." : friendly(error));
+      profile = { ...(profile || {}), display_name: name, favorite_genres };
+      updateNav();
+      acct.querySelector(".me h1").textContent = name;
+      acct.querySelector(".me .big-avatar").textContent = initials(name);
+      toast("success", "Profile saved");
+    }
+  });
+
+  // ---- Saved articles --------------------------------------------------------
+  function updateSaveBtn(pop) {
+    const b = $("saveBtn"); if (!b) return;
+    const on = !!(user && currentArticle && savedIds.has(String(currentArticle.id)));
+    b.setAttribute("aria-pressed", String(on));
+    b.querySelector("span").textContent = on ? "Saved" : "Save";
+    b.setAttribute("aria-label", on ? "Remove from saved articles" : "Save article");
+    if (pop) { b.classList.remove("pop"); void b.offsetWidth; b.classList.add("pop"); }
+  }
+  $("saveBtn").onclick = async () => {
+    if (!currentArticle) return;
+    if (!user) return requireAuth("save articles");
+    const a = currentArticle, id = String(a.id), wasOn = savedIds.has(id);
+    wasOn ? savedIds.delete(id) : savedIds.add(id);
+    updateSaveBtn(true);
+    const res = wasOn
+      ? await db.from("saved_articles").delete().eq("user_id", user.id).eq("article_id", a.id)
+      : await db.from("saved_articles").insert({ user_id: user.id, article_id: a.id });
+    if (res.error) {
+      wasOn ? savedIds.add(id) : savedIds.delete(id);
+      updateSaveBtn();
+      return toast("error", "Could not update saved articles", notReady(res.error) ? "Saving is still being set up." : friendly(res.error));
+    }
+    toast("success", wasOn ? "Removed from saved" : "Saved for later", wasOn ? "" : "Find it any time in your account.", { duration: 3000 });
+  };
+
+  // ---- Comments ----------------------------------------------------------------
+  const commentHtml = (c) => {
+    const name = c.profiles?.display_name || "Reader";
+    const mine = user && (c.user_id === user.id || isAdmin);
+    return `<li class="c-item" data-id="${esc(c.id)}">
+      <span class="c-av" style="background:${colorFor(c.user_id)}" aria-hidden="true">${esc(initials(name))}</span>
+      <div style="min-width:0;flex:1">
+        <div class="c-head"><b>${esc(name)}</b><time datetime="${esc(c.created_at)}">${timeAgo(c.created_at)}</time>${mine ? `<button class="c-del" type="button">Delete</button>` : ""}</div>
+        <p class="c-body">${esc(c.body)}</p>
+      </div></li>`;
+  };
+  async function renderComments(a) {
+    const box = $("comments");
+    box.hidden = false;
+    box.innerHTML = `<h2 id="commentsTitle">Comments</h2><div class="skel" style="height:64px"></div>`;
+    const { data, error } = await db.from("comments").select("id,body,created_at,user_id,profiles(display_name)")
+      .eq("article_id", a.id).order("created_at", { ascending: false }).limit(300);
+    if (currentArticle !== a) return;
+    if (error) {
+      if (notReady(error)) { box.hidden = true; box.innerHTML = ""; return; }
+      box.innerHTML = `<h2 id="commentsTitle">Comments</h2><div class="empty-note">Comments could not be loaded right now.</div>`;
+      return;
+    }
+    const list = data || [];
+    box.innerHTML = `
+      <h2 id="commentsTitle">Comments <span class="n" id="cCountBadge">${list.length}</span></h2>
+      ${user ? `<form class="c-form" id="cForm" novalidate>
+          <label class="sr-only" for="cBody">Your comment</label>
+          <textarea class="input" id="cBody" name="body" rows="3" maxlength="2000" placeholder="Share your take, ${esc(myName())}…"></textarea>
+          <div class="row"><small class="fine" id="cCount">0 / 2000</small><button class="btn btn-forest" type="submit">Post comment</button></div>
+        </form>`
+        : `<div class="c-cta"><span>Sign in to join the conversation.</span><button class="btn btn-forest" type="button" data-signin>Sign in</button></div>`}
+      <ol class="c-list" id="cList">${list.map(commentHtml).join("") || `<li class="empty-note" id="cEmpty">No comments yet. Be the first to share your take.</li>`}</ol>`;
+  }
+  const comments = $("comments");
+  comments.addEventListener("input", (e) => { if (e.target.id === "cBody") { $("cCount").textContent = e.target.value.length + " / 2000"; e.target.classList.remove("invalid"); } });
+  comments.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (!user || !currentArticle) return;
+    const ta = $("cBody"), body = ta.value.trim(), btn = e.target.querySelector('[type="submit"]');
+    if (!body) { ta.classList.add("invalid"); shakeEl(ta); ta.focus(); return; }
+    busy(btn, true, "Posting…");
+    const { data, error } = await db.from("comments").insert({ article_id: currentArticle.id, user_id: user.id, body })
+      .select("id,body,created_at,user_id,profiles(display_name)").single();
+    busy(btn, false);
+    if (error) return toast("error", "Comment not posted", notReady(error) ? "Comments are still being set up." : friendly(error));
+    ta.value = ""; $("cCount").textContent = "0 / 2000";
+    $("cEmpty")?.remove();
+    $("cList").insertAdjacentHTML("afterbegin", commentHtml(data));
+    $("cCountBadge").textContent = $("cList").querySelectorAll(".c-item").length;
+    toast("success", "Comment posted", "", { duration: 2500 });
+  });
+  comments.addEventListener("click", async (e) => {
+    if (e.target.closest("[data-signin]")) return requireAuth("join the conversation");
+    const del = e.target.closest(".c-del"); if (!del) return;
+    if (!del.dataset.armed) {
+      del.dataset.armed = "1"; del.textContent = "Delete?";
+      setTimeout(() => { if (del.isConnected) { delete del.dataset.armed; del.textContent = "Delete"; } }, 3000);
+      return;
+    }
+    const li = del.closest(".c-item");
+    const { error } = await db.from("comments").delete().eq("id", li.dataset.id);
+    if (error) return toast("error", "Could not delete comment", friendly(error));
+    li.style.transition = "opacity .25s, transform .25s"; li.style.opacity = "0"; li.style.transform = "translateX(12px)";
+    setTimeout(() => { li.remove(); $("cCountBadge").textContent = $("cList").querySelectorAll(".c-item").length; }, 250);
+  });
+
+  // ---- Demo submissions ------------------------------------------------------
+  function openDemo() {
+    if (!user) return requireAuth("submit your demo", "demo");
+    const f = $("demoForm");
+    f.reset();
+    f.elements.contact_email.value = user.email || "";
+    if (profile?.favorite_genres?.[0]) f.elements.genre.value = profile.favorite_genres[0];
+    f.querySelectorAll(".invalid").forEach((i) => i.classList.remove("invalid"));
+    f.querySelector('[data-count-for="message"]').textContent = "0 / 1500";
+    $("demoError").hidden = true;
+    demoLastFocus = document.activeElement;
+    $("demoModal").hidden = false;
+    document.body.classList.add("locked");
+    setTimeout(() => f.elements.band_name.focus(), 60);
+  }
+  function closeDemo() {
+    if ($("demoModal").hidden) return;
+    $("demoModal").hidden = true;
+    if ($("reader").hidden) document.body.classList.remove("locked");
+    demoLastFocus?.focus?.();
+  }
+  $("demoModal").addEventListener("click", (e) => { if (e.target.closest("[data-close-demo]")) closeDemo(); });
+  $("demoForm").addEventListener("input", (e) => {
+    e.target.classList.remove("invalid");
+    if (e.target.name === "message") $("demoForm").querySelector('[data-count-for="message"]').textContent = e.target.value.length + " / 1500";
+  });
+  $("demoForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const f = e.target, v = (n) => (f.elements[n].value || "").trim();
+    const err = $("demoError");
+    const fail = (msg, field) => { err.textContent = msg; err.hidden = false; shakeEl(err); if (field) { f.elements[field].classList.add("invalid"); f.elements[field].focus(); } };
+    err.hidden = true;
+    if (!v("band_name")) return fail("Tell us the band or artist name.", "band_name");
+    if (!EMAIL_RE.test(v("contact_email"))) return fail("Enter an email we can reach you at.", "contact_email");
+    let link = v("link");
+    if (link && !/^https?:\/\//i.test(link)) link = "https://" + link;
+    try { const u = new URL(link); if (u.protocol !== "https:" || !u.hostname.includes(".")) throw 0; } catch { return fail("Paste a full https:// link to your music.", "link"); }
+    const btn = $("demoSubmit");
+    busy(btn, true, "Sending…");
+    const { error } = await db.from("demo_submissions").insert({
+      user_id: user.id, band_name: v("band_name"), country: v("country") || null, genre: v("genre") || null,
+      link, message: v("message") || null, contact_email: v("contact_email")
+    });
+    busy(btn, false);
+    if (error) return fail(notReady(error) ? "Demo submissions are still being set up. Please try again later." : friendly(error));
+    closeDemo();
+    toast("success", "Demo sent", "Thanks! Track its status in your account.");
+    if (view === "account") loadMyDemos();
   });
 
   // ---- Boot ----------------------------------------------------------------
