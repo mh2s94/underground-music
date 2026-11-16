@@ -528,7 +528,6 @@
     const btn = document.querySelector(`.nav-btn[data-view="${view}"]`);
     if (btn) $("navPill").style.transform = `translate(${btn.offsetLeft}px, ${btn.offsetTop}px)`;
   }
-  window.UGReenter = enter;
   function showView(name) {
     if (!["home", "articles", "music", "charts", "about", "account", "band"].includes(name)) name = "home";
     const changed = name !== view || !document.querySelector(".view.entered");
