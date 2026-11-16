@@ -12,6 +12,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#050409">
 <meta name="robots" content="noindex">
+<style>html.gate body { visibility: hidden; }</style>
+<script>document.documentElement.classList.add("gate");</script>
 <title>Control Room — UNDERGROUND</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -484,13 +486,9 @@ async function session() {
   const { data: { session: s } } = await sb.auth.getSession();
   if (!s) return showLogin();
   const { data: admin, error } = await sb.from("admin_users").select("user_id").eq("user_id", s.user.id).maybeSingle();
-  if (error || !admin) {
-    await sb.auth.signOut();
-    showLogin();
-    toast("error", "Access denied", "This account is not enabled as an administrator.");
-    return;
-  }
+  if (error || !admin) { showLogin(); return; } // members stay signed in and land on their profile
   $("login").hidden = true; $("app").hidden = false; $("userBar").hidden = false;
+  document.documentElement.classList.remove("gate");
   $("userEmail").textContent = s.user.email || "";
   loadArticles();
   loadDemos();
@@ -498,7 +496,9 @@ async function session() {
   const initial = (location.hash || "").slice(1);
   showTab(["music", "settings"].includes(initial) ? initial : "articles", false);
 }
-function showLogin() { $("login").hidden = false; $("app").hidden = true; $("userBar").hidden = true; setTimeout(() => $("email").focus(), 50); }
+// Visitors never see this panel: not signed in or not an admin -> the visitor's own account page.
+// Admins sign in on the site (Account page) and open "Admin panel" from their profile.
+function showLogin() { $("app").hidden = true; location.replace("/#/account"); }
 
 $("loginForm").onsubmit = async (e) => {
   e.preventDefault();
@@ -512,7 +512,7 @@ $("loginForm").onsubmit = async (e) => {
   toast("success", "Welcome back", "Signed in to the control room.");
   session();
 };
-$("logoutBtn").onclick = async () => { await sb.auth.signOut(); showLogin(); toast("info", "Signed out"); };
+$("logoutBtn").onclick = async () => { await sb.auth.signOut(); location.replace("/"); };
 ["email", "password"].forEach((id) => $(id).addEventListener("input", () => $(id).classList.remove("invalid")));
 
 /* ---------- Editor helpers ---------- */
@@ -1632,7 +1632,7 @@ $("cfGo").onclick = async () => {
 };
 
 sb.auth.onAuthStateChange((evt) => { if (evt === "SIGNED_OUT") showLogin(); });
-session();
+session().catch(() => showLogin());
 </script>
 </body>
 </html>
