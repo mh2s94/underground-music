@@ -37,6 +37,10 @@
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h11l3 3v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/><path d="M8 10h8M8 14h8M8 18h5"/></svg>
         <span class="nav-tip">Articles</span>
       </button>
+      <button class="nav-btn" type="button" data-view="music" aria-label="Music">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg>
+        <span class="nav-tip">Music</span>
+      </button>
       <button class="nav-btn" type="button" data-view="about" aria-label="About">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5"/><path d="M12 7.5v.5"/></svg>
         <span class="nav-tip">About</span>
@@ -53,6 +57,7 @@
     </div>
   </aside>
 
+  <div class="stage">
   <div class="main" id="main">
     <!-- View 1: Dashboard -->
     <section class="view" id="view-home" data-view="home" aria-label="Dashboard">
@@ -112,15 +117,8 @@
 
         <div class="col">
           <div class="card pad bento-item">
-            <div class="cal-head">
-              <h2 id="calTitle">—</h2>
-              <div class="cal-nav">
-                <button class="icon-btn" type="button" id="calPrev" aria-label="Previous week"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></button>
-                <button class="icon-btn" type="button" id="calNext" aria-label="Next week"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>
-              </div>
-            </div>
-            <div class="days" id="calDays"></div>
-            <div class="cal-note" id="calNote">Dots mark days with new stories.</div>
+            <div class="card-title"><h2>Basement radio</h2><a class="link" href="#/music">Open player</a></div>
+            <ol class="mini-tracks" id="homeTracks"><li class="skel" style="height:56px;list-style:none"></li></ol>
           </div>
 
           <div class="card pad bento-item">
@@ -188,6 +186,23 @@
         </div>
       </div>
     </section>
+    <!-- View: Music -->
+    <section class="view" id="view-music" data-view="music" aria-label="Music" hidden>
+      <div class="card music-hero bento-item">
+        <div class="eq-deco" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+        <span class="badge-dark"><i aria-hidden="true"></i>Basement radio</span>
+        <h1><span class="neon-txt">Press</span> play.</h1>
+        <p>Tracks picked and uploaded by the UNDERGROUND editors. Tap any song to listen; the player keeps going while you read.</p>
+        <div class="actions">
+          <button class="btn btn-white" type="button" id="playAll"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"/></svg>Play all</button>
+          <button class="btn btn-ghost-dark" type="button" id="shuffleAll"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg>Shuffle</button>
+          <span class="hint" id="trackCount"></span>
+        </div>
+      </div>
+      <div class="pills bento-item" id="musicPills" role="group" aria-label="Filter tracks by genre" style="margin:18px 0"></div>
+      <div class="card bento-item"><ol class="tracklist" id="trackList"></ol></div>
+    </section>
+
     <!-- View 4: Account -->
     <section class="view" id="view-account" data-view="account" aria-label="Account" hidden></section>
 
@@ -224,6 +239,7 @@
               <ul>
                 <li><a href="#/home">Dashboard</a></li>
                 <li><a href="#/articles">Latest articles</a></li>
+                <li><a href="#/music">Basement radio</a></li>
                 <li><a href="#/about">About</a></li>
                 <li><a href="#/account">Account</a></li>
               </ul>
@@ -248,6 +264,28 @@
         <button class="ft-top" type="button" id="ftTop"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>Back to top</button>
       </div>
     </footer>
+  </div>
+
+  <!-- Mini player (persists across views) -->
+  <div class="player" id="player" role="region" aria-label="Music player" hidden>
+    <input class="pl-seek" id="plSeek" type="range" min="0" max="1000" value="0" step="1" aria-label="Seek">
+    <div class="pl-row">
+      <div class="pl-cover" id="plCover" aria-hidden="true"></div>
+      <div class="pl-meta"><div class="pl-title" id="plTitle">—</div><div class="pl-artist" id="plArtist"></div></div>
+      <div class="pl-ctrls">
+        <button class="pl-btn" type="button" id="plPrev" aria-label="Previous track"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg></button>
+        <button class="pl-btn pl-main" type="button" id="plPlay" aria-label="Play"><svg class="i-play" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"/></svg><svg class="i-pause" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg></button>
+        <button class="pl-btn" type="button" id="plNext" aria-label="Next track"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg></button>
+      </div>
+      <div class="pl-time"><span id="plCur">0:00</span><span aria-hidden="true">/</span><span id="plDur">0:00</span></div>
+      <div class="pl-vol">
+        <button class="pl-btn" type="button" id="plMute" aria-label="Mute"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5L6 9H3v6h3l5 4z"/><path class="vol-wave" d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg></button>
+        <input id="plVol" type="range" min="0" max="1" step="0.01" value="1" aria-label="Volume">
+      </div>
+      <button class="pl-btn pl-close" type="button" id="plClose" aria-label="Stop and close player"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+  </div>
+  <audio id="audio" preload="none"></audio>
   </div>
 </div>
 

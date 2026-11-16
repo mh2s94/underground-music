@@ -25,7 +25,6 @@
   let articles = [];
   let genre = "All";
   let view = "home";
-  let weekOffset = 0;
   let lastFocus = null;
 
   // ---- Helpers ------------------------------------------------------------
@@ -44,7 +43,6 @@
     return fmtDate(d);
   }
   const startOfWeek = (d) => { const x = new Date(d); x.setHours(0, 0, 0, 0); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; };
-  const sameDay = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 
   // Deterministic pseudo-random from a string seed
   function hash(str) { let h = 2166136261; for (const c of String(str)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; }
@@ -191,7 +189,6 @@
     $("statArticles").dataset.count = articles.length;
     $("statReleases").dataset.count = releases();
 
-    renderCalendar();
 
     const vids = articles.filter((a) => ytId(a.content)).slice(0, 4);
     $("sessions").innerHTML = vids.length ? vids.map((a) => `
@@ -229,22 +226,175 @@
     } catch { /* keep our own stories in the wire */ }
   }
 
-  function renderCalendar() {
-    const start = new Date(startOfWeek(new Date()).getTime() + weekOffset * 7 * DAY);
-    const mid = new Date(start.getTime() + 3 * DAY);
-    $("calTitle").textContent = mid.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
-    const today = new Date();
-    let count = 0;
-    $("calDays").innerHTML = Array.from({ length: 7 }, (_, i) => {
-      const d = new Date(start.getTime() + i * DAY);
-      const has = articles.some((a) => sameDay(new Date(a.published_at), d));
-      if (has) count++;
-      return `<div class="day${sameDay(d, today) ? " today" : ""}${has ? " has" : ""}"><small>${d.toLocaleDateString("en-GB", { weekday: "short" })}</small>${d.getDate()}</div>`;
-    }).join("");
-    $("calNote").textContent = count ? `New stories on ${count} ${count === 1 ? "day" : "days"} this week.` : "No new stories this week yet.";
+
+  // ---- Music: Basement radio + persistent mini player ----------------------
+  let tracks = [];
+  let musicGenre = "All";
+  let queue = [], qi = -1;
+  const audio = $("audio");
+  const fmtTime = (sec) => { sec = Math.max(0, Math.floor(sec || 0)); return Math.floor(sec / 60) + ":" + String(sec % 60).padStart(2, "0"); };
+  const PLAY_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"/></svg>';
+  const EQ = '<span class="eq" aria-hidden="true"><i></i><i></i><i></i></span>';
+  const trackCover = (t) => t.cover_url
+    ? `<img src="${esc(t.cover_url)}" alt="" loading="lazy" onerror="this.remove()">${art(t.id)}`
+    : art(t.id);
+  const filteredTracks = () => musicGenre === "All" ? tracks : tracks.filter((t) => (t.genre || "Underground").toLowerCase() === musicGenre.toLowerCase());
+
+  async function loadTracks() {
+    const { data, error } = await db.from("tracks")
+      .select("id,title,artist,genre,cover_url,audio_url,duration_sec,published_at")
+      .eq("status", "published").order("published_at", { ascending: false }).limit(300);
+    tracks = error ? [] : (data || []).filter((t) => /^https:\/\//i.test(t.audio_url || ""));
+    renderMusicPills(); renderTrackList(); renderHomeTracks();
   }
-  $("calPrev").onclick = () => { weekOffset--; renderCalendar(); };
-  $("calNext").onclick = () => { weekOffset++; renderCalendar(); };
+
+  function renderMusicPills() {
+    const present = new Set(tracks.map((t) => t.genre || "Underground"));
+    const list = ["All", ...GENRES.filter((g) => present.has(g))];
+    $("musicPills").innerHTML = list.map((g) => `<button class="pill" type="button" aria-pressed="${g === musicGenre}" data-mg="${esc(g)}">${esc(g)}</button>`).join("");
+  }
+  $("musicPills").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-mg]"); if (!b) return;
+    musicGenre = b.dataset.mg; renderMusicPills(); renderTrackList();
+  });
+
+  function rowHtml(t, i) {
+    return `<li><button class="track" type="button" data-track="${esc(t.id)}" aria-label="Play ${esc(t.title)} by ${esc(t.artist)}">
+      <span class="tr-n">${String(i + 1).padStart(2, "0")}</span>${EQ}
+      <span class="tr-cover">${trackCover(t)}<span class="tr-play" aria-hidden="true">${PLAY_SVG}</span></span>
+      <span class="tr-meta"><span class="tr-title">${esc(t.title)}</span><span class="tr-artist">${esc(t.artist)}</span></span>
+      ${tagHtml(t.genre || "Underground")}
+      <span class="tr-dur">${t.duration_sec ? fmtTime(t.duration_sec) : ""}</span>
+    </button></li>`;
+  }
+  function renderTrackList() {
+    const list = filteredTracks();
+    $("trackCount").textContent = tracks.length ? `${tracks.length} ${tracks.length === 1 ? "track" : "tracks"}` : "";
+    $("playAll").disabled = $("shuffleAll").disabled = !list.length;
+    $("trackList").innerHTML = list.length ? list.map(rowHtml).join("")
+      : `<li><div class="empty-note">${tracks.length ? "No tracks in this genre yet." : "The radio is quiet for now. New tracks drop here as soon as the editors upload them."}</div></li>`;
+    markPlaying();
+  }
+  function renderHomeTracks() {
+    $("homeTracks").innerHTML = tracks.length ? tracks.slice(0, 4).map((t) => `
+      <li><button class="mini-track" type="button" data-track="${esc(t.id)}" data-from="all" aria-label="Play ${esc(t.title)} by ${esc(t.artist)}">
+        <span class="tr-cover">${trackCover(t)}<span class="tr-play" aria-hidden="true">${PLAY_SVG}</span></span>
+        <span class="tr-meta"><span class="tr-title">${esc(t.title)}</span><span class="tr-artist">${esc(t.artist)}</span></span>${EQ}
+      </button></li>`).join("")
+      : `<li><div class="empty-note">Tracks appear here when the editors upload music.</div></li>`;
+    markPlaying();
+  }
+
+  function playFrom(list, i) {
+    if (!list.length) return;
+    queue = list.slice(); qi = Math.max(0, Math.min(i, queue.length - 1));
+    const t = queue[qi];
+    audio.src = t.audio_url;
+    audio.play().catch(() => {});
+    showPlayer(t);
+  }
+  function showPlayer(t) {
+    $("player").hidden = false;
+    document.body.classList.add("has-player");
+    $("plTitle").textContent = t.title;
+    $("plArtist").textContent = t.artist + (t.genre ? " · " + t.genre : "");
+    $("plCover").innerHTML = trackCover(t);
+    $("plCur").textContent = "0:00";
+    $("plDur").textContent = t.duration_sec ? fmtTime(t.duration_sec) : "0:00";
+    $("plSeek").value = 0;
+    if ("mediaSession" in navigator) {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: t.title, artist: t.artist, album: "UNDERGROUND · Basement radio",
+        artwork: t.cover_url ? [{ src: t.cover_url, sizes: "512x512" }] : []
+      });
+    }
+    markPlaying();
+  }
+  const current = () => (qi >= 0 ? queue[qi] : null);
+  function step(dir) {
+    if (!queue.length) return;
+    if (dir < 0 && audio.currentTime > 3) { audio.currentTime = 0; return; }
+    qi = (qi + dir + queue.length) % queue.length;
+    playFrom(queue, qi);
+  }
+  function togglePlay() {
+    if (!current()) return playFrom(filteredTracks(), 0);
+    if (audio.paused) audio.play().catch(() => {}); else audio.pause();
+  }
+  function markPlaying() {
+    const t = current();
+    document.querySelectorAll("[data-track]").forEach((el) => {
+      const on = !!t && el.dataset.track === String(t.id);
+      el.classList.toggle("current", on);
+      if (on) el.setAttribute("aria-current", "true"); else el.removeAttribute("aria-current");
+    });
+    const playing = !!t && !audio.paused;
+    document.body.classList.toggle("is-playing", playing);
+    $("plPlay").setAttribute("aria-label", playing ? "Pause" : "Play");
+    $("plPlay").classList.toggle("paused", !playing);
+  }
+
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-track]"); if (!b) return;
+    const t = current();
+    if (t && String(t.id) === b.dataset.track) { togglePlay(); return; }
+    const list = b.dataset.from === "all" ? tracks : filteredTracks();
+    playFrom(list, list.findIndex((x) => String(x.id) === b.dataset.track));
+  });
+  $("playAll").onclick = () => playFrom(filteredTracks(), 0);
+  $("shuffleAll").onclick = () => {
+    const l = filteredTracks().slice();
+    for (let i = l.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [l[i], l[j]] = [l[j], l[i]]; }
+    playFrom(l, 0);
+  };
+  $("plPlay").onclick = togglePlay;
+  $("plPrev").onclick = () => step(-1);
+  $("plNext").onclick = () => step(1);
+  $("plClose").onclick = () => {
+    audio.pause(); audio.removeAttribute("src"); audio.load();
+    queue = []; qi = -1;
+    $("player").hidden = true; document.body.classList.remove("has-player");
+    markPlaying();
+  };
+  let seeking = false;
+  $("plSeek").addEventListener("input", () => {
+    seeking = true;
+    if (isFinite(audio.duration)) $("plCur").textContent = fmtTime($("plSeek").value / 1000 * audio.duration);
+  });
+  $("plSeek").addEventListener("change", () => {
+    if (isFinite(audio.duration)) audio.currentTime = $("plSeek").value / 1000 * audio.duration;
+    seeking = false;
+  });
+  let lastVol = 1;
+  $("plVol").addEventListener("input", () => { audio.volume = +$("plVol").value; audio.muted = audio.volume === 0; $("player").classList.toggle("muted", audio.muted); });
+  $("plMute").onclick = () => {
+    if (audio.muted || audio.volume === 0) { audio.muted = false; audio.volume = lastVol || 1; }
+    else { lastVol = audio.volume; audio.muted = true; }
+    $("plVol").value = audio.muted ? 0 : audio.volume;
+    $("player").classList.toggle("muted", audio.muted);
+    $("plMute").setAttribute("aria-label", audio.muted ? "Unmute" : "Mute");
+  };
+  audio.addEventListener("timeupdate", () => {
+    if (!isFinite(audio.duration) || seeking) return;
+    $("plSeek").value = Math.round(audio.currentTime / audio.duration * 1000);
+    $("plSeek").style.setProperty("--p", (audio.currentTime / audio.duration * 100) + "%");
+    $("plCur").textContent = fmtTime(audio.currentTime);
+  });
+  audio.addEventListener("loadedmetadata", () => { if (isFinite(audio.duration)) $("plDur").textContent = fmtTime(audio.duration); });
+  audio.addEventListener("play", markPlaying);
+  audio.addEventListener("pause", markPlaying);
+  audio.addEventListener("ended", () => { if (qi < queue.length - 1) step(1); else markPlaying(); });
+  audio.addEventListener("error", () => {
+    if (!audio.getAttribute("src")) return;
+    toast("warning", "This track can't be played", "Skipping to the next one.", { duration: 3500 });
+    if (queue.length > 1) setTimeout(() => step(1), 800); else markPlaying();
+  });
+  if ("mediaSession" in navigator) {
+    navigator.mediaSession.setActionHandler("play", () => audio.play());
+    navigator.mediaSession.setActionHandler("pause", () => audio.pause());
+    navigator.mediaSession.setActionHandler("previoustrack", () => step(-1));
+    navigator.mediaSession.setActionHandler("nexttrack", () => step(1));
+  }
 
   // ---- Render: articles ----------------------------------------------------
   function renderPills() {
@@ -330,7 +480,7 @@
     if (btn) $("navPill").style.transform = `translate(${btn.offsetLeft}px, ${btn.offsetTop}px)`;
   }
   function showView(name) {
-    if (!["home", "articles", "about", "account"].includes(name)) name = "home";
+    if (!["home", "articles", "music", "about", "account"].includes(name)) name = "home";
     const changed = name !== view || !document.querySelector(".view.entered");
     view = name;
     document.querySelectorAll(".view").forEach((v) => { v.hidden = v.dataset.view !== name; });
@@ -940,6 +1090,7 @@
     clearTimeout(maxSplash);
     renderHome(); renderCoverage(); renderGrid(false); renderAbout();
     loadNews();
+    loadTracks();
     hideSplash();
     route();
   });
