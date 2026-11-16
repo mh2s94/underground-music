@@ -556,6 +556,9 @@
   window.addEventListener("popstate", route);
   window.addEventListener("resize", movePill);
 
+  // ?q=… (Google sitelinks search box) opens the site search with that text
+  const startQ = new URLSearchParams(location.search).get("q");
+  if (startQ) { history.replaceState(null, "", location.pathname + location.hash); setTimeout(() => { openSearch(); $("searchInput").value = startQ; renderSearch(startQ); }, 1200); }
   function route() {
     const h = location.hash;
     const legacy = h.match(/^#\/a\/(.+)$/); // old share links: /#/a/slug → /a/slug
