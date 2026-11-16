@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#0a0a0b">
+<meta name="theme-color" content="#050409">
 <meta name="robots" content="noindex">
 <title>Control Room — UNDERGROUND</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap">
 <link rel="stylesheet" href="/assets/ui.css">
 <style>
 .page { padding: 32px 0 80px; }
@@ -25,7 +25,8 @@
 @media (max-width: 980px) { .workspace { grid-template-columns: 1fr; } }
 .card-pad { padding: 24px; display: flex; flex-direction: column; gap: 16px; }
 .card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.card-head h2 { margin: 0; font-size: 18px; font-weight: 700; letter-spacing: -.01em; }
+.card-head h2, .list-head h2 { margin: 0; font: 400 28px/1 var(--font-display) !important; letter-spacing: .05em; text-transform: uppercase; }
+.list-head h2 .badge { vertical-align: middle; }
 .gen { position: sticky; top: 84px; }
 @media (max-width: 980px) { .gen { position: static; } }
 .gen .btn-primary { width: 100%; min-height: 54px; font-size: 16px; }
@@ -66,14 +67,14 @@
 .demo-side { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; flex: none; }
 .demo-open { font-size: 13px; font-weight: 600; color: var(--muted); transition: color .2s, transform .3s var(--ease); }
 .dv { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 20px; }
-.dv-backdrop { position: absolute; inset: 0; background: rgba(5, 5, 6, .72); backdrop-filter: blur(6px); animation: fadeIn .3s both; }
+.dv-backdrop { position: absolute; inset: 0; background: rgba(5, 4, 9, .74); backdrop-filter: blur(6px); animation: fadeIn .3s both; }
 .dv-sheet { position: relative; width: min(680px, 100%); max-height: calc(100dvh - 40px); overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 18px; animation: sheetUp .5s var(--spring) both; }
 .dv-sheet > * { flex-shrink: 0; }
 .dv .segmented { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-radius: 18px; }
 .dv .segmented span { justify-content: center; width: 100%; }
 @media (max-width: 420px) { .dv .segmented { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .dv-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
-.dv-head h2 { margin: 10px 0 4px; font-size: 28px; letter-spacing: -.02em; line-height: 1.15; overflow-wrap: anywhere; }
+.dv-head h2 { margin: 10px 0 4px; font: 400 44px/1 var(--font-display); letter-spacing: .03em; overflow-wrap: anywhere; }
 .dv-player { position: relative; border-radius: var(--r-md); overflow: hidden; background: var(--bg); border: 1px solid var(--line); }
 .dv-player iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
 .dv-noplayer { padding: 18px; border: 1px dashed var(--line-strong); border-radius: var(--r-md); font-size: 14px; }
@@ -497,7 +498,7 @@ function embedFor(link) {
     const m = u.pathname.match(/\/(track|album|playlist|artist|episode)\/([A-Za-z0-9]+)/);
     if (m) { src = `https://open.spotify.com/embed/${m[1]}/${m[2]}`; ratio = ""; height = m[1] === "track" ? "152px" : "352px"; }
   } else if (host === "soundcloud.com") {
-    src = "https://w.soundcloud.com/player/?url=" + encodeURIComponent(link) + "&color=%23ff3b2f&visual=true"; ratio = ""; height = "300px";
+    src = "https://w.soundcloud.com/player/?url=" + encodeURIComponent(link) + "&color=%23ff2e63&visual=true"; ratio = ""; height = "300px";
   }
   if (!src) return "";
   return `<div class="dv-player" style="${ratio ? "aspect-ratio:" + ratio : "height:" + height}"><iframe src="${esc(src)}" title="Music player" loading="lazy" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" allowfullscreen></iframe></div>`;
