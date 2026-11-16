@@ -1710,6 +1710,16 @@
     el.style.overflow = "hidden"; el.append(dot); setTimeout(() => dot.remove(), 650);
   });
 
+  // Spotlight on lift cards follows the mouse (CSS draws it only on devices with hover)
+  if (!reduceMotion && matchMedia("(hover: hover)").matches) {
+    document.addEventListener("pointermove", (e) => {
+      const c = e.target.closest?.(".card.lift"); if (!c) return;
+      const r = c.getBoundingClientRect();
+      c.style.setProperty("--mx", e.clientX - r.left + "px");
+      c.style.setProperty("--my", e.clientY - r.top + "px");
+    }, { passive: true });
+  }
+
   heroFloor($("heroFloor"));
   recTimer();
   wave($("aboutWave"), 600, 180, 6);

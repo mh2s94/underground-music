@@ -81,7 +81,7 @@ img { display: block; max-width: 100%; }
 
 /* ---------- Cards ---------- */
 .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--r-card); transition: transform .45s var(--ease-out), box-shadow .45s var(--ease-out), border-color .3s; }
-.card.lift:hover { transform: translateY(-3px); border-color: var(--neon); box-shadow: 0 0 0 1px var(--neon), 0 0 34px -6px rgba(255, 46, 99, .55); }
+@media (hover: hover) { .card.lift:hover { transform: translateY(-3px); border-color: var(--neon); box-shadow: 0 0 0 1px var(--neon), 0 0 34px -6px rgba(255, 46, 99, .55); } }
 .pad { padding: 20px; }
 .card-title { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
 .card-title h2, .card-title h3 { margin: 0; font: 400 24px/1 var(--display); letter-spacing: .05em; text-transform: uppercase; }
@@ -89,13 +89,14 @@ img { display: block; max-width: 100%; }
 .link { font: 700 11px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--neon-hi); background: none; border: 0; cursor: pointer; padding: 8px 0; }
 .link:hover { text-shadow: var(--neon-glow); }
 
-.bento-item { opacity: 0; transform: translateY(16px); }
+.bento-item { opacity: 0; translate: 0 16px; } /* entrance uses `translate` so hover `transform` still works */
+@media (scripting: none) { .bento-item { opacity: 1; translate: none; } }
 .view.entered .bento-item { animation: rise .7s var(--ease-out) both; animation-delay: calc(var(--i, 0) * 60ms); }
-@keyframes rise { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+@keyframes rise { from { opacity: 0; translate: 0 16px; } to { opacity: 1; translate: 0 0; } }
 
 /* ---------- Buttons, pills, tags ---------- */
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 46px; padding: 0 20px; border-radius: 10px; border: 1px solid transparent; font: 700 12.5px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; cursor: pointer; white-space: nowrap; transition: transform .2s var(--ease-out), box-shadow .3s, background-color .25s, color .25s, border-color .25s; }
-.btn:hover { transform: translateY(-2px); }
+@media (hover: hover) { .btn:hover { transform: translateY(-2px); } }
 .btn:active { transform: scale(.97); }
 .btn:disabled { opacity: .55; cursor: not-allowed; transform: none; }
 .btn-white, .btn-forest { background: var(--neon); color: var(--on-neon); }
@@ -156,7 +157,7 @@ img { display: block; max-width: 100%; }
 .avatar:hover .ring { transform: scale(1.08); box-shadow: 0 0 22px rgba(255, 46, 99, .6); }
 .avatar .face { position: relative; width: 100%; height: 100%; border-radius: 50%; overflow: hidden; border: 2px solid var(--card); display: grid; place-items: center; font: 400 19px/1 var(--display); letter-spacing: .04em; color: var(--ink); background: var(--card-2); }
 .avatar .face img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.avatar .status { position: absolute; right: 0; bottom: 0; width: 14px; height: 14px; border-radius: 50%; background: var(--neon); border: 3px solid var(--card); box-shadow: 0 0 10px var(--neon); }
+.avatar .status { display: block; padding: 0; position: absolute; right: 0; bottom: 0; width: 14px; height: 14px; border-radius: 50%; background: var(--neon); border: 3px solid var(--card); box-shadow: 0 0 10px var(--neon); }
 .avatar span.name { font-size: 11.5px; font-weight: 600; max-width: 64px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
 .kpi { font: 400 52px/1 var(--display); letter-spacing: .02em; font-variant-numeric: tabular-nums; }
 .kpi-sub { font: 400 11px/1.4 var(--mono); letter-spacing: .04em; text-transform: uppercase; color: var(--faint); margin-top: 6px; }
@@ -188,10 +189,10 @@ img { display: block; max-width: 100%; }
 .sessions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .session { position: relative; display: block; border-radius: 12px; overflow: hidden; aspect-ratio: 4 / 3; background: var(--card-2); border: 1px solid var(--line); }
 .session img, .session svg.art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: transform .8s var(--ease-out); }
-.session:hover img, .session:hover svg.art { transform: scale(1.07); }
+@media (hover: hover) { .session:hover img, .session:hover svg.art { transform: scale(1.07); } }
 .session .shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(7, 6, 11, .1) 30%, rgba(7, 6, 11, .9)); }
 .session .play { position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%); width: 42px; height: 42px; border-radius: 50%; background: var(--neon); color: var(--on-neon); display: grid; place-items: center; box-shadow: 0 0 22px rgba(255, 46, 99, .7); transition: transform .3s var(--ease-out); }
-.session:hover .play { transform: translate(-50%, -50%) scale(1.12); }
+@media (hover: hover) { .session:hover .play { transform: translate(-50%, -50%) scale(1.12); } }
 .session .cap { position: absolute; left: 10px; right: 10px; bottom: 9px; color: var(--ink); font-size: 12px; font-weight: 700; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 
 .wire { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
@@ -381,6 +382,7 @@ textarea.input { resize: vertical; line-height: 1.55; }
 .status.listened { background: var(--uv-soft); color: var(--uv-hi); }
 .status.featured { background: var(--neon); color: var(--on-neon); }
 .status.featured::before { box-shadow: none; }
+.avatar .status::before { display: none; } /* the avatar dot is the status itself */
 
 .save-btn[aria-pressed="true"] { border-color: var(--neon); color: var(--neon-hi); box-shadow: 0 0 16px -2px rgba(255, 46, 99, .55); }
 .save-btn[aria-pressed="true"] svg { fill: currentColor; }
@@ -484,11 +486,11 @@ body.has-player .main { padding-bottom: 96px; }
 
 /* ---------- Equalizer ---------- */
 .eq { display: none; align-items: flex-end; gap: 2px; width: 16px; height: 14px; flex: none; }
-.eq i { width: 3px; height: 30%; background: var(--neon); border-radius: 2px; box-shadow: 0 0 6px var(--neon); }
+.eq i { width: 3px; height: 100%; transform-origin: bottom; transform: scaleY(.3); background: var(--neon); border-radius: 2px; box-shadow: 0 0 6px var(--neon); }
 .current .eq { display: inline-flex; }
 body.is-playing .current .eq i { animation: eqb .9s ease-in-out infinite; }
 .eq i:nth-child(2) { animation-delay: -.3s !important; } .eq i:nth-child(3) { animation-delay: -.6s !important; }
-@keyframes eqb { 0%, 100% { height: 25%; } 50% { height: 100%; } }
+@keyframes eqb { 0%, 100% { transform: scaleY(.25); } 50% { transform: scaleY(1); } }
 
 /* ---------- Music view ---------- */
 .music-hero { position: relative; overflow: hidden; background: var(--void); padding: clamp(24px, 4vw, 42px); min-height: 280px; display: flex; flex-direction: column; justify-content: flex-end; gap: 14px; }
@@ -496,7 +498,7 @@ body.is-playing .current .eq i { animation: eqb .9s ease-in-out infinite; }
 .music-hero p { position: relative; margin: 0; max-width: 520px; color: var(--muted); }
 .music-hero .actions { position: relative; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 .eq-deco { position: absolute; right: 28px; bottom: 0; top: 30px; width: min(46%, 420px); display: flex; align-items: flex-end; gap: 6%; opacity: .5; pointer-events: none; -webkit-mask-image: linear-gradient(180deg, transparent, #000 40%); mask-image: linear-gradient(180deg, transparent, #000 40%); }
-.eq-deco span { flex: 1; height: 30%; border-radius: 6px 6px 0 0; background: linear-gradient(180deg, var(--neon), var(--uv)); box-shadow: 0 0 18px rgba(255, 46, 99, .45); animation: eqb 1.6s ease-in-out infinite; }
+.eq-deco span { flex: 1; height: 100%; transform-origin: bottom; transform: scaleY(.3); border-radius: 6px 6px 0 0; background: linear-gradient(180deg, var(--neon), var(--uv)); box-shadow: 0 0 18px rgba(255, 46, 99, .45); animation: eqb 1.6s ease-in-out infinite; }
 .eq-deco span:nth-child(3n) { animation-duration: 1.1s; } .eq-deco span:nth-child(4n) { animation-duration: 2s; } .eq-deco span:nth-child(5n+1) { animation-delay: -.7s; } .eq-deco span:nth-child(2n) { animation-delay: -.3s; }
 .tracklist, .mini-tracks { list-style: none; margin: 0; padding: 6px; }
 .track, .mini-track { width: 100%; display: flex; align-items: center; gap: 14px; padding: 10px 12px; border: 0; border-radius: 12px; background: transparent; color: var(--ink); text-align: left; cursor: pointer; transition: background-color .2s, box-shadow .25s; }
@@ -819,3 +821,26 @@ body:not(.is-playing) .np-chip i { background: var(--muted); }
 .track.current .tr-cover, .mini-track.current .tr-cover, .chart-row.current .c-cover { box-shadow: 0 0 0 2px var(--ok), 0 0 16px -2px rgba(61, 245, 167, .7); }
 .ripple { position: absolute; z-index: 5; border-radius: 50%; background: radial-gradient(circle, rgba(255, 255, 255, .35), rgba(61, 245, 167, .18) 60%, transparent 70%); pointer-events: none; animation: ripple .65s ease-out forwards; }
 @media (prefers-reduced-motion: reduce) { .isl-cover, .np-cover, .isl-eq i, .np-sheet, .np-info, .np-item, .player { animation: none !important; } }
+
+/* ---------- Motion polish (2026-11-17) ---------- */
+/* C. Hero headline settles in when the home view opens */
+.view.entered .hero h1 { animation: titleIn 1.1s var(--ease-out) .15s both; }
+@keyframes titleIn { from { opacity: 0; letter-spacing: .18em; filter: blur(10px); } }
+
+/* D. Neon spotlight that follows the mouse (devices with a real hover only). Painted as a background
+   layer of the card, so it sits under the content and needs no extra positioning. */
+@property --spot { syntax: "<number>"; inherits: false; initial-value: 0; }
+@media (hover: hover) {
+  .card.lift { transition: transform .45s var(--ease-out), box-shadow .45s var(--ease-out), border-color .3s, --spot .3s;
+    background-image: radial-gradient(260px circle at var(--mx, 50%) var(--my, 50%), rgb(255 46 99 / calc(var(--spot) * .16)), transparent 60%); }
+  .card.lift:hover { --spot: 1; }
+}
+
+/* G. A springy curve for small controls */
+:root { --spring: cubic-bezier(.34, 1.56, .64, 1); }
+.avatar .ring, .session .play, .save-btn, .pill { transition-timing-function: var(--spring); }
+
+@media (prefers-reduced-motion: reduce) {
+  .view.entered .hero h1 { animation: none; }
+  .card.lift { --spot: 0 !important; }
+}
