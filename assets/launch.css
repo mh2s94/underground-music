@@ -1,0 +1,164 @@
+/* UNDERGROUND — launch motion.
+   body[data-lm="01".."10"] picks the motion. body.lm-intro = first open (longer, with an overlay);
+   without it the same motion plays as a short page-change version. Off for prefers-reduced-motion. */
+
+#lm { position: fixed; inset: 0; z-index: 650; pointer-events: none; overflow: hidden; }
+#lm .lm-logo { position: absolute; inset: 0; display: grid; place-items: center; align-content: center; gap: 16px; }
+#lm .lm-logo svg { width: 84px; height: 84px; filter: drop-shadow(0 0 10px var(--neon)) drop-shadow(0 0 28px var(--neon)); }
+#lm .lm-word { font: 400 clamp(20px, 6.4vw, 30px)/1 var(--display); letter-spacing: .38em; padding-left: .38em; color: #E4DCFF; text-shadow: var(--uv-glow); }
+
+/* Shared item timing: --lm-base waits for the overlay on first open. */
+body[data-lm] .view.entered .bento-item { animation-delay: calc(var(--lm-base, 0ms) + var(--i, 0) * var(--lm-step, 50ms)); }
+body.lm-intro .sidebar { animation: lmSide .8s var(--ease-out) both; animation-delay: var(--lm-base, 0ms); }
+@keyframes lmSide { from { opacity: 0; } }
+
+/* ---------- 01 Neon Ignite ---------- */
+body[data-lm="01"] .view.entered .bento-item { animation-name: lm01; animation-duration: .7s; }
+body[data-lm="01"].lm-intro { --lm-base: 950ms; --lm-step: 70ms; }
+#lm.m01 { background: var(--void); animation: lmFade .45s .9s ease both; }
+#lm.m01 .lm-logo { animation: lm01flick .95s steps(1) both; }
+@keyframes lm01 { 0% { opacity: 0; transform: translateY(14px); filter: brightness(2.4) drop-shadow(0 0 14px rgba(255, 46, 99, .9)); } 25% { opacity: .5; } 35% { opacity: .15; } 60% { opacity: 1; filter: brightness(1.4) drop-shadow(0 0 8px rgba(255, 46, 99, .6)); } 100% { opacity: 1; transform: none; filter: none; } }
+@keyframes lm01flick { 0%, 9% { opacity: 0; } 10%, 14% { opacity: 1; } 15%, 24% { opacity: .1; } 25%, 29% { opacity: .9; } 30%, 39% { opacity: .2; } 40%, 100% { opacity: 1; } }
+@keyframes lmFade { to { opacity: 0; } }
+
+/* ---------- 02 Amp Power-On (CRT) ---------- */
+body[data-lm="02"].lm-intro .app { animation: lm02on .9s cubic-bezier(.2, .7, .2, 1) both; }
+body[data-lm="02"].lm-intro { --lm-base: 600ms; }
+body[data-lm="02"] .view.entered { animation: lm02view .38s cubic-bezier(.2, .7, .2, 1) both; }
+body[data-lm="02"] .view.entered .bento-item { animation-name: fade; animation-duration: .4s; }
+#lm.m02 { background: repeating-linear-gradient(0deg, rgba(255, 255, 255, .07) 0 1px, transparent 1px 3px); animation: lmFade .5s .8s ease both; }
+#lm.m02::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 2px; margin-top: -1px; background: #fff; box-shadow: 0 0 18px #fff, 0 0 40px var(--uv); animation: lm02line .55s ease-out both; }
+@keyframes lm02on { 0% { transform: scale(.02, .003); filter: brightness(6); } 28% { transform: scale(1, .003); filter: brightness(6); } 62% { transform: scale(1, 1.02); filter: brightness(2.2) contrast(1.3); } 80% { filter: brightness(1.3); } 100% { transform: none; filter: none; } }
+@keyframes lm02line { 0% { transform: scaleX(0); } 45% { transform: scaleX(1); opacity: 1; } 100% { transform: scaleX(1) scaleY(30); opacity: 0; } }
+@keyframes lm02view { 0% { transform: scaleY(.02); filter: brightness(4); opacity: .6; } 55% { transform: scaleY(1.01); filter: brightness(1.8); opacity: 1; } 100% { transform: none; filter: none; } }
+
+/* ---------- 03 Curtain Drop ---------- */
+body[data-lm="03"].lm-intro { --lm-base: 650ms; --lm-step: 60ms; }
+#lm.m03 .cl, #lm.m03 .cr { position: absolute; top: 0; bottom: 0; width: 51%; background: repeating-linear-gradient(90deg, #4a0717 0 14px, #7c1029 14px 30px, #5b0a1d 30px 44px), #5b0a1d; box-shadow: inset 0 -80px 120px rgba(0, 0, 0, .6); }
+#lm.m03 .cl { left: 0; border-right: 2px solid var(--neon); box-shadow: inset 0 -80px 120px rgba(0, 0, 0, .6), 4px 0 24px rgba(255, 46, 99, .6); animation: lm03l .8s .45s cubic-bezier(.7, 0, .2, 1) both; }
+#lm.m03 .cr { right: 0; border-left: 2px solid var(--neon); box-shadow: inset 0 -80px 120px rgba(0, 0, 0, .6), -4px 0 24px rgba(255, 46, 99, .6); animation: lm03r .8s .45s cubic-bezier(.7, 0, .2, 1) both; }
+#lm.m03 .lm-logo { animation: lmFade .3s .4s ease both; }
+#lm.m03.short .cl, #lm.m03.short .cr { animation-duration: .55s; animation-delay: .05s; }
+@keyframes lm03l { to { transform: translateX(-102%) skewX(-4deg); } }
+@keyframes lm03r { to { transform: translateX(102%) skewX(4deg); } }
+
+/* ---------- 04 Bass Drop ---------- */
+body[data-lm="04"] .view.entered .bento-item { animation-name: lm04; animation-duration: .6s; animation-timing-function: cubic-bezier(.5, 0, .75, 0); }
+body[data-lm="04"].lm-intro { --lm-base: 150ms; --lm-step: 55ms; }
+body[data-lm="04"].lm-intro .main { animation: lm04shake .4s .5s both; }
+body[data-lm="04"] .view.entered { animation: lm04shake .3s .3s both; }
+#lm.m04 .ring { position: absolute; left: 50%; top: 45%; width: 120px; height: 120px; margin: -60px; border-radius: 50%; border: 3px solid var(--neon); box-shadow: 0 0 30px var(--neon), inset 0 0 30px var(--neon); animation: lm04ring .8s .45s ease-out both; }
+#lm.m04 { animation: lm04bg .3s ease both; background: transparent; }
+@keyframes lm04bg { from { background: var(--void); } }
+@keyframes lm04 { 0% { opacity: 0; transform: translateY(-90px); } 70% { opacity: 1; transform: translateY(6px); animation-timing-function: ease-out; } 85% { transform: translateY(-3px); } 100% { opacity: 1; transform: none; } }
+@keyframes lm04shake { 20% { transform: translate(-6px, 4px); } 40% { transform: translate(5px, -3px); } 60% { transform: translate(-3px, 2px); } 80% { transform: translate(2px, -1px); } }
+@keyframes lm04ring { from { transform: scale(0); opacity: 1; } to { transform: scale(9); opacity: 0; } }
+
+/* ---------- 05 Glitch Boot ---------- */
+body[data-lm="05"].lm-intro .app { animation: lm05 .75s steps(1) both; }
+body[data-lm="05"].lm-intro { --lm-base: 500ms; --lm-step: 40ms; }
+body[data-lm="05"] .view.entered { animation: lm05 .4s steps(1) both; }
+body[data-lm="05"] .view.entered .bento-item { animation-name: fade; animation-duration: .35s; }
+#lm.m05 { background: var(--void); animation: lm05bg .5s steps(1) both; }
+#lm.m05::after { content: ""; position: absolute; left: 0; right: 0; height: 18vh; top: -20vh; background: linear-gradient(transparent, rgba(123, 92, 255, .25), rgba(255, 255, 255, .5) 52%, rgba(255, 46, 99, .25), transparent); animation: lm05scan .6s .35s linear both; }
+#lm.m05.short { background: none; animation: none; }
+#lm.m05.short::after { animation-duration: .4s; animation-delay: 0s; }
+@keyframes lm05bg { 0% { opacity: 1; } 20% { opacity: .2; } 30% { opacity: .9; } 45% { opacity: .1; } 60%, 100% { opacity: 0; } }
+@keyframes lm05scan { to { top: 105vh; } }
+@keyframes lm05 {
+  0% { clip-path: inset(10% 0 70% 0); transform: translateX(-18px); filter: drop-shadow(4px 0 var(--neon)) drop-shadow(-4px 0 var(--uv)); }
+  12% { clip-path: inset(55% 0 20% 0); transform: translateX(14px); }
+  24% { clip-path: inset(0 0 45% 0); transform: translateX(-8px); filter: drop-shadow(3px 0 var(--neon)) drop-shadow(-3px 0 var(--uv)) hue-rotate(40deg); }
+  36% { clip-path: inset(30% 0 0 0); transform: translateX(10px); }
+  48% { clip-path: inset(0); transform: translateX(-4px); filter: drop-shadow(2px 0 var(--neon)) drop-shadow(-2px 0 var(--uv)); }
+  62% { transform: translateX(2px); }
+  76%, 100% { clip-path: none; transform: none; filter: none; }
+}
+
+/* ---------- 06 Vinyl Spin-Up ---------- */
+body[data-lm="06"] .view.entered .bento-item { animation-name: lm06; animation-duration: .65s; }
+body[data-lm="06"].lm-intro { --lm-base: 950ms; --lm-step: 55ms; }
+#lm.m06 { background: var(--void); animation: lmFade .4s 1s ease both; }
+#lm.m06 .disc { position: absolute; left: 50%; top: 50%; width: 220px; height: 220px; margin: -110px; border-radius: 50%;
+  background: radial-gradient(circle, var(--neon) 0 17%, #0b0a10 17.5% 19%, transparent 19.5%), repeating-radial-gradient(circle, #121019 0 2px, #1d1a28 2px 4px);
+  box-shadow: 0 0 0 2px #2a2440, 0 0 60px rgba(123, 92, 255, .45); animation: lm06spin 1s cubic-bezier(.55, 0, .9, .4) both, lm06fly .45s .95s cubic-bezier(.5, 0, 1, .5) both; }
+#lm.m06 .disc::before { content: ""; position: absolute; left: 50%; top: 18%; width: 6px; height: 22%; margin-left: -3px; background: linear-gradient(rgba(255, 255, 255, .6), transparent); border-radius: 3px; }
+#lm.m06 .disc::after { content: "U"; position: absolute; inset: 0; display: grid; place-items: center; font: 400 30px var(--display); color: #0b0a10; }
+@keyframes lm06spin { from { transform: rotate(0); } to { transform: rotate(1080deg); } }
+@keyframes lm06fly { to { transform: rotate(1260deg) scale(7); opacity: 0; } }
+@keyframes lm06 { from { opacity: 0; transform: scale(.9) rotate(-5deg); } to { opacity: 1; transform: none; } }
+
+/* ---------- 07 Equalizer Rise ---------- */
+body[data-lm="07"].lm-intro { --lm-base: 900ms; --lm-step: 50ms; }
+#lm.m07 { display: flex; background: var(--void); animation: lm07bg 1ms .5s both; }
+#lm.m07 i { flex: 1; height: 100%; margin-right: -1px; background: linear-gradient(0deg, var(--neon) 0%, #c43ad0 50%, var(--uv) 100%); box-shadow: inset 0 0 0 1px rgba(5, 4, 9, .35); transform-origin: bottom; animation: lm07up .45s calc(var(--k) * 22ms) cubic-bezier(.3, 1.4, .5, 1) both, lm07down .5s calc(.55s + var(--k) * 30ms) cubic-bezier(.6, 0, .9, .4) both; }
+#lm.m07.short { background: none; animation: none; }
+#lm.m07.short i { animation-duration: .22s, .3s; animation-delay: calc(var(--k) * 12ms), calc(.26s + var(--k) * 16ms); }
+@keyframes lm07bg { to { background: transparent; } }
+@keyframes lm07up { from { transform: scaleY(0); } }
+@keyframes lm07down { 0% { transform: scaleY(1); } 35% { transform: scaleY(calc(.35 + var(--h) * .5)); } 55% { transform: scaleY(calc(.5 + var(--h) * .4)); } 100% { transform: scaleY(0); } }
+
+/* ---------- 08 Spotlight Sweep ---------- */
+@property --lx { syntax: "<percentage>"; inherits: false; initial-value: 50%; }
+@property --ly { syntax: "<percentage>"; inherits: false; initial-value: 50%; }
+@property --lr { syntax: "<length>"; inherits: false; initial-value: 0px; }
+body[data-lm="08"] .view.entered .bento-item { animation-name: lm08; animation-duration: .6s; }
+body[data-lm="08"].lm-intro { --lm-base: 0ms; --lm-step: 40ms; }
+#lm.m08 { background: radial-gradient(circle var(--lr) at var(--lx) var(--ly), rgba(255, 240, 250, .06) 0, transparent 70%, rgba(5, 4, 9, .97) 100%); animation: lm08sweep 1.5s cubic-bezier(.45, 0, .3, 1) both; }
+#lm.m08.short { animation: lm08open .55s cubic-bezier(.5, 0, .2, 1) both; }
+@keyframes lm08sweep {
+  0% { --lx: 15%; --ly: 25%; --lr: 70px; }
+  25% { --lx: 80%; --ly: 35%; --lr: 110px; }
+  48% { --lx: 30%; --ly: 70%; --lr: 110px; }
+  68% { --lx: 50%; --ly: 30%; --lr: 130px; }
+  100% { --lx: 50%; --ly: 30%; --lr: 200vmax; }
+}
+@keyframes lm08open { from { --lx: 50%; --ly: 40%; --lr: 0px; } to { --lx: 50%; --ly: 40%; --lr: 160vmax; } }
+@keyframes lm08 { from { opacity: .2; filter: brightness(.4); } to { opacity: 1; filter: none; } }
+
+/* ---------- 09 Mosh Pit ---------- */
+body[data-lm="09"] .view.entered .bento-item { animation-name: lm09l; animation-duration: .7s; animation-timing-function: cubic-bezier(.34, 1.56, .64, 1); }
+body[data-lm="09"] .view.entered .bento-item[data-lm-side="r"] { animation-name: lm09r; }
+body[data-lm="09"].lm-intro { --lm-base: 520ms; --lm-step: 55ms; }
+body[data-lm="09"].lm-intro .main { animation: lm04shake .35s .3s both; }
+#lm.m09 { background: var(--void); animation: lmFade .3s .45s ease both; }
+#lm.m09 .lm-word { font-size: clamp(34px, 11vw, 80px); color: #fff; text-shadow: var(--neon-glow); animation: lm09slam .4s cubic-bezier(.6, 0, .9, .5) both; }
+#lm.m09 .lm-logo svg { display: none; }
+@keyframes lm09slam { from { transform: scale(3.2) rotate(-6deg); opacity: 0; } 70% { opacity: 1; } to { transform: none; } }
+@keyframes lm09l { from { opacity: 0; transform: translateX(-140px) rotate(-14deg); } to { opacity: 1; transform: none; } }
+@keyframes lm09r { from { opacity: 0; transform: translateX(140px) rotate(12deg); } to { opacity: 1; transform: none; } }
+
+/* ---------- 10 Smoke Reveal ---------- */
+body[data-lm="10"].lm-intro .app { animation: lm10 1.3s cubic-bezier(.2, .6, .2, 1) both; }
+body[data-lm="10"].lm-intro { --lm-base: 500ms; --lm-step: 45ms; }
+body[data-lm="10"] .view.entered { animation: lm10v .5s ease-out both; }
+body[data-lm="10"] .view.entered .bento-item { animation-name: fade; animation-duration: .6s; }
+#lm.m10 { animation: lmFade .7s .7s ease both; }
+#lm.m10 .s { position: absolute; width: 70vmax; height: 70vmax; border-radius: 50%; background: radial-gradient(circle, rgba(164, 143, 255, .35), rgba(123, 92, 255, .12) 40%, transparent 68%); filter: blur(30px); animation: lm10drift 1.4s ease-out both; }
+#lm.m10 .s:nth-child(1) { left: -30vmax; top: -10vmax; }
+#lm.m10 .s:nth-child(2) { right: -30vmax; top: 20vmax; background: radial-gradient(circle, rgba(255, 92, 134, .25), transparent 65%); animation-direction: normal; }
+#lm.m10 .s:nth-child(3) { left: 10vmax; bottom: -40vmax; }
+#lm.m10 .lm-logo { animation: lm10logo 1.2s cubic-bezier(.2, .6, .2, 1) both; }
+@keyframes lm10 { from { filter: blur(18px) brightness(.6); transform: scale(1.06); opacity: .2; } to { filter: none; transform: none; opacity: 1; } }
+@keyframes lm10v { from { filter: blur(10px); opacity: 0; } to { filter: none; opacity: 1; } }
+@keyframes lm10drift { from { transform: translate(0, 0) scale(.8); } to { transform: translate(8vmax, -6vmax) scale(1.2); } }
+@keyframes lm10logo { from { transform: scale(1.8); filter: blur(12px); opacity: 0; } 45% { opacity: 1; filter: none; } to { transform: scale(.7); opacity: 0; } }
+
+/* Reader sheet: same family as the page change */
+body[data-lm="02"] .reader-sheet { animation: lm02view .4s cubic-bezier(.2, .7, .2, 1) both; }
+body[data-lm="05"] .reader-sheet { animation: lm05 .4s steps(1) both; }
+body[data-lm="06"] .reader-sheet { animation: lm06 .5s var(--ease-out) both; }
+body[data-lm="09"] .reader-sheet { animation: lm09l .6s cubic-bezier(.34, 1.56, .64, 1) both; }
+body[data-lm="10"] .reader-sheet { animation: lm10v .5s ease-out both; }
+
+/* Preview-only picker */
+.lm-pick { position: fixed; z-index: 700; left: 50%; top: 10px; transform: translateX(-50%); display: flex; align-items: center; gap: 6px; padding: 6px 6px 6px 12px; background: rgba(10, 9, 18, .92); border: 1px solid var(--neon); border-radius: 999px; box-shadow: 0 8px 30px rgba(0, 0, 0, .5), 0 0 18px rgba(255, 46, 99, .35); font: 700 11px var(--mono); color: var(--ink); backdrop-filter: blur(8px); }
+.lm-pick b { color: var(--neon-hi); letter-spacing: .08em; }
+.lm-pick select { font: 700 12px var(--mono); color: var(--ink); background: var(--card-2); border: 1px solid var(--line-2); border-radius: 999px; padding: 6px 8px; max-width: 46vw; }
+.lm-pick button { font: 700 12px var(--mono); border: 0; border-radius: 999px; padding: 7px 10px; background: var(--card-3); color: var(--ink); cursor: pointer; }
+.lm-pick button.go { background: var(--neon); color: var(--on-neon); }
+
+@media (prefers-reduced-motion: reduce) {
+  #lm { display: none; }
+  body[data-lm] .app, body[data-lm] .main, body[data-lm] .sidebar, body[data-lm] .view.entered, body[data-lm] .view.entered .bento-item { animation: none !important; }
+}

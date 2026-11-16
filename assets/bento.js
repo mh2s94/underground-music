@@ -517,6 +517,7 @@
   function enter(viewEl) {
     viewEl.classList.remove("entered");
     stagger(viewEl);
+    if (window.UGLaunch) window.UGLaunch.view(viewEl);
     void viewEl.offsetWidth;
     viewEl.classList.add("entered");
     setTimeout(() => { countUp(viewEl); grow(viewEl); }, 180);
@@ -527,6 +528,7 @@
     const btn = document.querySelector(`.nav-btn[data-view="${view}"]`);
     if (btn) $("navPill").style.transform = `translate(${btn.offsetLeft}px, ${btn.offsetTop}px)`;
   }
+  window.UGReenter = enter;
   function showView(name) {
     if (!["home", "articles", "music", "charts", "about", "account", "band"].includes(name)) name = "home";
     const changed = name !== view || !document.querySelector(".view.entered");
@@ -1178,6 +1180,7 @@
   }
   function hideSplash() {
     const s = $("splash"); if (!s || s.classList.contains("out")) return;
+    if (window.UGLaunch && !reduceMotion) { window.UGLaunch.intro(s); return; } // launch motion (assets/launch.js)
     s.classList.add("out");
     setTimeout(() => s.remove(), 750);
   }
