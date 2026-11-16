@@ -1,230 +1,343 @@
-export async function onRequestPost({ request, env }) {
-  const json = (data, status=200) => new Response(JSON.stringify(data), {
-    status,
-    headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" }
-  });
+// POST /api/generate
+// One-click article generation for the admin panel.
+//
+// Flow:
+//   1. Verify the Supabase session and admin membership.
+//   2. Start the YouTube lookup in the background.
+//   3. Ask AI providers for the article using "hedged" requests: the first
+//      provider starts immediately; if it fails, the next one starts at once,
+//      and if it is merely slow, the next one starts after HEDGE_DELAY_MS
+//      while the first keeps running. The first valid article wins and the
+//      rest are cancelled. Everything finishes well inside Cloudflare's
+//      ~100 s response limit.
+//   4. Parse the answer with a tolerant parser (tagged text first, then JSON
+//      with control-character repair), so one malformed reply does not fail.
 
+const GENRES = ["Metalcore", "Hardcore", "Deathcore", "Darkcore", "Post-Hardcore", "Black Metal", "Djent", "Underground"];
+const DEFAULT_ORDER = "gemini,workersai,groq,openrouter,mistral,deepseek,openai,claude";
+const DEADLINE_MS = 75000;         // whole AI phase
+const PROVIDER_TIMEOUT_MS = 50000; // one provider attempt
+const HEDGE_DELAY_MS = 15000;      // start the next provider if the current one is slow
+const SYSTEM_MSG = "You are a music journalist. Follow the requested output format exactly. Do not add anything before TITLE: or after the article.";
+
+const json = (data, status = 200) => new Response(JSON.stringify(data), {
+  status,
+  headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" }
+});
+
+export async function onRequestPost({ request, env }) {
   if (!env.SUPABASE_URL || !env.SUPABASE_ANON_KEY) {
     return json({ error: "Server is not configured. SUPABASE_URL and SUPABASE_ANON_KEY are required." }, 503);
   }
 
+  // ---- 1. Auth -----------------------------------------------------------
   const auth = request.headers.get("Authorization") || "";
   if (!auth.startsWith("Bearer ")) return json({ error: "Sign in required." }, 401);
   const token = auth.slice(7);
+  const sbHeaders = { apikey: env.SUPABASE_ANON_KEY, Authorization: "Bearer " + token };
 
-  let userRes;
+  let user;
   try {
-    userRes = await fetch(env.SUPABASE_URL + "/auth/v1/user", {
-      headers: { apikey: env.SUPABASE_ANON_KEY, Authorization: "Bearer " + token },
-      signal: AbortSignal.timeout(8000)
-    });
+    const r = await fetch(env.SUPABASE_URL + "/auth/v1/user", { headers: sbHeaders, signal: AbortSignal.timeout(8000) });
+    if (!r.ok) return json({ error: "Your session is invalid or expired. Sign in again." }, 401);
+    user = await r.json();
   } catch {
     return json({ error: "Could not verify your Supabase session. Try again." }, 502);
   }
-  if (!userRes.ok) return json({ error: "Your session is invalid or expired. Sign in again." }, 401);
-  const user = await userRes.json();
+  try {
+    const r = await fetch(env.SUPABASE_URL + "/rest/v1/admin_users?select=user_id&user_id=eq." + encodeURIComponent(user.id), {
+      headers: sbHeaders, signal: AbortSignal.timeout(8000)
+    });
+    if (!r.ok || !(await r.json()).length) return json({ error: "Administrator access required." }, 403);
+  } catch {
+    return json({ error: "Could not verify administrator access. Try again." }, 502);
+  }
 
-  const adminRes = await fetch(env.SUPABASE_URL + "/rest/v1/admin_users?select=user_id&user_id=eq." + encodeURIComponent(user.id), {
-    headers: { apikey: env.SUPABASE_ANON_KEY, Authorization: "Bearer " + token },
-    signal: AbortSignal.timeout(8000)
-  });
-  if (!adminRes.ok || !(await adminRes.json()).length) return json({ error: "Administrator access required." }, 403);
-
+  // ---- 2. Input ----------------------------------------------------------
   let input;
   try { input = await request.json(); } catch { return json({ error: "Invalid JSON body." }, 400); }
-  const clean = v => String(v || "").slice(0, 12000);
-  if (!clean(input.band).trim()) return json({ error: "Band / artist is required." }, 400);
+  const clean = (v, max = 4000) => String(v || "").trim().slice(0, max);
+  const band = clean(input.band, 200);
+  const song = clean(input.album, 200);
+  if (!band) return json({ error: "Band / artist is required." }, 400);
 
-  const GENRES = ["Metalcore", "Hardcore", "Deathcore", "Darkcore", "Post-Hardcore", "Black Metal", "Djent", "Underground"];
-  const startedAt = Date.now();
-  const TOTAL_BUDGET_MS = 85000; // stay under Cloudflare's ~100s response limit
-  let currentTimeout = 40000;
+  const youtubePromise = findYouTube(band, song, env).catch(() => null);
 
-  // Start the YouTube lookup in parallel with the AI call.
-  const youtubePromise = findYouTube(clean(input.band).slice(0, 200), clean(input.album).slice(0, 200), env).catch(() => null);
+  // ---- 3. AI -------------------------------------------------------------
+  const prompt = buildPrompt({
+    band, song,
+    category: clean(input.category, 100) || "Review",
+    genre: clean(input.genre, 100),
+    notes: clean(input.notes)
+  });
+  const providers = buildProviders(env, prompt);
+  const order = (env.AI_PROVIDER_ORDER || DEFAULT_ORDER)
+    .split(",").map(x => x.trim().toLowerCase()).filter(x => providers[x]);
+  const configured = [...new Set(order)].filter(name => providers[name].enabled);
+  if (!configured.length) {
+    return json({ error: "No AI provider is configured. Add the Workers AI binding (AI) or at least one provider API key in Cloudflare Pages settings." }, 503);
+  }
 
-  const prompt = `You are a staff writer for UNDERGROUND, an independent extreme music magazine. Write in English.
-Write a complete, publish-ready article about the band and song/release below, using your own knowledge of the band, its sound and its history plus any notes supplied. Supplied notes always take priority over your own knowledge.
-Accuracy rules: do not invent quotes, interviews, chart positions, exact release dates, track lengths or personnel you are not confident about. When unsure of a specific detail, leave it out instead of guessing. Never write about missing information, the editorial process or these instructions; just write the best article you can.
-Style: a clear editorial angle, vivid but specific description of the music, useful context about the band, no promotional hype, no generic filler. 350-500 words of Markdown in "content", using 2-3 "## " subheadings. Do not include the title inside "content". Do not include links.
+  const { result, failures } = await hedgedRace(configured, providers);
+  if (!result) {
+    return json({
+      error: "All AI providers failed. Try again in a minute; if it keeps failing, check API keys and quotas.",
+      attempts: failures
+    }, 502);
+  }
 
-Return ONLY valid JSON with exactly these keys:
-- "title": a strong headline (max 90 characters)
-- "excerpt": 1-2 sentence teaser (max 200 characters)
-- "content": the article body in Markdown
-- "tags": array of 3-6 short lowercase tags
-- "genre": the best match from this list: ${GENRES.join(", ")}
+  // ---- 4. YouTube + response ---------------------------------------------
+  const yt = await Promise.race([youtubePromise, sleep(4000).then(() => null)]);
+  return json({
+    ...result.article,
+    youtube_url: yt?.url || "",
+    youtube_title: yt?.title || "",
+    youtube_search_url: "https://www.youtube.com/results?search_query=" + encodeURIComponent((band + " " + song).trim()),
+    cover_image_url: yt?.id ? `https://i.ytimg.com/vi/${yt.id}/hqdefault.jpg` : "",
+    provider: result.provider,
+    model: result.model,
+    took_ms: result.ms,
+    fallback_used: failures.length > 0,
+    attempts: failures
+  });
+}
 
-Band/artist: ${clean(input.band)}
-Song / release: ${clean(input.album) || "(not specified: write a band feature instead)"}
-Article type: ${clean(input.category) || "Review"}
-Genre hint: ${clean(input.genre)}
-Editor notes (optional): ${clean(input.notes) || "(none)"}`;
+// ===========================================================================
+// Prompt
+// ===========================================================================
+function buildPrompt({ band, song, category, genre, notes }) {
+  return `Write an article for UNDERGROUND, an independent extreme music magazine, in English.
 
-  const providers = {
-    claude: {
-      key: env.ANTHROPIC_API_KEY,
-      model: env.CLAUDE_MODEL || "claude-sonnet-5-5",
-      run: async () => {
-        const r = await fetch("https://api.anthropic.com/v1/messages", {
-          method: "POST",
-          headers: { "content-type": "application/json", "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
-          signal: AbortSignal.timeout(currentTimeout),
-          body: JSON.stringify({ model: env.CLAUDE_MODEL || "claude-sonnet-5-5", max_tokens: 1600, temperature: 0.45, messages: [{ role: "user", content: prompt }] })
-        });
-        const data = await r.json();
-        if (!r.ok) throw new Error(data.error?.message || `Claude HTTP ${r.status}`);
-        return data.content?.filter(x => x.type === "text").map(x => x.text).join("") || "";
-      }
-    },
-    gemini: {
-      key: env.GEMINI_API_KEY,
-      model: env.GEMINI_MODEL || "gemini-3.8-flash",
-      run: async () => {
-        const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(env.GEMINI_MODEL || "gemini-3.8-flash")}:generateContent?key=${encodeURIComponent(env.GEMINI_API_KEY)}`, {
-          method: "POST", headers: { "content-type": "application/json" }, signal: AbortSignal.timeout(currentTimeout),
-          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.45, responseMimeType: "application/json", maxOutputTokens: 1800, thinkingConfig: { thinkingLevel: "low" } } })
-        });
-        const data = await r.json();
-        if (!r.ok) throw new Error(data.error?.message || `Gemini HTTP ${r.status}`);
-        return data.candidates?.[0]?.content?.parts?.map(p => p.text || "").join("") || "";
-      }
-    },
-    openai: {
-      key: env.OPENAI_API_KEY,
-      model: env.OPENAI_MODEL || "gpt-6-astra",
-      run: async () => openAICompatible("https://api.openai.com/v1/chat/completions", env.OPENAI_API_KEY, env.OPENAI_MODEL || "gpt-6-astra", prompt, { openai: true })
-    },
-    deepseek: {
-      key: env.DEEPSEEK_API_KEY,
-      model: env.DEEPSEEK_MODEL || "deepseek-flash",
-      run: async () => openAICompatible("https://api.deepseek.com/chat/completions", env.DEEPSEEK_API_KEY, env.DEEPSEEK_MODEL || "deepseek-flash", prompt)
-    },
-    mistral: {
-      key: env.MISTRAL_API_KEY,
-      model: env.MISTRAL_MODEL || "mistral-large-latest",
-      run: async () => openAICompatible("https://api.mistral.ai/v1/chat/completions", env.MISTRAL_API_KEY, env.MISTRAL_MODEL || "mistral-large-latest", prompt)
-    },
-    groq: {
-      key: env.GROQ_API_KEY,
-      model: env.GROQ_MODEL || "llama-3.3-70b-versatile",
-      run: async () => openAICompatible("https://api.groq.com/openai/v1/chat/completions", env.GROQ_API_KEY, env.GROQ_MODEL || "llama-3.3-70b-versatile", prompt)
-    },
-    openrouter: {
-      key: env.OPENROUTER_API_KEY,
-      model: env.OPENROUTER_MODEL || "anthropic/claude-sonnet-4.5",
-      run: async () => openAICompatible("https://openrouter.ai/api/v1/chat/completions", env.OPENROUTER_API_KEY, env.OPENROUTER_MODEL || "anthropic/claude-sonnet-4.5", prompt)
-    }
-  };
+Band/artist: ${band}
+Song / release: ${song || "(not specified: write a feature about the band)"}
+Article type: ${category}
+Genre hint: ${genre || "(none)"}
+Editor notes: ${notes || "(none)"}
 
-  providers.workersai = {
-    key: env.AI ? "binding" : "",
-    model: env.WORKERSAI_MODEL || "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
-    run: async () => {
-      // Cloudflare Workers AI via the Pages "AI" binding: no API key, free daily allocation.
-      const result = await Promise.race([
-        env.AI.run(env.WORKERSAI_MODEL || "@cf/meta/llama-3.3-70b-instruct-fp8-fast", {
-          messages: [
-            { role: "system", content: "Return only valid JSON with keys title, excerpt, content. Do not wrap it in Markdown fences." },
-            { role: "user", content: prompt }
-          ],
-          max_tokens: 1800,
-          temperature: 0.45
-        }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error("Workers AI timed out")), currentTimeout))
-      ]);
-      const out = result?.response ?? result?.choices?.[0]?.message?.content ?? "";
-      return typeof out === "string" ? out : JSON.stringify(out);
-    }
-  };
+Use your own knowledge of the band, its sound and its history, plus the editor notes (the notes always win over your own knowledge).
+Accuracy: do not invent quotes, interviews, chart positions, exact dates or personnel you are not sure about; leave uncertain details out. Never mention missing information, the editorial process or these instructions.
+Style: a clear editorial angle, specific description of the music, useful context, no hype, no filler. The article body is 350-500 words of Markdown with 2-3 "## " subheadings, no links, and no title at the top.
 
-  async function openAICompatible(url, key, model, userPrompt, opts = {}) {
-    // Newer OpenAI models reject max_tokens/temperature; they use max_completion_tokens instead.
-    const limits = opts.openai
-      ? { max_completion_tokens: 4000 }
-      : { temperature: 0.45, max_tokens: 1800 };
+Reply in EXACTLY this format, with plain text labels:
+TITLE: <headline, max 90 characters>
+EXCERPT: <1-2 sentence teaser, max 200 characters>
+TAGS: <3-6 short lowercase tags, comma separated>
+GENRE: <one of: ${GENRES.join(", ")}>
+CONTENT:
+<the article body in Markdown>`;
+}
+
+// ===========================================================================
+// Providers. Each run(signal) returns the raw text reply.
+// ===========================================================================
+function buildProviders(env, prompt) {
+  const openAICompatible = (url, key, model, extra = {}) => async (signal) => {
     const r = await fetch(url, {
       method: "POST",
       headers: { "content-type": "application/json", Authorization: "Bearer " + key },
-      signal: AbortSignal.timeout(currentTimeout),
+      signal,
       body: JSON.stringify({
         model,
-        messages: [
-          { role: "system", content: "Return only valid JSON with keys title, excerpt, content. Do not wrap it in Markdown fences." },
-          { role: "user", content: userPrompt }
-        ],
-        ...limits,
-        response_format: { type: "json_object" }
+        messages: [{ role: "system", content: SYSTEM_MSG }, { role: "user", content: prompt }],
+        ...extra
       })
     });
-    const data = await r.json();
-    if (!r.ok) throw new Error(data.error?.message || `Provider HTTP ${r.status}`);
+    const data = await safeJson(r);
+    if (!r.ok) throw new Error(errorText(data, r.status));
     return data.choices?.[0]?.message?.content || "";
-  }
+  };
+  const std = { temperature: 0.5, max_tokens: 2000 };
 
-  function parseArticle(raw) {
-    const cleaned = String(raw || "").trim().replace(/^\`\`\`(?:json)?\s*/i, "").replace(/\s*\`\`\`$/, "");
-    const start = cleaned.indexOf("{");
-    const end = cleaned.lastIndexOf("}");
-    if (start < 0 || end <= start) throw new Error("Provider returned no JSON article.");
-    const article = JSON.parse(cleaned.slice(start, end + 1));
-    if (!article.title || !article.content) throw new Error("Provider returned incomplete article fields.");
-    const tags = Array.isArray(article.tags) ? article.tags.map(t => String(t).trim().toLowerCase()).filter(Boolean).slice(0, 8) : [];
-    const genre = GENRES.find(g => g.toLowerCase() === String(article.genre || "").trim().toLowerCase()) || "";
-    return { title: String(article.title), excerpt: String(article.excerpt || ""), content: String(article.content), tags, genre };
-  }
+  const m = {
+    claude: env.CLAUDE_MODEL || "claude-sonnet-5-5",
+    gemini: env.GEMINI_MODEL || "gemini-3.8-flash",
+    openai: env.OPENAI_MODEL || "gpt-6-astra",
+    deepseek: env.DEEPSEEK_MODEL || "deepseek-flash",
+    mistral: env.MISTRAL_MODEL || "mistral-large-latest",
+    groq: env.GROQ_MODEL || "llama-3.3-70b-versatile",
+    openrouter: env.OPENROUTER_MODEL || "meta-llama/llama-3.3-70b-instruct:free",
+    workersai: env.WORKERSAI_MODEL || "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
+  };
 
-  const requestedOrder = (env.AI_PROVIDER_ORDER || "claude,gemini,openai,deepseek,mistral,groq,openrouter,workersai")
-    .split(",").map(x => x.trim().toLowerCase()).filter(x => providers[x]);
-  const configured = requestedOrder.filter(name => providers[name].key);
-  if (!configured.length) {
-    return json({ error: "No AI provider API keys are configured. Add one or more provider secrets in Cloudflare Pages Settings." }, 503);
-  }
-
-  const failures = [];
-  for (const name of configured) {
-    const remaining = TOTAL_BUDGET_MS - (Date.now() - startedAt);
-    if (remaining < 8000) {
-      failures.push({ provider: name, reason: "Skipped: out of time budget" });
-      continue;
-    }
-    currentTimeout = Math.min(40000, remaining);
-    try {
-      const raw = await providers[name].run();
-      const article = parseArticle(raw);
-      const yt = await Promise.race([youtubePromise, new Promise(r => setTimeout(() => r(null), 5000))]);
-      const ytSearch = "https://www.youtube.com/results?search_query=" + encodeURIComponent((clean(input.band) + " " + clean(input.album)).trim());
-      return json({
-        ...article,
-        youtube_url: yt?.url || "",
-        youtube_title: yt?.title || "",
-        youtube_search_url: ytSearch,
-        cover_image_url: yt?.id ? `https://i.ytimg.com/vi/${yt.id}/hqdefault.jpg` : "",
-        provider: name, model: providers[name].model, fallback_used: failures.length > 0
-      });
-    } catch (error) {
-      failures.push({ provider: name, reason: String(error?.message || "Request failed").slice(0, 240) });
-    }
-  }
-
-  return json({
-    error: "All configured AI providers failed. Check API keys, model access, provider quota, and billing.",
-    attempts: failures
-  }, 502);
+  return {
+    gemini: {
+      enabled: !!env.GEMINI_API_KEY, model: m.gemini,
+      run: async (signal) => {
+        const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m.gemini)}:generateContent?key=${encodeURIComponent(env.GEMINI_API_KEY)}`, {
+          method: "POST", headers: { "content-type": "application/json" }, signal,
+          body: JSON.stringify({
+            systemInstruction: { parts: [{ text: SYSTEM_MSG }] },
+            contents: [{ role: "user", parts: [{ text: prompt }] }],
+            generationConfig: { temperature: 0.5, maxOutputTokens: 4096, thinkingConfig: { thinkingLevel: "low" } }
+          })
+        });
+        const data = await safeJson(r);
+        if (!r.ok) throw new Error(errorText(data, r.status));
+        return data.candidates?.[0]?.content?.parts?.filter(p => !p.thought).map(p => p.text || "").join("") || "";
+      }
+    },
+    workersai: {
+      enabled: !!env.AI, model: m.workersai,
+      run: async (signal) => {
+        const result = await abortable(env.AI.run(m.workersai, {
+          messages: [{ role: "system", content: SYSTEM_MSG }, { role: "user", content: prompt }],
+          max_tokens: 2000, temperature: 0.5
+        }), signal);
+        const out = result?.response ?? result?.choices?.[0]?.message?.content ?? "";
+        return typeof out === "string" ? out : JSON.stringify(out);
+      }
+    },
+    claude: {
+      enabled: !!env.ANTHROPIC_API_KEY, model: m.claude,
+      run: async (signal) => {
+        const r = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST", signal,
+          headers: { "content-type": "application/json", "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
+          body: JSON.stringify({ model: m.claude, max_tokens: 2000, temperature: 0.5, system: SYSTEM_MSG, messages: [{ role: "user", content: prompt }] })
+        });
+        const data = await safeJson(r);
+        if (!r.ok) throw new Error(errorText(data, r.status));
+        return data.content?.filter(x => x.type === "text").map(x => x.text).join("") || "";
+      }
+    },
+    groq: { enabled: !!env.GROQ_API_KEY, model: m.groq, run: openAICompatible("https://api.groq.com/openai/v1/chat/completions", env.GROQ_API_KEY, m.groq, std) },
+    openrouter: { enabled: !!env.OPENROUTER_API_KEY, model: m.openrouter, run: openAICompatible("https://openrouter.ai/api/v1/chat/completions", env.OPENROUTER_API_KEY, m.openrouter, std) },
+    mistral: { enabled: !!env.MISTRAL_API_KEY, model: m.mistral, run: openAICompatible("https://api.mistral.ai/v1/chat/completions", env.MISTRAL_API_KEY, m.mistral, std) },
+    deepseek: { enabled: !!env.DEEPSEEK_API_KEY, model: m.deepseek, run: openAICompatible("https://api.deepseek.com/chat/completions", env.DEEPSEEK_API_KEY, m.deepseek, std) },
+    // Newer OpenAI models reject max_tokens/temperature.
+    openai: { enabled: !!env.OPENAI_API_KEY, model: m.openai, run: openAICompatible("https://api.openai.com/v1/chat/completions", env.OPENAI_API_KEY, m.openai, { max_completion_tokens: 4000 }) }
+  };
 }
 
-// Find the best-matching YouTube video. Uses the YouTube Data API when
-// YOUTUBE_API_KEY is set; otherwise reads the public search results page.
+// ===========================================================================
+// Hedged race: first valid article wins.
+// ===========================================================================
+function hedgedRace(names, providers) {
+  return new Promise(resolve => {
+    const failures = [];
+    const running = new Map(); // name -> { ctrl, started }
+    let next = 0, done = false, hedgeTimer = null;
+
+    const finish = (result) => {
+      if (done) return;
+      done = true;
+      clearTimeout(hedgeTimer);
+      clearTimeout(deadline);
+      for (const [name, { ctrl, started }] of running) {
+        if (!result) failures.push({ provider: name, reason: `No answer within ${Math.round((Date.now() - started) / 1000)}s` });
+        ctrl.abort();
+      }
+      resolve({ result, failures });
+    };
+    const deadline = setTimeout(() => finish(null), DEADLINE_MS);
+
+    const launch = () => {
+      clearTimeout(hedgeTimer);
+      if (done) return;
+      if (next >= names.length) { if (!running.size) finish(null); return; }
+      const name = names[next++];
+      const ctrl = new AbortController();
+      const started = Date.now();
+      const timer = setTimeout(() => ctrl.abort(new Error(`Timed out after ${PROVIDER_TIMEOUT_MS / 1000}s`)), PROVIDER_TIMEOUT_MS);
+      running.set(name, { ctrl, started });
+
+      providers[name].run(ctrl.signal)
+        .then(raw => {
+          const article = parseArticle(raw);
+          finish({ article, provider: name, model: providers[name].model, ms: Date.now() - started });
+        })
+        .catch(err => {
+          if (done) return;
+          const reason = ctrl.signal.aborted && ctrl.signal.reason instanceof Error ? ctrl.signal.reason.message : (err?.message || "Request failed");
+          failures.push({ provider: name, reason: String(reason).slice(0, 240) });
+        })
+        .finally(() => {
+          clearTimeout(timer);
+          running.delete(name);
+          if (done) return;
+          // A failure means the next provider should start right away.
+          if (next < names.length) launch();
+          else if (!running.size) finish(null);
+        });
+
+      // If this provider is slow, start the next one in parallel.
+      if (next < names.length) hedgeTimer = setTimeout(launch, HEDGE_DELAY_MS);
+    };
+    launch();
+  });
+}
+
+// ===========================================================================
+// Tolerant parser: tagged text first, JSON (with repair) as a fallback.
+// ===========================================================================
+function parseArticle(raw) {
+  let text = String(raw || "").replace(/\r\n?/g, "\n").trim();
+  text = text.replace(/<think>[\s\S]*?<\/think>/gi, "").trim(); // reasoning models
+  text = text.replace(/^```[a-z]*\n?/i, "").replace(/\n?```\s*$/, "").trim();
+
+  const label = (name) => new RegExp(`^[ \\t*#_>-]*${name}[ \\t*_]*:[ \\t*_]*(.*)$`, "im");
+  const contentMatch = label("CONTENT").exec(text);
+  const titleMatch = label("TITLE").exec(text);
+
+  let a = null;
+  if (titleMatch && contentMatch) {
+    const field = (name) => (label(name).exec(text)?.[1] || "").replace(/[*_]+$/g, "").trim();
+    const content = (contentMatch[1] + "\n" + text.slice(contentMatch.index + contentMatch[0].length)).trim();
+    a = { title: field("TITLE"), excerpt: field("EXCERPT"), tags: field("TAGS"), genre: field("GENRE"), content };
+  } else {
+    const start = text.indexOf("{"), end = text.lastIndexOf("}");
+    if (start >= 0 && end > start) {
+      const slice = text.slice(start, end + 1);
+      try { a = JSON.parse(slice); } catch { a = JSON.parse(repairJsonStrings(slice)); }
+    }
+  }
+  if (!a) throw new Error("Reply was not in the expected format.");
+
+  const title = stripQuotes(String(a.title || "")).slice(0, 160);
+  const content = String(a.content || "").replace(/^#\s+.+\n+/, "").trim(); // drop a repeated H1 title
+  if (!title || content.length < 200) throw new Error("Reply was incomplete (missing title or article body).");
+  const tagList = Array.isArray(a.tags) ? a.tags : String(a.tags || "").split(",");
+  const tags = [...new Set(tagList.map(t => String(t).trim().replace(/^#+/, "").trim().toLowerCase()).filter(Boolean))].slice(0, 8);
+  const genre = GENRES.find(g => g.toLowerCase() === String(a.genre || "").trim().toLowerCase()) || "";
+  return { title, excerpt: stripQuotes(String(a.excerpt || "")).slice(0, 300), content, tags, genre };
+}
+
+// Escape raw newlines/tabs that models put inside JSON strings.
+function repairJsonStrings(s) {
+  let out = "", inStr = false, esc = false;
+  for (const ch of s) {
+    if (inStr) {
+      if (esc) { out += ch; esc = false; continue; }
+      if (ch === "\\") { out += ch; esc = true; continue; }
+      if (ch === '"') { inStr = false; out += ch; continue; }
+      if (ch === "\n") { out += "\\n"; continue; }
+      if (ch === "\r") continue;
+      if (ch === "\t") { out += "\\t"; continue; }
+      if (ch < " ") continue;
+      out += ch;
+    } else {
+      if (ch === '"') inStr = true;
+      out += ch;
+    }
+  }
+  return out;
+}
+
+// ===========================================================================
+// YouTube lookup: Data API when YOUTUBE_API_KEY is set, else public search page.
+// ===========================================================================
 async function findYouTube(band, title, env) {
   const q = (band + " " + title + (title ? " official" : "")).trim();
   if (!q) return null;
   if (env.YOUTUBE_API_KEY) {
-    const r = await fetch("https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=1&q=" +
-      encodeURIComponent(q) + "&key=" + encodeURIComponent(env.YOUTUBE_API_KEY), { signal: AbortSignal.timeout(6000) });
-    if (r.ok) {
-      const item = (await r.json()).items?.[0];
-      if (item?.id?.videoId) return { id: item.id.videoId, url: "https://www.youtube.com/watch?v=" + item.id.videoId, title: item.snippet?.title || "" };
-    }
+    try {
+      const r = await fetch("https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=1&q=" +
+        encodeURIComponent(q) + "&key=" + encodeURIComponent(env.YOUTUBE_API_KEY), { signal: AbortSignal.timeout(6000) });
+      if (r.ok) {
+        const item = (await r.json()).items?.[0];
+        if (item?.id?.videoId) return { id: item.id.videoId, url: "https://www.youtube.com/watch?v=" + item.id.videoId, title: item.snippet?.title || "" };
+      }
+    } catch {}
   }
   const r = await fetch("https://www.youtube.com/results?hl=en&search_query=" + encodeURIComponent(q), {
     headers: { "accept-language": "en-US,en;q=0.9", "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36", cookie: "CONSENT=YES+1" },
@@ -238,4 +351,25 @@ async function findYouTube(band, title, env) {
   let t = "";
   try { t = m ? JSON.parse('"' + m[2] + '"') : ""; } catch {}
   return { id, url: "https://www.youtube.com/watch?v=" + id, title: t };
+}
+
+// ===========================================================================
+// Helpers
+// ===========================================================================
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+const stripQuotes = (s) => s.trim().replace(/^["'“”]+|["'“”]+$/g, "").trim();
+
+async function safeJson(r) {
+  try { return await r.json(); } catch { return {}; }
+}
+function errorText(data, status) {
+  return data?.error?.message || data?.error?.type || (typeof data?.error === "string" ? data.error : "") || `HTTP ${status}`;
+}
+function abortable(promise, signal) {
+  if (!signal) return promise;
+  return new Promise((resolve, reject) => {
+    if (signal.aborted) return reject(signal.reason || new Error("Aborted"));
+    signal.addEventListener("abort", () => reject(signal.reason || new Error("Aborted")), { once: true });
+    promise.then(resolve, reject);
+  });
 }
