@@ -9,6 +9,9 @@ Static Cloudflare Pages site with a Supabase-backed editorial workflow and multi
 - Build command: empty
 - Build output directory: .
 
+## Public site
+`index.html` + `assets/bento.css` + `assets/bento.js`: a bento-grid dashboard with three views (Dashboard, Articles, About), splash screen, animated counters and charts, and an article reader at `#/a/<slug>`. All numbers and charts are computed from published articles. To enable the "Submit your demo" and "Contact" buttons, set `SUBMIT_EMAIL` at the top of `assets/bento.js`.
+
 ## Supabase
 Project ref: lhhmzfwjznlwkentbakv
 Region: Singapore
