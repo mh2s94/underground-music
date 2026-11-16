@@ -2,6 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<script>
+  // Official address is music.mikasa.me: move visitors from the old pages.dev address (keeps the page they asked for)
+  if (location.hostname === "underground-music.pages.dev") location.replace("https://music.mikasa.me" + location.pathname + location.search + location.hash);
+</script>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#050409">
 <meta name="robots" content="noindex">

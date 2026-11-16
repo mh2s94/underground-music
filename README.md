@@ -31,7 +31,7 @@ Admin → **Settings** shows counts and lets you delete articles, comments, save
 ## Visitor accounts (sign up, saved articles, comments, demo submissions)
 1. Supabase Dashboard → SQL Editor → paste and run `supabase/community.sql` (safe to re-run).
 2. Authentication → Sign In / Providers → Email: enable **Allow new users to sign up** and keep **Confirm email** on.
-3. Authentication → URL Configuration: set **Site URL** to `https://underground-music.pages.dev` and add `https://underground-music.pages.dev/**` to **Redirect URLs** (plus your custom domain if you add one).
+3. Authentication → URL Configuration: set **Site URL** to `https://music.mikasa.me` and add `https://music.mikasa.me/**` (keep `https://underground-music.pages.dev/**` too) to **Redirect URLs** (plus your custom domain if you add one).
 4. Optional: Authentication → Emails → customise the confirmation and reset-password templates with the UNDERGROUND name.
 
 Members can save articles, comment (5 per minute limit), and submit up to 3 demos per day. Admins can delete any comment from the article reader and manage demos in the admin **Demo inbox**.
