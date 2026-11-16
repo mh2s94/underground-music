@@ -41,6 +41,10 @@
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg>
         <span class="nav-tip">Music</span>
       </button>
+      <button class="nav-btn" type="button" data-view="charts" aria-label="Charts">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/></svg>
+        <span class="nav-tip">Charts</span>
+      </button>
       <button class="nav-btn" type="button" data-view="about" aria-label="About">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5"/><path d="M12 7.5v.5"/></svg>
         <span class="nav-tip">About</span>
@@ -119,6 +123,12 @@
           <div class="card pad bento-item">
             <div class="card-title"><h2>Basement radio</h2><a class="link" href="#/music">Open player</a></div>
             <ol class="mini-tracks" id="homeTracks"><li class="skel" style="height:56px;list-style:none"></li></ol>
+          </div>
+
+          <div class="card pad bento-item chart-peek">
+            <div class="card-title"><h2>Charts</h2><a class="link" href="#/charts">See all</a></div>
+            <p class="hint" id="peekHint" style="margin:-6px 0 8px">Top hits right now</p>
+            <ol class="peek-list" id="chartPeek"><li class="skel" style="height:56px;list-style:none"></li></ol>
           </div>
 
           <div class="card pad bento-item">
@@ -203,6 +213,38 @@
       <div class="card bento-item"><ol class="tracklist" id="trackList"></ol></div>
     </section>
 
+    <!-- View: Charts -->
+    <section class="view" id="view-charts" data-view="charts" aria-label="Charts" hidden>
+      <div class="card charts-hero bento-item">
+        <div class="podium" aria-hidden="true"><span></span><span></span><span></span></div>
+        <span class="badge-dark"><i aria-hidden="true"></i>Ranked by the scene</span>
+        <h1>The <span class="neon-txt">charts</span></h1>
+        <p id="chartsLead">The ten most-loved bands and songs, ranked automatically by rating.</p>
+        <div class="chart-switch" role="tablist" aria-label="Chart source">
+          <button class="cs-btn" type="button" role="tab" data-src="community" aria-selected="true">Community</button>
+          <button class="cs-btn" type="button" role="tab" data-src="global" aria-selected="false">Global metal</button>
+        </div>
+      </div>
+      <div class="chart-bar bento-item">
+        <div class="pills" id="periodPills" role="group" aria-label="Period">
+          <button class="pill" type="button" data-period="week" aria-pressed="true">This week</button>
+          <button class="pill" type="button" data-period="all" aria-pressed="false">All time</button>
+        </div>
+        <span class="hint" id="chartMeta"></span>
+      </div>
+      <div class="charts-grid">
+        <div class="card pad bento-item">
+          <div class="card-title"><h2>Top 10 bands</h2><span class="hint" id="bandsHint">By rating</span></div>
+          <ol class="chart-list" id="chartBands"></ol>
+        </div>
+        <div class="card pad bento-item">
+          <div class="card-title"><h2>Top 10 hits</h2><span class="hint" id="hitsHint">Tap to play</span></div>
+          <ol class="chart-list" id="chartHits"></ol>
+        </div>
+      </div>
+      <p class="hint chart-foot" id="chartFoot"></p>
+    </section>
+
     <!-- View 4: Account -->
     <section class="view" id="view-account" data-view="account" aria-label="Account" hidden></section>
 
@@ -271,7 +313,14 @@
     <input class="pl-seek" id="plSeek" type="range" min="0" max="1000" value="0" step="1" aria-label="Seek">
     <div class="pl-row">
       <div class="pl-cover" id="plCover" aria-hidden="true"></div>
-      <div class="pl-meta"><div class="pl-title" id="plTitle">—</div><div class="pl-artist" id="plArtist"></div></div>
+      <div class="pl-meta"><div class="pl-title" id="plTitle">—</div><div class="pl-artist" id="plArtist"></div>
+        <div class="pl-rate" id="plRate" hidden>
+          <div class="stars" role="radiogroup" aria-label="Rate this track">
+            <button type="button" data-star="1" role="radio" aria-checked="false" aria-label="1 star">★</button><button type="button" data-star="2" role="radio" aria-checked="false" aria-label="2 stars">★</button><button type="button" data-star="3" role="radio" aria-checked="false" aria-label="3 stars">★</button><button type="button" data-star="4" role="radio" aria-checked="false" aria-label="4 stars">★</button><button type="button" data-star="5" role="radio" aria-checked="false" aria-label="5 stars">★</button>
+          </div>
+          <span class="rate-avg" id="plAvg"></span>
+        </div>
+      </div>
       <div class="pl-ctrls">
         <button class="pl-btn" type="button" id="plPrev" aria-label="Previous track"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg></button>
         <button class="pl-btn pl-main" type="button" id="plPlay" aria-label="Play"><svg class="i-play" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"/></svg><svg class="i-pause" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg></button>

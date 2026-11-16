@@ -303,6 +303,7 @@
     $("plCur").textContent = "0:00";
     $("plDur").textContent = t.duration_sec ? fmtTime(t.duration_sec) : "0:00";
     $("plSeek").value = 0;
+    showRating(t);
     if ("mediaSession" in navigator) {
       navigator.mediaSession.metadata = new MediaMetadata({
         title: t.title, artist: t.artist, album: t.album || "UNDERGROUND · Basement radio",
@@ -339,7 +340,7 @@
     const b = e.target.closest("[data-track]"); if (!b) return;
     const t = current();
     if (t && String(t.id) === b.dataset.track) { togglePlay(); return; }
-    const list = b.dataset.from === "all" ? tracks : filteredTracks();
+    const list = b.dataset.from === "all" ? tracks : (chartQueues[b.dataset.from] || filteredTracks());
     playFrom(list, list.findIndex((x) => String(x.id) === b.dataset.track));
   });
   $("playAll").onclick = () => playFrom(filteredTracks(), 0);
@@ -481,13 +482,14 @@
     if (btn) $("navPill").style.transform = `translate(${btn.offsetLeft}px, ${btn.offsetTop}px)`;
   }
   function showView(name) {
-    if (!["home", "articles", "music", "about", "account"].includes(name)) name = "home";
+    if (!["home", "articles", "music", "charts", "about", "account"].includes(name)) name = "home";
     const changed = name !== view || !document.querySelector(".view.entered");
     view = name;
     document.querySelectorAll(".view").forEach((v) => { v.hidden = v.dataset.view !== name; });
     document.querySelectorAll(".nav-btn").forEach((b) => { if (b.dataset.view === name) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); });
     movePill();
     if (name === "account" && changed) renderAccount();
+    if (name === "charts" && changed) loadCharts();
     if (changed) { $("main").scrollTop = 0; enter($("view-" + name)); }
   }
   document.querySelectorAll(".nav-btn").forEach((b) => b.addEventListener("click", () => { location.hash = "/" + b.dataset.view; }));
@@ -1081,6 +1083,172 @@
     setTimeout(() => s.remove(), 750);
   }
 
+  // ---- Charts --------------------------------------------------------------
+  // Community: members' star ratings on our own tracks (Supabase functions in charts.sql).
+  // Global metal: Deezer popularity via /api/charts (cached 6 h).
+  let chartSrc = "community", chartPeriod = "week", globalChart = null, chartsBusy = 0;
+  const chartQueues = {};
+  const nfc = new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 });
+  const starsTxt = (v) => `<span class="c-stars"><i aria-hidden="true">★</i>${Number(v).toFixed(1)}</span>`;
+  const chartCover = (src, seed) => src ? `<img src="${esc(src)}" alt="" loading="lazy" onerror="this.remove()">${art(seed)}` : art(seed);
+  const place = (i) => i < 3 ? " p" + (i + 1) : "";
+
+  async function fetchGlobal() {
+    if (globalChart) return globalChart;
+    const r = await fetch("/api/charts");
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j.hits) throw new Error(j.error || "Global chart unavailable");
+    globalChart = j;
+    // Deezer 30-second previews play in the mini player
+    chartQueues.global = j.hits.filter((h) => h.preview).map((h) => ({
+      id: "dz-" + h.rank + "-" + h.title, title: h.title, artist: h.artist, genre: "30s preview",
+      album: h.album, cover_url: h.cover, audio_url: h.preview, duration_sec: 30, preview: true
+    }));
+    return j;
+  }
+  async function fetchCommunity(period, limit) {
+    const [h, b] = await Promise.all([
+      db.rpc("ug_chart_tracks", { p_period: period, p_limit: limit }),
+      db.rpc("ug_chart_bands", { p_period: period, p_limit: limit })
+    ]);
+    if (h.error || b.error) throw (h.error || b.error);
+    return { hits: h.data || [], bands: b.data || [] };
+  }
+
+  function communityHitRow(t, i, from) {
+    return `<li><button class="chart-row${place(i)}" type="button" data-track="${esc(t.id)}" data-from="${from}" style="--i:${i}" aria-label="Number ${i + 1}: play ${esc(t.title)} by ${esc(t.artist)}, rated ${Number(t.avg_stars).toFixed(1)} from ${t.votes} votes">
+      <span class="c-rank">${i + 1}</span><span class="c-cover">${chartCover(t.cover_url, t.id)}</span>
+      <span class="c-meta"><span class="c-title">${esc(t.title)}</span><span class="c-sub">${esc(t.artist)}${t.album ? " · " + esc(t.album) : ""}</span></span>
+      <span class="c-score">${starsTxt(t.avg_stars)}<span class="c-votes">${t.votes} ${t.votes === 1 ? "vote" : "votes"}</span></span>
+    </button></li>`;
+  }
+  function communityBandRow(b, i) {
+    return `<li><div class="chart-row${place(i)}" style="--i:${i}">
+      <span class="c-rank">${i + 1}</span><span class="c-cover">${chartCover(b.cover_url, b.artist)}</span>
+      <span class="c-meta"><span class="c-title">${esc(b.artist)}</span><span class="c-sub">Top: ${esc(b.top_track || "")}${b.tracks > 1 ? " · " + b.tracks + " tracks" : ""}</span></span>
+      <span class="c-score">${starsTxt(b.avg_stars)}<span class="c-votes">${b.votes} ${b.votes === 1 ? "vote" : "votes"}</span></span>
+    </div></li>`;
+  }
+  function globalHitRow(h, i, from) {
+    const meter = `<span class="c-meter" title="Popularity ${h.popularity}/100"><b style="--w:${h.popularity}%"></b></span><span class="c-votes">Pop ${h.popularity}</span>`;
+    const inner = `<span class="c-rank">${i + 1}</span><span class="c-cover">${chartCover(h.cover, h.title)}</span>
+      <span class="c-meta"><span class="c-title">${esc(h.title)}</span><span class="c-sub">${esc(h.artist)}${h.album ? " · " + esc(h.album) : ""}</span></span>
+      <span class="c-score">${meter}</span>`;
+    return h.preview
+      ? `<li><button class="chart-row${place(i)}" type="button" data-track="${esc("dz-" + h.rank + "-" + h.title)}" data-from="${from}" style="--i:${i}" aria-label="Number ${i + 1}: play a 30 second preview of ${esc(h.title)} by ${esc(h.artist)}">${inner}</button></li>`
+      : `<li><a class="chart-row${place(i)}" href="${esc(h.link || "#")}" target="_blank" rel="noopener" style="--i:${i}">${inner}</a></li>`;
+  }
+  function globalBandRow(b, i) {
+    return `<li><a class="chart-row${place(i)}" href="${esc(b.link)}" target="_blank" rel="noopener" style="--i:${i}" aria-label="Number ${i + 1}: ${esc(b.name)}${b.fans ? ", " + nfc.format(b.fans) + " fans" : ""}">
+      <span class="c-rank">${i + 1}</span><span class="c-cover">${chartCover(b.picture, b.name)}</span>
+      <span class="c-meta"><span class="c-title">${esc(b.name)}</span><span class="c-sub">${b.top_track ? "Hit: " + esc(b.top_track) : "Metal"}</span></span>
+      <span class="c-score"><span class="c-stars">${b.fans ? nfc.format(b.fans) : b.popularity}</span><span class="c-votes">${b.fans ? "fans" : "popularity"}</span></span>
+    </a></li>`;
+  }
+  const emptyBox = (title, text) => `<li><div class="chart-empty"><strong>${title}</strong>${text}</div></li>`;
+
+  async function loadCharts() {
+    const run = ++chartsBusy;
+    document.querySelectorAll(".cs-btn").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.src === chartSrc)));
+    document.querySelectorAll("#periodPills .pill").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.period === chartPeriod)));
+    $("periodPills").hidden = chartSrc !== "community";
+    const sk = '<li class="skel" style="height:64px;list-style:none;margin-bottom:6px"></li>'.repeat(5);
+    $("chartBands").innerHTML = sk; $("chartHits").innerHTML = sk;
+    if (chartSrc === "community") {
+      $("chartsLead").textContent = "The ten most-loved bands and songs on UNDERGROUND, ranked by members' star ratings.";
+      $("bandsHint").textContent = "Average stars"; $("hitsHint").textContent = "Tap to play";
+      $("chartMeta").textContent = chartPeriod === "week" ? "Votes from the last 7 days" : "Every vote ever cast";
+      $("chartFoot").innerHTML = "Rate any song with the stars in the player (members only). Rankings weigh the number of votes too, so one 5-star vote can't top a track loved by many.";
+      try {
+        const d = await fetchCommunity(chartPeriod, 10);
+        if (run !== chartsBusy) return;
+        chartQueues.community = d.hits.map((t) => ({ ...t }));
+        $("chartHits").innerHTML = d.hits.length ? d.hits.map((t, i) => communityHitRow(t, i, "community")).join("")
+          : emptyBox(chartPeriod === "week" ? "No votes this week yet" : "No ratings yet", "Play a song from Music and tap the stars in the player to rate it.");
+        $("chartBands").innerHTML = d.bands.length ? d.bands.map(communityBandRow).join("")
+          : emptyBox("No ranked bands yet", "Bands appear here as soon as their songs get rated.");
+      } catch (e) {
+        if (run !== chartsBusy) return;
+        const setup = /ug_chart|function|schema cache|does not exist/i.test(e.message || "");
+        const box = emptyBox(setup ? "Charts are almost ready" : "Couldn't load the charts", setup ? "The site editor still needs to switch on ratings." : "Check your connection and try again.");
+        $("chartHits").innerHTML = box; $("chartBands").innerHTML = box;
+      }
+    } else {
+      $("chartsLead").textContent = "The biggest metal bands and songs in the world right now, by streaming popularity.";
+      $("bandsHint").textContent = "Fans"; $("hitsHint").textContent = "Tap for a 30s preview";
+      $("chartMeta").textContent = "Updated every few hours";
+      $("chartFoot").innerHTML = 'Global data from <a href="https://www.deezer.com" target="_blank" rel="noopener">Deezer</a> (Metal genre). Popularity is relative to the number one song.';
+      try {
+        const j = await fetchGlobal();
+        if (run !== chartsBusy) return;
+        $("chartMeta").textContent = "Updated " + agoShort(j.updated);
+        $("chartHits").innerHTML = j.hits.map((h, i) => globalHitRow(h, i, "global")).join("") || emptyBox("No data", "Try again later.");
+        $("chartBands").innerHTML = j.bands.map(globalBandRow).join("") || emptyBox("No data", "Try again later.");
+      } catch {
+        if (run !== chartsBusy) return;
+        const box = emptyBox("Global chart unavailable", "The data source didn't answer. Try again in a few minutes.");
+        $("chartHits").innerHTML = box; $("chartBands").innerHTML = box;
+      }
+    }
+    markPlaying();
+  }
+  document.querySelectorAll(".cs-btn").forEach((b) => b.addEventListener("click", () => { if (chartSrc !== b.dataset.src) { chartSrc = b.dataset.src; loadCharts(); } }));
+  document.querySelectorAll("#periodPills .pill").forEach((b) => b.addEventListener("click", () => { if (chartPeriod !== b.dataset.period) { chartPeriod = b.dataset.period; loadCharts(); } }));
+  const agoShort = (iso) => { const m = Math.max(1, Math.round((Date.now() - new Date(iso)) / 60000)); return m < 60 ? m + " min ago" : Math.round(m / 60) + " h ago"; };
+
+  // Home: top 3 (members' all-time chart once it has 3 songs, otherwise the global chart)
+  async function loadPeek() {
+    let rows = "", hint = "";
+    try {
+      const d = await fetchCommunity("all", 3);
+      if (d.hits.length >= 3) { chartQueues.peek = d.hits; rows = d.hits.map((t, i) => communityHitRow(t, i, "peek")).join(""); hint = "Highest rated by members"; }
+    } catch {}
+    if (!rows) {
+      try {
+        const j = await fetchGlobal();
+        chartQueues.peek = chartQueues.global;
+        rows = j.hits.slice(0, 3).map((h, i) => globalHitRow(h, i, "peek")).join(""); hint = "Global metal · most played";
+      } catch {}
+    }
+    $("chartPeek").innerHTML = rows || `<li><div class="empty-note">The charts open once songs get rated.</div></li>`;
+    $("peekHint").textContent = hint || "Top hits right now";
+    markPlaying();
+  }
+
+  // ---- Star rating in the player --------------------------------------------
+  let rateFor = null;
+  function paintStars(n) { document.querySelectorAll("#plRate [data-star]").forEach((b) => { const on = +b.dataset.star <= n; b.classList.toggle("on", on); b.setAttribute("aria-checked", String(+b.dataset.star === n)); }); }
+  async function showRating(t) {
+    const box = $("plRate");
+    rateFor = t && !t.preview && /^[0-9a-f-]{36}$/i.test(String(t.id)) ? t : null;
+    box.hidden = !rateFor; if (!rateFor) return;
+    paintStars(0); $("plAvg").textContent = "";
+    const id = rateFor.id;
+    const [avg, mine] = await Promise.all([
+      db.rpc("ug_track_rating", { p_track: id }).then((r) => r.data?.[0] || r.data).catch(() => null),
+      user ? db.from("track_ratings").select("stars").eq("track_id", id).eq("user_id", user.id).maybeSingle().then((r) => r.data).catch(() => null) : null
+    ]);
+    if (!rateFor || rateFor.id !== id) return;
+    if (avg === null && !mine) { /* ratings not set up yet */ }
+    paintStars(mine?.stars || 0);
+    $("plAvg").textContent = avg && avg.votes ? `${Number(avg.avg_stars).toFixed(1)} · ${avg.votes} ${avg.votes === 1 ? "vote" : "votes"}` : (user ? "Rate it" : "Sign in to rate");
+  }
+  $("plRate").addEventListener("click", async (e) => {
+    const b = e.target.closest("[data-star]"); if (!b || !rateFor) return;
+    if (!user) { requireAuth("rate songs"); return; }
+    const stars = +b.dataset.star, id = rateFor.id;
+    paintStars(stars);
+    const { error } = await db.from("track_ratings").upsert({ track_id: id, user_id: user.id, stars, updated_at: new Date().toISOString() }, { onConflict: "track_id,user_id" });
+    if (error) {
+      toast("error", "Rating not saved", /track_ratings|schema cache|does not exist/i.test(error.message || "") ? "Ratings aren't switched on yet." : error.message, { duration: 6000 });
+      showRating(rateFor); return;
+    }
+    toast("success", `Rated ${stars} star${stars > 1 ? "s" : ""}`, `${rateFor.title} · counts toward the charts.`, { duration: 3000 });
+    showRating(rateFor);
+    if (view === "charts") loadCharts();
+    loadPeek();
+  });
+
   heroFloor($("heroFloor"));
   recTimer();
   wave($("aboutWave"), 600, 180, 6);
@@ -1091,7 +1259,7 @@
     clearTimeout(maxSplash);
     renderHome(); renderCoverage(); renderGrid(false); renderAbout();
     loadNews();
-    loadTracks();
+    loadTracks(); loadPeek();
     hideSplash();
     route();
   });
