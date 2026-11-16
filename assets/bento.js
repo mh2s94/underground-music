@@ -168,6 +168,12 @@
   };
   const releases = () => new Set(articles.map((a) => (a.album_name || "").trim().toLowerCase()).filter(Boolean)).size;
   const coverOf = (a) => a.cover_image_url || (ytId(a.content) ? `https://i.ytimg.com/vi/${ytId(a.content)}/hqdefault.jpg` : "");
+  // Real cover when the article has one (cover URL or the band's YouTube thumbnail),
+  // generated neon art underneath as the fallback if there is none or it fails to load.
+  const media = (a) => {
+    const img = coverOf(a);
+    return art(a.id) + (img ? `<img class="cover" src="${esc(img)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : "");
+  };
 
   // ---- Render: dashboard ---------------------------------------------------
   function renderHome() {
@@ -263,7 +269,7 @@
     const list = genre === "All" ? articles : articles.filter((a) => (a.genre || "Underground").toLowerCase() === genre.toLowerCase());
     $("grid").innerHTML = list.length ? list.map((a) => `
       <a class="card lift acard bento-item" href="#/a/${keyOf(a)}">
-        <div class="art-wrap">${art(a.id)}${ytId(a.content) ? `<span class="vid"><svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"/></svg>Video</span>` : ""}</div>
+        <div class="art-wrap">${media(a)}${ytId(a.content) ? `<span class="vid"><svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"/></svg>Video</span>` : ""}</div>
         <div class="body">${tagHtml(a.genre)}<h3>${esc(a.title)}</h3>${a.excerpt ? `<p>${esc(a.excerpt)}</p>` : ""}
           <div class="meta"><span>${fmtDate(a.published_at)}</span><span>${readTime(a.content)}</span></div></div>
       </a>`).join("")
@@ -361,7 +367,7 @@
     const vid = ytId(a.content);
     $("readerTag").innerHTML = tagHtml(a.genre);
     $("readerBody").innerHTML = `
-      <div class="reader-hero">${art(a.id)}</div>
+      ${vid ? "" : `<div class="reader-hero">${media(a)}</div>`}
       <div class="meta-row"><span>${fmtDate(a.published_at)}</span><span aria-hidden="true">·</span><span>${readTime(a.content)}</span>${a.band_name ? `<span aria-hidden="true">·</span><span>${esc(a.band_name)}</span>` : ""}</div>
       <h1 id="readerTitle">${esc(a.title)}</h1>
       ${a.excerpt ? `<p class="lede">${esc(a.excerpt)}</p>` : ""}
@@ -614,7 +620,7 @@
           <div class="card pad bento-item">
             <div class="card-title"><h2>Saved articles</h2><span class="hint">${saved.length} saved</span></div>
             ${saved.length ? `<div class="saved-grid">${saved.map((a) => `
-              <a class="card lift acard" href="#/a/${keyOf(a)}"><div class="art-wrap">${art(a.id)}</div>
+              <a class="card lift acard" href="#/a/${keyOf(a)}"><div class="art-wrap">${media(a)}</div>
               <div class="body">${tagHtml(a.genre)}<h3>${esc(a.title)}</h3><div class="meta"><span>${fmtDate(a.published_at)}</span><span>${readTime(a.content)}</span></div></div></a>`).join("")}</div>`
               : `<div class="empty-note">Tap <b>Save</b> on any article and it will wait for you here.</div>`}
           </div>

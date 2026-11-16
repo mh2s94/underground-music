@@ -479,3 +479,11 @@ textarea.input { resize: vertical; line-height: 1.55; }
 @media (max-width: 760px) { .ft-inner { padding: 40px 14px 28px; gap: 36px; } .ft-pass-col { flex-basis: 100%; } .ft-bar { padding: 16px 14px 22px; } }
 @media (prefers-reduced-motion: reduce) { .ft-reveal { opacity: 1; transform: none; } .ft-pass { animation: none; } }
 .ft-pass-foot { white-space: nowrap; font-size: 16px; }
+
+/* Real covers on cards and reader */
+.acard .art-wrap > svg, .reader-hero > svg { position: absolute; inset: 0; }
+.reader-hero { position: relative; }
+.acard .art-wrap img.cover, .reader-hero img.cover { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: saturate(1.08) contrast(1.05); transition: transform .9s var(--ease-out); }
+.acard:hover .art-wrap img.cover { transform: scale(1.06); }
+.acard .art-wrap::after, .reader-hero::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(180deg, rgba(7, 6, 11, 0) 45%, rgba(7, 6, 11, .55)), repeating-linear-gradient(0deg, rgba(255, 255, 255, .035) 0 1px, transparent 1px 3px); }
+.acard .vid { z-index: 2; }
