@@ -10,8 +10,7 @@
 // Either step may fail; the endpoint always returns its best guess.
 
 import { buildProviders, DEFAULT_ORDER } from "./generate.js";
-
-export const GENRES = ["Metalcore", "Deathcore", "Hardcore", "Darkcore", "Post-Hardcore", "Black Metal", "Djent", "Underground"];
+import { PROMPT_LIST, canonicalGenre } from "./genres-data.js";
 const SYSTEM = "You identify music tracks and return strict JSON only. No prose, no code fences.";
 
 const json = (data, status = 200) => new Response(JSON.stringify(data), {
@@ -62,17 +61,11 @@ export async function onRequestPost({ request, env }) {
   });
 }
 
-// Map free text like "Metal", "Death Metal", "metalcore" onto the site's genre list
+// Map tag/catalogue text like "metal", "Death Metal", "(17)" onto the genre list
 function pickGenre(g) {
-  const s = norm(g); if (!s) return null;
-  const exact = GENRES.find((x) => norm(x) === s); if (exact) return exact;
-  if (/deathcore|death metal|slam/.test(s)) return "Deathcore";
-  if (/metalcore/.test(s)) return "Metalcore";
-  if (/post ?hardcore|screamo|emo/.test(s)) return "Post-Hardcore";
-  if (/black metal|blackgaze/.test(s)) return "Black Metal";
-  if (/djent|progressive metal|prog metal/.test(s)) return "Djent";
-  if (/darkcore|dark ?wave|industrial/.test(s)) return "Darkcore";
-  if (/hardcore|beatdown|powerviolence|punk/.test(s)) return "Hardcore";
+  const s = String(g || "").trim(); if (!s || /^\(?\d+\)?$/.test(s)) return null;
+  const c = canonicalGenre(s); if (c) return c;
+  if (/^metal$/i.test(s)) return "Heavy Metal";
   return null;
 }
 
@@ -136,7 +129,9 @@ Tag genre: ${tags.genre || "(none)"}
 
 Rules:
 - "title" and "artist": proper capitalisation; remove junk such as "(Official Video)", "[HQ]", "320kbps", track numbers, site names.
-- "genre": exactly one of ${GENRES.join(", ")}. Choose the closest heavy-music style for this band; use "Underground" only if unsure.
+- "genre": exactly one name copied from the genre list below, the most specific one that fits this artist's sound; use "Underground" only if unsure.
+Genre list ("Group:" words are not genres):
+${PROMPT_LIST}
 - "album" and "year": only if you are confident, otherwise null.
 Return only JSON: {"title":"","artist":"","album":null,"year":null,"genre":""}`;
 

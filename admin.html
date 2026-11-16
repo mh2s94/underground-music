@@ -215,7 +215,7 @@
         <label class="field"><span>Band / artist</span><input class="input" id="band" placeholder="Bring Me The Horizon" autocomplete="off"></label>
         <label class="field"><span>Song / album</span><input class="input" id="album" placeholder="Kingslayer" autocomplete="off"></label>
         <div class="grid-2">
-          <label class="field"><span>Genre</span><select class="select" id="genre"><option value="">Auto (AI decides)</option><option>Metalcore</option><option>Hardcore</option><option>Deathcore</option><option>Darkcore</option><option>Post-Hardcore</option><option>Black Metal</option><option>Djent</option><option>Underground</option></select></label>
+          <label class="field"><span>Genre</span><select class="select" id="genre" data-genre-select data-auto="Auto (AI decides)"></select></label>
           <label class="field"><span>Type</span><select class="select" id="category"><option value="">Auto</option><option>Review</option><option>News</option><option>Feature</option><option>Interview</option></select></label>
         </div>
         <label class="field"><span>Extra notes <span class="hint">(optional)</span></span><textarea class="textarea" id="notes" rows="3" placeholder="Facts or an angle you want included"></textarea></label>
@@ -317,7 +317,7 @@
             <label class="field"><span>Release year</span><input class="input" id="tYear" inputmode="numeric" maxlength="4" placeholder="2026"></label>
           </div>
           <div class="two">
-          <label class="field"><span>Genre</span><select class="select" id="tGenre"><option>Metalcore</option><option>Deathcore</option><option>Hardcore</option><option>Darkcore</option><option>Post-Hardcore</option><option>Black Metal</option><option>Djent</option><option selected>Underground</option></select></label>
+          <label class="field"><span>Genre</span><select class="select" id="tGenre" data-genre-select></select></label>
             <label class="field"><span>Duration</span><input class="input" id="tDur" readonly placeholder="Read from the file" tabindex="-1"></label>
           </div>
           <div class="field">
@@ -348,7 +348,10 @@
         <section class="panel card-pad" aria-labelledby="libTitle">
           <div class="list-head">
             <h2 id="libTitle" style="margin:0">Music library <span class="badge" id="trackTotal" hidden></span></h2>
-            <input class="input" id="tSearch" placeholder="Search tracks…" style="max-width:240px;min-height:42px">
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn btn-sm" type="button" id="tCovers" title="Look up artwork for tracks that have none">Find missing covers</button>
+              <input class="input" id="tSearch" placeholder="Search tracks…" style="max-width:240px;min-height:42px">
+            </div>
           </div>
           <div class="rows" id="trackRows"></div>
         </section>
@@ -412,6 +415,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/assets/ui.js"></script>
 <script src="/assets/audiotags.js"></script>
+<script src="/assets/genres.js"></script>
 <script>
 const sb = window.supabase.createClient("https://lhhmzfwjznlwkentbakv.supabase.co", "sb_publishable_MQDqmSmPb3qiSODbBOSKmA_U7aBEFtN");
 const { toast, shake, esc } = window.UI;
@@ -644,7 +648,7 @@ async function editArticle(id) {
   $("cover").value = a.cover_image_url || ""; $("tags").value = (a.tags || []).join(", ");
   setPubDate(a.published_at);
   $("band").value = a.band_name || ""; $("album").value = a.album_name || "";
-  if (a.genre) $("genre").value = a.genre;
+  if (a.genre) { if (![...$("genre").options].some((o) => o.value === a.genre)) $("genre").add(new Option(a.genre, a.genre)); $("genre").value = a.genre; }
   setStatus(a.status || "draft");
   $("editingFlag").hidden = false; updateSaveLabel();
   $("editor").scrollIntoView({ behavior: "smooth", block: "start" });
@@ -900,6 +904,9 @@ window.addEventListener("resize", moveInk);
 
 /* ===================== Music ===================== */
 const BUCKET = "music";
+document.querySelectorAll("[data-genre-select]").forEach((el) => {
+  el.innerHTML = window.UG_GENRES ? window.UG_GENRES.options(el.dataset.auto ? "" : "Underground", { auto: el.dataset.auto }) : '<option>Underground</option>';
+});
 let MAX_AUDIO = 25 * 1024 * 1024; const MAX_COVER = 5 * 1024 * 1024;
 let storageMode = null; // "r2" (Cloudflare R2) or "supabase"
 const MAX_SONG = 100 * 1024 * 1024; // the site's per-song limit (needs R2; Supabase free allows 25 MB here)
@@ -1192,6 +1199,27 @@ $("tSave").onclick = async () => {
     btn.disabled = false; $("tCancel").disabled = false; $("upProgress").hidden = true;
     updateTrackSaveLabel();
   }
+};
+
+$("tCovers").onclick = async () => {
+  const todo = allTracks.filter((t) => !t.cover_url);
+  if (!todo.length) { toast("success", "Every track has a cover", "Nothing to look up."); return; }
+  const btn = $("tCovers"); btn.disabled = true;
+  let found = 0;
+  for (let i = 0; i < todo.length; i++) {
+    const t = todo[i];
+    btn.textContent = `Searching ${i + 1}/${todo.length}…`;
+    try {
+      const j = await (await fetch(`/api/cover?a=${encodeURIComponent(t.artist)}&t=${encodeURIComponent(t.title)}`)).json();
+      if (j && /^https:\/\//.test(j.url || "")) {
+        const { error } = await sb.from("tracks").update({ cover_url: j.url, cover_path: null }).eq("id", t.id);
+        if (!error) found++;
+      }
+    } catch {}
+  }
+  btn.disabled = false; btn.textContent = "Find missing covers";
+  toast(found ? "success" : "info", found ? `Found ${found} of ${todo.length} covers` : "No covers found", found < todo.length ? "Tracks without a match keep the neon artwork. You can add one by editing the track." : "Every track now shows real artwork.", { duration: 8000 });
+  loadTracks();
 };
 
 async function loadTracks() {

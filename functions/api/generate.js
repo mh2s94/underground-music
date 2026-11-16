@@ -13,7 +13,7 @@
 //   4. Parse the answer with a tolerant parser (tagged text first, then JSON
 //      with control-character repair), so one malformed reply does not fail.
 
-const GENRES = ["Metalcore", "Hardcore", "Deathcore", "Darkcore", "Post-Hardcore", "Black Metal", "Djent", "Underground"];
+import { PROMPT_LIST, canonicalGenre } from "./genres-data.js";
 export const DEFAULT_ORDER = "gemini,workersai,groq,openrouter,mistral,deepseek,openai,claude";
 const DEADLINE_MS = 75000;         // whole AI phase
 const PROVIDER_TIMEOUT_MS = 50000; // one provider attempt
@@ -127,13 +127,16 @@ Use your own knowledge of the band, its sound and its history, plus the editor n
 Accuracy: do not invent quotes, interviews, chart positions, exact dates or personnel you are not sure about; leave uncertain details out. Never mention missing information, the editorial process or these instructions.
 Style: a clear editorial angle, specific description of the music, useful context, no hype, no filler. The article body is 350-500 words of Markdown with 2-3 "## " subheadings, no links, and no title at the top.
 
+Genre list (GENRE must be exactly one name from it, the most specific one that fits; "Group:" words are not genres):
+${PROMPT_LIST}
+
 Reply in EXACTLY this format, with plain text labels:
 BAND: <the main band or artist the article is about, correctly spelled and capitalised>
 RELEASE: <the song, album or event the article is about, or leave empty>
 TITLE: <headline, max 90 characters>
 EXCERPT: <1-2 sentence teaser, max 200 characters>
 TAGS: <3-6 short lowercase tags, comma separated>
-GENRE: <the single best match for this band's sound, one of: ${GENRES.join(", ")}>
+GENRE: <the single best match for this band's sound, copied exactly from the genre list>
 CONTENT:
 <the article body in Markdown>`;
 }
@@ -309,7 +312,7 @@ function parseArticle(raw) {
   if (!title || content.length < 200) throw new Error("Reply was incomplete (missing title or article body).");
   const tagList = Array.isArray(a.tags) ? a.tags : String(a.tags || "").split(",");
   const tags = [...new Set(tagList.map(t => String(t).trim().replace(/^#+/, "").trim().toLowerCase()).filter(Boolean))].slice(0, 8);
-  const genre = GENRES.find(g => g.toLowerCase() === String(a.genre || "").trim().toLowerCase()) || "";
+  const genre = canonicalGenre(a.genre) || "";
   const band = stripQuotes(String(a.band || "")).replace(/^\(|\)$/g, "").slice(0, 120);
   let release = stripQuotes(String(a.release || "")).slice(0, 160);
   if (/^(none|n\/a|-|empty|leave empty)$/i.test(release)) release = "";

@@ -10,6 +10,14 @@
 
   const GENRES = ["Metalcore", "Deathcore", "Hardcore", "Darkcore", "Post-Hardcore", "Black Metal", "Djent", "Underground"];
   const WARM = new Set(["deathcore", "hardcore", "darkcore", "black metal"]);
+  const UGG = window.UG_GENRES || null; // full genre list (assets/genres.js)
+  const PALETTE = ["#FF2E63", "#7B5CFF", "#FF9BB5", "#4F7BFF", "#B3124A", "#A48FFF", "#FF5C86", "#C9C2E8"];
+  // Genres actually used, most common first (pills only offer genres that have content)
+  const presentGenres = (items) => {
+    const m = new Map();
+    items.forEach((x) => { const g = x.genre || "Underground"; const k = g.toLowerCase(); const e = m.get(k) || { g, n: 0 }; e.n++; m.set(k, e); });
+    return [...m.values()].sort((a, b) => b.n - a.n || a.g.localeCompare(b.g)).map((e) => e.g);
+  };
   const GENRE_COLOR = {
     Metalcore: "#7B5CFF", Djent: "#A48FFF", "Post-Hardcore": "#4F7BFF", Underground: "#C9C2E8",
     Deathcore: "#FF2E63", Hardcore: "#FF5C86", Darkcore: "#B3124A", "Black Metal": "#FF9BB5"
@@ -28,7 +36,7 @@
   let lastFocus = null;
 
   // ---- Helpers ------------------------------------------------------------
-  const isWarm = (g) => WARM.has(String(g || "").toLowerCase());
+  const isWarm = (g) => WARM.has(String(g || "").toLowerCase()) || !!(UGG && UGG.isWarm(g));
   const tagHtml = (g) => `<span class="tag${isWarm(g) ? " warm" : ""}">${esc(g || "Underground")}</span>`;
   const ytId = (s) => (String(s || "").match(YT_LINE) || [])[1] || "";
   const readTime = (s) => Math.max(1, Math.round((String(s || "").match(/\S+/g) || []).length / 220)) + " min read";
@@ -235,9 +243,28 @@
   const fmtTime = (sec) => { sec = Math.max(0, Math.floor(sec || 0)); return Math.floor(sec / 60) + ":" + String(sec % 60).padStart(2, "0"); };
   const PLAY_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"/></svg>';
   const EQ = '<span class="eq" aria-hidden="true"><i></i><i></i><i></i></span>';
+  const coverMark = (a, t) => a ? `<i hidden data-cover-a="${esc(a)}"${t ? ` data-cover-t="${esc(t)}"` : ""}></i>` : "";
   const trackCover = (t) => t.cover_url
     ? `<img src="${esc(t.cover_url)}" alt="" loading="lazy" onerror="this.remove()">${art(t.id)}`
-    : art(t.id);
+    : art(t.id) + coverMark(t.artist, t.title);
+  // Real artwork for anything without a cover: /api/cover looks it up (cached at the edge)
+  const coverCache = new Map(); let coverJobs = Promise.resolve();
+  function findCover(a, t) {
+    const k = (a + "|" + (t || "")).toLowerCase();
+    if (!coverCache.has(k)) coverCache.set(k, fetch(`/api/cover?a=${encodeURIComponent(a)}${t ? "&t=" + encodeURIComponent(t) : ""}`).then((r) => r.ok ? r.json() : null).then((j) => j && j.url).catch(() => null));
+    return coverCache.get(k);
+  }
+  function hydrateCovers(root) {
+    (root || document).querySelectorAll("[data-cover-a]").forEach((m) => {
+      const box = m.parentElement; m.remove();
+      if (!box || box.querySelector("img")) return;
+      findCover(m.dataset.coverA, m.dataset.coverT).then((url) => {
+        if (!url || !box.isConnected || box.querySelector("img")) return;
+        const img = new Image(); img.alt = ""; img.loading = "lazy"; img.className = "cover-in"; img.onerror = () => img.remove(); img.src = url;
+        box.prepend(img);
+      });
+    });
+  }
   const filteredTracks = () => musicGenre === "All" ? tracks : tracks.filter((t) => (t.genre || "Underground").toLowerCase() === musicGenre.toLowerCase());
 
   async function loadTracks() {
@@ -247,11 +274,11 @@
     if (error) ({ data, error } = await q("id,title,artist,genre,cover_url,audio_url,duration_sec,published_at")); // before music-v2.sql
     tracks = error ? [] : (data || []).filter((t) => /^https:\/\//i.test(t.audio_url || ""));
     renderMusicPills(); renderTrackList(); renderHomeTracks();
+    hydrateCovers($("trackList")); hydrateCovers($("homeTracks"));
   }
 
   function renderMusicPills() {
-    const present = new Set(tracks.map((t) => t.genre || "Underground"));
-    const list = ["All", ...GENRES.filter((g) => present.has(g))];
+    const list = ["All", ...presentGenres(tracks)];
     $("musicPills").innerHTML = list.map((g) => `<button class="pill" type="button" aria-pressed="${g === musicGenre}" data-mg="${esc(g)}">${esc(g)}</button>`).join("");
   }
   $("musicPills").addEventListener("click", (e) => {
@@ -299,7 +326,7 @@
     document.body.classList.add("has-player");
     $("plTitle").textContent = t.title;
     $("plArtist").textContent = t.artist + (t.genre ? " · " + t.genre : "");
-    $("plCover").innerHTML = trackCover(t);
+    $("plCover").innerHTML = trackCover(t); hydrateCovers($("plCover"));
     $("plCur").textContent = "0:00";
     $("plDur").textContent = t.duration_sec ? fmtTime(t.duration_sec) : "0:00";
     $("plSeek").value = 0;
@@ -400,7 +427,7 @@
 
   // ---- Render: articles ----------------------------------------------------
   function renderPills() {
-    $("pills").innerHTML = ["All", ...GENRES].map((g) => `<button class="pill" type="button" aria-pressed="${g === genre}" data-g="${esc(g)}">${esc(g)}</button>`).join("");
+    $("pills").innerHTML = ["All", ...(articles.length ? presentGenres(articles) : GENRES)].map((g) => `<button class="pill" type="button" aria-pressed="${g === genre}" data-g="${esc(g)}">${esc(g)}</button>`).join("");
   }
   $("pills").addEventListener("click", (e) => {
     const b = e.target.closest("[data-g]"); if (!b) return;
@@ -408,12 +435,17 @@
   });
 
   function renderCoverage() {
-    const counts = GENRES.map((g) => ({ g, n: articles.filter((a) => (a.genre || "Underground").toLowerCase() === g.toLowerCase()).length })).filter((x) => x.n);
+    // Coverage by genre group (Death Metal, Metalcore, …); the 6 biggest, the rest as "Other"
+    const by = new Map();
+    articles.forEach((a) => { const g = (UGG && UGG.groupOf(a.genre)) || a.genre || "Underground"; by.set(g, (by.get(g) || 0) + 1); });
+    let counts = [...by.entries()].map(([g, n]) => ({ g, n })).sort((a, b) => b.n - a.n);
+    if (counts.length > 7) counts = [...counts.slice(0, 6), { g: "Other", n: counts.slice(6).reduce((s, x) => s + x.n, 0) }];
+    counts.forEach((x, i) => { x.c = GENRE_COLOR[x.g] || PALETTE[i % PALETTE.length]; });
     const total = counts.reduce((s, x) => s + x.n, 0);
     $("covTotal").textContent = total ? `${total} ${total === 1 ? "story" : "stories"}` : "";
-    $("covBar").innerHTML = counts.map((x, i) => `<span data-w="${(x.n / total) * 100}" style="--b:${i};background:${GENRE_COLOR[x.g]}" title="${esc(x.g)}: ${x.n}"></span>`).join("");
+    $("covBar").innerHTML = counts.map((x, i) => `<span data-w="${(x.n / total) * 100}" style="--b:${i};background:${x.c}" title="${esc(x.g)}: ${x.n}"></span>`).join("");
     $("covLegend").innerHTML = counts.length
-      ? counts.map((x) => `<div><span><i style="background:${GENRE_COLOR[x.g]}"></i>${esc(x.g)}</span><b>${Math.round((x.n / total) * 100)}%</b></div>`).join("")
+      ? counts.map((x) => `<div><span><i style="background:${x.c}"></i>${esc(x.g)}</span><b>${Math.round((x.n / total) * 100)}%</b></div>`).join("")
       : `<div style="grid-column:1/-1">Coverage appears once stories are published.</div>`;
   }
 
@@ -787,7 +819,7 @@
             <div class="card-title" style="margin:0"><h2>Profile</h2></div>
             <label class="field"><span>Display name</span><input class="input" name="name" maxlength="40" value="${esc(name)}" required></label>
             <div class="field"><span>Favourite genres</span>
-              <div class="pills genre-picker" role="group" aria-label="Favourite genres">${GENRES.map((g) => `<button class="pill" type="button" data-fav="${esc(g)}" aria-pressed="${favs.has(g)}">${esc(g)}</button>`).join("")}</div>
+              <div class="pills genre-picker" role="group" aria-label="Favourite genres (up to 8)">${(UGG ? UGG.GROUPS.map((x) => x.name) : GENRES).map((g) => `<button class="pill" type="button" data-fav="${esc(g)}" aria-pressed="${favs.has(g)}">${esc(g)}</button>`).join("")}</div>
             </div>
             <div class="form-error" role="alert" hidden></div>
             <button class="btn btn-forest" type="submit" style="align-self:flex-start">Save profile</button>
@@ -834,7 +866,11 @@
       const i = t.parentElement.querySelector("input"); const show = i.type === "password";
       i.type = show ? "text" : "password"; t.setAttribute("aria-label", show ? "Hide password" : "Show password"); return;
     }
-    if (t.dataset.fav) t.setAttribute("aria-pressed", t.getAttribute("aria-pressed") === "true" ? "false" : "true");
+    if (t.dataset.fav) {
+      const on = t.getAttribute("aria-pressed") === "true";
+      if (!on && t.parentElement.querySelectorAll('[aria-pressed="true"]').length >= 8) { toast("info", "Up to 8 favourites", "Unselect one to pick another."); return; }
+      t.setAttribute("aria-pressed", on ? "false" : "true");
+    }
   });
   acct.addEventListener("input", (e) => {
     e.target.classList.remove("invalid");
@@ -1087,51 +1123,58 @@
   // Community: members' star ratings on our own tracks (Supabase functions in charts.sql).
   // Global metal: Deezer popularity via /api/charts (cached 6 h).
   let chartSrc = "community", chartPeriod = "week", globalChart = null, chartsBusy = 0;
+  let chartGroup = null, chartGenre = null; // genre filter from assets/genres.js
+  const globalCache = new Map();
+  const groupObj = () => (UGG && chartGroup ? UGG.GROUPS.find((g) => g.name === chartGroup) : null);
+  const genreLabel = () => chartGenre || chartGroup || "";
+  const genreList = () => chartGenre ? [chartGenre] : (groupObj() ? [chartGroup, ...groupObj().items] : null);
   const chartQueues = {};
   const nfc = new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 });
   const starsTxt = (v) => `<span class="c-stars"><i aria-hidden="true">★</i>${Number(v).toFixed(1)}</span>`;
-  const chartCover = (src, seed) => src ? `<img src="${esc(src)}" alt="" loading="lazy" onerror="this.remove()">${art(seed)}` : art(seed);
+  const chartCover = (src, seed, a, t) => src ? `<img src="${esc(src)}" alt="" loading="lazy" onerror="this.remove()">${art(seed)}` : art(seed) + coverMark(a, t);
   const place = (i) => i < 3 ? " p" + (i + 1) : "";
 
-  async function fetchGlobal() {
-    if (globalChart) return globalChart;
-    const r = await fetch("/api/charts");
-    const j = await r.json().catch(() => ({}));
-    if (!r.ok || !j.hits) throw new Error(j.error || "Global chart unavailable");
-    globalChart = j;
+  async function fetchGlobal(scoped) {
+    const qs = scoped && chartGenre ? "?genre=" + encodeURIComponent(chartGenre) : scoped && chartGroup ? "?group=" + encodeURIComponent(chartGroup) : "";
+    if (!globalCache.has(qs)) globalCache.set(qs, fetch("/api/charts" + qs).then(async (r) => {
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j.hits) throw new Error(j.error || "Global chart unavailable");
+      return j;
+    }).catch((e) => { globalCache.delete(qs); throw e; }));
+    const j = await globalCache.get(qs);
+    if (!qs) globalChart = j;
     // Deezer 30-second previews play in the mini player
-    chartQueues.global = j.hits.filter((h) => h.preview).map((h) => ({
+    if (!j.queue) j.queue = j.hits.filter((h) => h.preview).map((h) => ({
       id: "dz-" + h.rank + "-" + h.title, title: h.title, artist: h.artist, genre: "30s preview",
       album: h.album, cover_url: h.cover, audio_url: h.preview, duration_sec: 30, preview: true
     }));
     return j;
   }
-  async function fetchCommunity(period, limit) {
-    const [h, b] = await Promise.all([
-      db.rpc("ug_chart_tracks", { p_period: period, p_limit: limit }),
-      db.rpc("ug_chart_bands", { p_period: period, p_limit: limit })
-    ]);
+  async function fetchCommunity(period, limit, genres) {
+    const args = { p_period: period, p_limit: limit };
+    if (genres) args.p_genres = genres;
+    const [h, b] = await Promise.all([db.rpc("ug_chart_tracks", args), db.rpc("ug_chart_bands", args)]);
     if (h.error || b.error) throw (h.error || b.error);
     return { hits: h.data || [], bands: b.data || [] };
   }
 
   function communityHitRow(t, i, from) {
     return `<li><button class="chart-row${place(i)}" type="button" data-track="${esc(t.id)}" data-from="${from}" style="--i:${i}" aria-label="Number ${i + 1}: play ${esc(t.title)} by ${esc(t.artist)}, rated ${Number(t.avg_stars).toFixed(1)} from ${t.votes} votes">
-      <span class="c-rank">${i + 1}</span><span class="c-cover">${chartCover(t.cover_url, t.id)}</span>
+      <span class="c-rank">${i + 1}</span><span class="c-cover">${chartCover(t.cover_url, t.id, t.artist, t.title)}</span>
       <span class="c-meta"><span class="c-title">${esc(t.title)}</span><span class="c-sub">${esc(t.artist)}${t.album ? " · " + esc(t.album) : ""}</span></span>
       <span class="c-score">${starsTxt(t.avg_stars)}<span class="c-votes">${t.votes} ${t.votes === 1 ? "vote" : "votes"}</span></span>
     </button></li>`;
   }
   function communityBandRow(b, i) {
     return `<li><div class="chart-row${place(i)}" style="--i:${i}">
-      <span class="c-rank">${i + 1}</span><span class="c-cover">${chartCover(b.cover_url, b.artist)}</span>
+      <span class="c-rank">${i + 1}</span><span class="c-cover">${chartCover(b.cover_url, b.artist, b.artist)}</span>
       <span class="c-meta"><span class="c-title">${esc(b.artist)}</span><span class="c-sub">Top: ${esc(b.top_track || "")}${b.tracks > 1 ? " · " + b.tracks + " tracks" : ""}</span></span>
       <span class="c-score">${starsTxt(b.avg_stars)}<span class="c-votes">${b.votes} ${b.votes === 1 ? "vote" : "votes"}</span></span>
     </div></li>`;
   }
   function globalHitRow(h, i, from) {
     const meter = `<span class="c-meter" title="Popularity ${h.popularity}/100"><b style="--w:${h.popularity}%"></b></span><span class="c-votes">Pop ${h.popularity}</span>`;
-    const inner = `<span class="c-rank">${i + 1}</span><span class="c-cover">${chartCover(h.cover, h.title)}</span>
+    const inner = `<span class="c-rank">${i + 1}</span><span class="c-cover">${chartCover(h.cover, h.title, h.artist, h.title)}</span>
       <span class="c-meta"><span class="c-title">${esc(h.title)}</span><span class="c-sub">${esc(h.artist)}${h.album ? " · " + esc(h.album) : ""}</span></span>
       <span class="c-score">${meter}</span>`;
     return h.preview
@@ -1140,7 +1183,7 @@
   }
   function globalBandRow(b, i) {
     return `<li><a class="chart-row${place(i)}" href="${esc(b.link)}" target="_blank" rel="noopener" style="--i:${i}" aria-label="Number ${i + 1}: ${esc(b.name)}${b.fans ? ", " + nfc.format(b.fans) + " fans" : ""}">
-      <span class="c-rank">${i + 1}</span><span class="c-cover">${chartCover(b.picture, b.name)}</span>
+      <span class="c-rank">${i + 1}</span><span class="c-cover">${chartCover(b.picture, b.name, b.name)}</span>
       <span class="c-meta"><span class="c-title">${esc(b.name)}</span><span class="c-sub">${b.top_track ? "Hit: " + esc(b.top_track) : "Metal"}</span></span>
       <span class="c-score"><span class="c-stars">${b.fans ? nfc.format(b.fans) : b.popularity}</span><span class="c-votes">${b.fans ? "fans" : "popularity"}</span></span>
     </a></li>`;
@@ -1155,18 +1198,18 @@
     const sk = '<li class="skel" style="height:64px;list-style:none;margin-bottom:6px"></li>'.repeat(5);
     $("chartBands").innerHTML = sk; $("chartHits").innerHTML = sk;
     if (chartSrc === "community") {
-      $("chartsLead").textContent = "The ten most-loved bands and songs on UNDERGROUND, ranked by members' star ratings.";
-      $("bandsHint").textContent = "Average stars"; $("hitsHint").textContent = "Tap to play";
+      $("chartsLead").textContent = genreLabel() ? `The ten most-loved ${genreLabel()} bands and songs on UNDERGROUND, ranked by members' star ratings.` : "The ten most-loved bands and songs on UNDERGROUND, ranked by members' star ratings.";
+      $("bandsHint").textContent = genreLabel() || "Average stars"; $("hitsHint").textContent = genreLabel() || "Tap to play";
       $("chartMeta").textContent = chartPeriod === "week" ? "Votes from the last 7 days" : "Every vote ever cast";
       $("chartFoot").innerHTML = "Rate any song with the stars in the player (members only). Rankings weigh the number of votes too, so one 5-star vote can't top a track loved by many.";
       try {
-        const d = await fetchCommunity(chartPeriod, 10);
+        const d = await fetchCommunity(chartPeriod, 10, genreList());
         if (run !== chartsBusy) return;
         chartQueues.community = d.hits.map((t) => ({ ...t }));
         $("chartHits").innerHTML = d.hits.length ? d.hits.map((t, i) => communityHitRow(t, i, "community")).join("")
-          : emptyBox(chartPeriod === "week" ? "No votes this week yet" : "No ratings yet", "Play a song from Music and tap the stars in the player to rate it.");
+          : emptyBox(genreLabel() ? `No rated ${esc(genreLabel())} songs yet` : (chartPeriod === "week" ? "No votes this week yet" : "No ratings yet"), "Play a song from Music and tap the stars in the player to rate it.");
         $("chartBands").innerHTML = d.bands.length ? d.bands.map(communityBandRow).join("")
-          : emptyBox("No ranked bands yet", "Bands appear here as soon as their songs get rated.");
+          : emptyBox(genreLabel() ? `No ranked ${esc(genreLabel())} bands yet` : "No ranked bands yet", "Bands appear here as soon as their songs get rated.");
       } catch (e) {
         if (run !== chartsBusy) return;
         const setup = /ug_chart|function|schema cache|does not exist/i.test(e.message || "");
@@ -1174,14 +1217,17 @@
         $("chartHits").innerHTML = box; $("chartBands").innerHTML = box;
       }
     } else {
-      $("chartsLead").textContent = "The biggest metal bands and songs in the world right now, by streaming popularity.";
-      $("bandsHint").textContent = "Fans"; $("hitsHint").textContent = "Tap for a 30s preview";
+      $("chartsLead").textContent = genreLabel() ? `The biggest ${genreLabel()} bands and songs in the world right now, by streaming popularity.` : "The biggest metal bands and songs in the world right now, by streaming popularity.";
+      $("bandsHint").textContent = genreLabel() || "Fans"; $("hitsHint").textContent = genreLabel() || "30s previews";
       $("chartMeta").textContent = "Updated every few hours";
       $("chartFoot").innerHTML = 'Global data from <a href="https://www.deezer.com" target="_blank" rel="noopener">Deezer</a> (Metal genre). Popularity is relative to the number one song.';
       try {
-        const j = await fetchGlobal();
+        const j = await fetchGlobal(true);
         if (run !== chartsBusy) return;
+        chartQueues.global = j.queue;
         $("chartMeta").textContent = "Updated " + agoShort(j.updated);
+        if (j.playlist) $("chartFoot").innerHTML = `${esc(j.genre)} chart built from the Deezer playlist ${j.playlist.link ? `<a href="${esc(j.playlist.link)}" target="_blank" rel="noopener">${esc(j.playlist.title)}</a>` : "“" + esc(j.playlist.title) + "”"}. Popularity is relative to the number one song.`;
+        if (j.empty) { const box = emptyBox(`No global ${esc(genreLabel())} chart yet`, "Deezer has no playlist for this genre. Try its group or a related genre."); $("chartHits").innerHTML = box; $("chartBands").innerHTML = box; markPlaying(); return; }
         $("chartHits").innerHTML = j.hits.map((h, i) => globalHitRow(h, i, "global")).join("") || emptyBox("No data", "Try again later.");
         $("chartBands").innerHTML = j.bands.map(globalBandRow).join("") || emptyBox("No data", "Try again later.");
       } catch {
@@ -1190,8 +1236,25 @@
         $("chartHits").innerHTML = box; $("chartBands").innerHTML = box;
       }
     }
+    hydrateCovers($("chartHits")); hydrateCovers($("chartBands"));
     markPlaying();
   }
+  function renderGenreNav() {
+    if (!UGG) { $("genreNav").hidden = true; return; }
+    const chip = (label, attrs, on) => `<button class="pill" type="button" ${attrs} aria-pressed="${on}">${esc(label)}</button>`;
+    $("gnGroups").innerHTML = chip("All genres", 'data-gg=""', !chartGroup) + UGG.GROUPS.map((g) => chip(g.name, `data-gg="${esc(g.name)}"`, chartGroup === g.name)).join("");
+    const g = groupObj();
+    $("gnSubs").hidden = !g;
+    if (g) $("gnSubs").innerHTML = chip("All " + g.name, 'data-gs=""', !chartGenre) + g.items.filter((i) => i.toLowerCase() !== g.name.toLowerCase()).map((i) => chip(i, `data-gs="${esc(i)}"`, chartGenre === i)).join("");
+    const on = $("genreNav").querySelector('#gnGroups [aria-pressed="true"]'); if (on && on.scrollIntoView && chartGroup) on.scrollIntoView({ block: "nearest", inline: "center" });
+  }
+  $("genreNav").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-gg],[data-gs]"); if (!b) return;
+    if ("gg" in b.dataset) { chartGroup = b.dataset.gg || null; chartGenre = null; }
+    else chartGenre = b.dataset.gs || null;
+    renderGenreNav(); loadCharts();
+  });
+  renderGenreNav();
   document.querySelectorAll(".cs-btn").forEach((b) => b.addEventListener("click", () => { if (chartSrc !== b.dataset.src) { chartSrc = b.dataset.src; loadCharts(); } }));
   document.querySelectorAll("#periodPills .pill").forEach((b) => b.addEventListener("click", () => { if (chartPeriod !== b.dataset.period) { chartPeriod = b.dataset.period; loadCharts(); } }));
   const agoShort = (iso) => { const m = Math.max(1, Math.round((Date.now() - new Date(iso)) / 60000)); return m < 60 ? m + " min ago" : Math.round(m / 60) + " h ago"; };
@@ -1206,11 +1269,12 @@
     if (!rows) {
       try {
         const j = await fetchGlobal();
-        chartQueues.peek = chartQueues.global;
+        chartQueues.peek = j.queue;
         rows = j.hits.slice(0, 3).map((h, i) => globalHitRow(h, i, "peek")).join(""); hint = "Global metal · most played";
       } catch {}
     }
     $("chartPeek").innerHTML = rows || `<li><div class="empty-note">The charts open once songs get rated.</div></li>`;
+    hydrateCovers($("chartPeek"));
     $("peekHint").textContent = hint || "Top hits right now";
     markPlaying();
   }
@@ -1253,11 +1317,12 @@
   recTimer();
   wave($("aboutWave"), 600, 180, 6);
   renderPills(); skeletons();
+  document.querySelectorAll("[data-genre-select]").forEach((el) => { el.innerHTML = UGG ? UGG.options("Underground") : GENRES.map((g) => `<option>${esc(g)}</option>`).join(""); });
   const minSplash = new Promise((r) => setTimeout(r, reduceMotion ? 0 : 900));
   const maxSplash = setTimeout(hideSplash, 3000);
   Promise.all([load(), minSplash]).then(() => {
     clearTimeout(maxSplash);
-    renderHome(); renderCoverage(); renderGrid(false); renderAbout();
+    renderPills(); renderHome(); renderCoverage(); renderGrid(false); renderAbout();
     loadNews();
     loadTracks(); loadPeek();
     hideSplash();
