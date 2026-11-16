@@ -87,12 +87,21 @@ export async function onRequestPost({ request, env }) {
   }
 
   // ---- 4. YouTube + response ---------------------------------------------
-  const yt = await Promise.race([youtubePromise, sleep(4000).then(() => null)]);
+  // If the AI identified the band/release more precisely than the input, search again with it.
+  const art = result.article;
+  const aiBand = art.band || band, aiRelease = art.release || song;
+  let yt = await Promise.race([youtubePromise, sleep(4000).then(() => null)]);
+  if (aiBand.toLowerCase() !== band.toLowerCase() || (!yt && aiRelease && aiRelease.toLowerCase() !== song.toLowerCase())) {
+    const second = await Promise.race([findYouTube(aiBand, aiRelease, env).catch(() => null), sleep(5000).then(() => null)]);
+    if (second) yt = second;
+  }
   return json({
-    ...result.article,
+    ...art,
+    band: aiBand,
+    release: aiRelease,
     youtube_url: yt?.url || "",
     youtube_title: yt?.title || "",
-    youtube_search_url: "https://www.youtube.com/results?search_query=" + encodeURIComponent((band + " " + song).trim()),
+    youtube_search_url: "https://www.youtube.com/results?search_query=" + encodeURIComponent((aiBand + " " + aiRelease).trim()),
     cover_image_url: yt?.id ? `https://i.ytimg.com/vi/${yt.id}/hqdefault.jpg` : "",
     provider: result.provider,
     model: result.model,
@@ -110,8 +119,8 @@ function buildPrompt({ band, song, category, genre, notes }) {
 
 Band/artist: ${band}
 Song / release: ${song || "(not specified: write a feature about the band)"}
-Article type: ${category}
-Genre hint: ${genre || "(none)"}
+Article type: ${category || "(decide: News for announcements, tours and new songs; Review for a release; Feature otherwise)"}
+Genre hint: ${genre || "(none: decide the genre yourself from the facts)"}
 Editor notes: ${notes || "(none)"}
 
 Use your own knowledge of the band, its sound and its history, plus the editor notes (the notes always win over your own knowledge).
@@ -119,10 +128,12 @@ Accuracy: do not invent quotes, interviews, chart positions, exact dates or pers
 Style: a clear editorial angle, specific description of the music, useful context, no hype, no filler. The article body is 350-500 words of Markdown with 2-3 "## " subheadings, no links, and no title at the top.
 
 Reply in EXACTLY this format, with plain text labels:
+BAND: <the main band or artist the article is about, correctly spelled and capitalised>
+RELEASE: <the song, album or event the article is about, or leave empty>
 TITLE: <headline, max 90 characters>
 EXCERPT: <1-2 sentence teaser, max 200 characters>
 TAGS: <3-6 short lowercase tags, comma separated>
-GENRE: <one of: ${GENRES.join(", ")}>
+GENRE: <the single best match for this band's sound, one of: ${GENRES.join(", ")}>
 CONTENT:
 <the article body in Markdown>`;
 }
@@ -283,7 +294,7 @@ function parseArticle(raw) {
   if (titleMatch && contentMatch) {
     const field = (name) => (label(name).exec(text)?.[1] || "").replace(/[*_]+$/g, "").trim();
     const content = (contentMatch[1] + "\n" + text.slice(contentMatch.index + contentMatch[0].length)).trim();
-    a = { title: field("TITLE"), excerpt: field("EXCERPT"), tags: field("TAGS"), genre: field("GENRE"), content };
+    a = { title: field("TITLE"), excerpt: field("EXCERPT"), tags: field("TAGS"), genre: field("GENRE"), band: field("BAND"), release: field("RELEASE"), content };
   } else {
     const start = text.indexOf("{"), end = text.lastIndexOf("}");
     if (start >= 0 && end > start) {
@@ -299,7 +310,10 @@ function parseArticle(raw) {
   const tagList = Array.isArray(a.tags) ? a.tags : String(a.tags || "").split(",");
   const tags = [...new Set(tagList.map(t => String(t).trim().replace(/^#+/, "").trim().toLowerCase()).filter(Boolean))].slice(0, 8);
   const genre = GENRES.find(g => g.toLowerCase() === String(a.genre || "").trim().toLowerCase()) || "";
-  return { title, excerpt: stripQuotes(String(a.excerpt || "")).slice(0, 300), content, tags, genre };
+  const band = stripQuotes(String(a.band || "")).replace(/^\(|\)$/g, "").slice(0, 120);
+  let release = stripQuotes(String(a.release || "")).slice(0, 160);
+  if (/^(none|n\/a|-|empty|leave empty)$/i.test(release)) release = "";
+  return { title, excerpt: stripQuotes(String(a.excerpt || "")).slice(0, 300), content, tags, genre, band, release };
 }
 
 // Escape raw newlines/tabs that models put inside JSON strings.
