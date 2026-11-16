@@ -27,7 +27,7 @@ Static Cloudflare Pages site with a Supabase-backed editorial workflow and multi
    - **Review scores:** article `kind` and `score` columns. The AI fills the type and a 0–10 score for reviews. Cards show a score badge, the article shows a verdict ring, and Google gets Review structured data.
    - **Band profiles:** `/band/<name>` pages with stories, Basement radio songs, average review score, members' rating, Deezer fans, top tracks (30 s previews) and related bands. Served by `functions/band/[slug].js` and `/api/band`, and listed in the sitemap.
    - **Newsletter:** a `newsletter_subscribers` table with sign-up only through the `ug_subscribe` function. The form is in the footer and under every article. Admins see, remove and export subscribers to CSV in Settings.
-2k. **Part 2 of `extras.sql`** (re-run the whole file) adds newsletter unsubscribe tokens, self-service **account deletion** (Account page; admins are protected) and **gigs** (admin Gigs tab; home card, `#/gigs` page, band pages, .ics "Add to calendar"; included in Settings → Clean up data).
+2k. **Part 2 of `extras.sql`** (re-run the whole file) adds newsletter unsubscribe tokens and self-service **account deletion** (Account page; admins are protected). It also creates an unused `gigs` table from an earlier version, which you can ignore.
 2l. **Sending the newsletter:**
    1. Create a free account at resend.com and add the domain `mikasa.me`. Add the DNS records Resend shows to Cloudflare DNS; they live on a `send.` subdomain, so Cloudflare Email Routing keeps working.
    2. Create an API key.

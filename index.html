@@ -147,11 +147,6 @@
             <ol class="mini-tracks" id="homeTracks"><li class="skel" style="height:56px;list-style:none"></li></ol>
           </div>
 
-          <div class="card pad bento-item">
-            <div class="card-title"><h2>Upcoming gigs</h2><a class="link" href="#/gigs">All gigs</a></div>
-            <ol class="gig-list compact" id="gigPeek"><li class="skel" style="height:56px;list-style:none"></li></ol>
-          </div>
-
           <div class="card pad bento-item chart-peek">
             <div class="card-title"><h2>Charts</h2><a class="link" href="#/charts">See all</a></div>
             <p class="hint" id="peekHint" style="margin:-6px 0 8px">Top hits right now</p>
@@ -276,17 +271,6 @@
       <p class="hint chart-foot" id="chartFoot"></p>
     </section>
 
-    <!-- View: Gigs -->
-    <section class="view" id="view-gigs" data-view="gigs" aria-label="Gigs" hidden>
-      <div class="card charts-hero gigs-hero bento-item">
-        <div class="podium" aria-hidden="true"><span></span><span></span><span></span></div>
-        <span class="badge-dark"><i aria-hidden="true"></i>Live and loud</span>
-        <h1>Upcoming <span class="neon-txt">gigs</span></h1>
-        <p>Shows, festivals and basement nights worth leaving the house for. Tap a gig for tickets or to add it to your calendar.</p>
-      </div>
-      <div class="card pad bento-item" style="margin-top:18px"><ol class="gig-list" id="gigList"></ol></div>
-    </section>
-
     <!-- View: Band profile (/band/<name>) -->
     <section class="view" id="view-band" data-view="band" aria-label="Band profile" hidden></section>
 
@@ -329,7 +313,6 @@
                 <li><a href="#/articles">Latest articles</a></li>
                 <li><a href="#/music">Basement radio</a></li>
                 <li><a href="#/charts">Charts</a></li>
-                <li><a href="#/gigs">Gigs</a></li>
                 <li><a href="#/about">About</a></li>
                 <li><a href="#/account">Account</a></li>
               </ul>
@@ -361,8 +344,8 @@
   <div class="player" id="player" role="region" aria-label="Music player" hidden>
     <input class="pl-seek" id="plSeek" type="range" min="0" max="1000" value="0" step="1" aria-label="Seek">
     <div class="pl-row">
-      <div class="pl-cover" id="plCover" aria-hidden="true"></div>
-      <div class="pl-meta"><div class="pl-title" id="plTitle">—</div><div class="pl-artist" id="plArtist"></div>
+      <button class="pl-cover disc" id="plCover" type="button" aria-label="Open the now playing screen"></button>
+      <div class="pl-meta"><button class="pl-open" type="button" id="plOpen" aria-label="Open the now playing screen"><span class="pl-title-row"><span class="pl-title" id="plTitle">—</span><span class="eq pl-eq" aria-hidden="true"><i></i><i></i><i></i></span></span><span class="pl-artist" id="plArtist"></span></button>
         <div class="pl-rate" id="plRate" hidden>
           <div class="stars" role="radiogroup" aria-label="Rate this track">
             <button type="button" data-star="1" role="radio" aria-checked="false" aria-label="1 star">★</button><button type="button" data-star="2" role="radio" aria-checked="false" aria-label="2 stars">★</button><button type="button" data-star="3" role="radio" aria-checked="false" aria-label="3 stars">★</button><button type="button" data-star="4" role="radio" aria-checked="false" aria-label="4 stars">★</button><button type="button" data-star="5" role="radio" aria-checked="false" aria-label="5 stars">★</button>
@@ -384,6 +367,32 @@
     </div>
   </div>
   <audio id="audio" preload="none"></audio>
+  </div>
+</div>
+
+<!-- Now playing (full screen) -->
+<div class="np" id="np" hidden>
+  <div class="np-bg" id="npBg" aria-hidden="true"></div>
+  <div class="np-sheet" role="dialog" aria-modal="true" aria-label="Now playing" tabindex="-1">
+    <div class="np-top">
+      <button class="pl-btn" type="button" id="npClose" aria-label="Close"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
+      <span class="hint">Now playing</span>
+      <span class="np-src" id="npSrc"></span>
+    </div>
+    <div class="np-stage">
+      <div class="np-glow" aria-hidden="true"></div>
+      <div class="np-disc" id="npDisc"><div class="np-label" id="npArt"></div><span class="np-hole" aria-hidden="true"></span></div>
+      <div class="np-arm" aria-hidden="true"><span></span></div>
+    </div>
+    <div class="np-viz" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    <div class="np-meta"><div class="np-title" id="npTitle">—</div><a class="np-artist" id="npArtist" href="#/music"></a></div>
+    <input class="np-seek" id="npSeek" type="range" min="0" max="1000" value="0" step="1" aria-label="Seek">
+    <div class="np-times"><span id="npCur">0:00</span><span id="npDur">0:00</span></div>
+    <div class="np-ctrls">
+      <button class="pl-btn np-side" type="button" id="npPrev" aria-label="Previous track"><svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg></button>
+      <button class="np-play" type="button" id="npPlay" aria-label="Play"><svg class="i-play" width="30" height="30" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"/></svg><svg class="i-pause" width="30" height="30" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg></button>
+      <button class="pl-btn np-side" type="button" id="npNext" aria-label="Next track"><svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg></button>
+    </div>
   </div>
 </div>
 
