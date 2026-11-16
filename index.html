@@ -27,7 +27,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap">
-<link rel="stylesheet" href="/assets/bento.css">
+<link rel="stylesheet" href="/assets/bento.css?v=isl1">
 </head>
 <body>
 
@@ -342,28 +342,20 @@
 
   <!-- Mini player (persists across views) -->
   <div class="player" id="player" role="region" aria-label="Music player" hidden>
-    <input class="pl-seek" id="plSeek" type="range" min="0" max="1000" value="0" step="1" aria-label="Seek">
-    <div class="pl-row">
-      <button class="pl-cover disc" id="plCover" type="button" aria-label="Open the now playing screen"></button>
-      <div class="pl-meta"><button class="pl-open" type="button" id="plOpen" aria-label="Open the now playing screen"><span class="pl-title-row"><span class="pl-title" id="plTitle">—</span><span class="eq pl-eq" aria-hidden="true"><i></i><i></i><i></i></span></span><span class="pl-artist" id="plArtist"></span></button>
-        <div class="pl-rate" id="plRate" hidden>
-          <div class="stars" role="radiogroup" aria-label="Rate this track">
-            <button type="button" data-star="1" role="radio" aria-checked="false" aria-label="1 star">★</button><button type="button" data-star="2" role="radio" aria-checked="false" aria-label="2 stars">★</button><button type="button" data-star="3" role="radio" aria-checked="false" aria-label="3 stars">★</button><button type="button" data-star="4" role="radio" aria-checked="false" aria-label="4 stars">★</button><button type="button" data-star="5" role="radio" aria-checked="false" aria-label="5 stars">★</button>
-          </div>
-          <span class="rate-avg" id="plAvg"></span>
-        </div>
-      </div>
-      <div class="pl-ctrls">
-        <button class="pl-btn" type="button" id="plPrev" aria-label="Previous track"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg></button>
-        <button class="pl-btn pl-main" type="button" id="plPlay" aria-label="Play"><svg class="i-play" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"/></svg><svg class="i-pause" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg></button>
-        <button class="pl-btn" type="button" id="plNext" aria-label="Next track"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg></button>
-      </div>
-      <div class="pl-time"><span id="plCur">0:00</span><span aria-hidden="true">/</span><span id="plDur">0:00</span></div>
-      <div class="pl-vol">
-        <button class="pl-btn" type="button" id="plMute" aria-label="Mute"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5L6 9H3v6h3l5 4z"/><path class="vol-wave" d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg></button>
+    <div class="isl">
+      <button class="isl-cover" id="plCover" type="button" aria-label="Open the now playing screen"></button>
+      <button class="isl-open" id="plOpen" type="button" aria-label="Open the now playing screen"><span class="isl-title" id="plTitle">—</span><span class="isl-artist" id="plArtist"></span></button>
+      <span class="isl-eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+      <button class="isl-btn isl-wide" type="button" id="plPrev" aria-label="Previous track"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg></button>
+      <button class="isl-play" type="button" id="plPlay" aria-label="Play"><svg class="i-play" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"/></svg><svg class="i-pause" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg></button>
+      <button class="isl-btn isl-wide" type="button" id="plNext" aria-label="Next track"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg></button>
+      <span class="isl-vol isl-wide">
+        <button class="isl-btn" type="button" id="plMute" aria-label="Mute"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5L6 9H3v6h3l5 4z"/><path class="vol-wave" d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg></button>
         <input id="plVol" type="range" min="0" max="1" step="0.01" value="1" aria-label="Volume">
-      </div>
-      <button class="pl-btn pl-close" type="button" id="plClose" aria-label="Stop and close player"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      </span>
+      <button class="isl-btn isl-x" type="button" id="plClose" aria-label="Stop and close player"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      <input class="isl-seek" id="plSeek" type="range" min="0" max="1000" value="0" step="1" aria-label="Seek">
+      <span class="isl-times" hidden><span id="plCur">0:00</span><span id="plDur">0:00</span></span>
     </div>
   </div>
   <audio id="audio" preload="none"></audio>
@@ -375,23 +367,36 @@
   <div class="np-bg" id="npBg" aria-hidden="true"></div>
   <div class="np-sheet" role="dialog" aria-modal="true" aria-label="Now playing" tabindex="-1">
     <div class="np-top">
-      <button class="pl-btn" type="button" id="npClose" aria-label="Close"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
-      <span class="hint">Now playing</span>
+      <button class="np-round" type="button" id="npClose" aria-label="Close"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
+      <span class="np-kicker">Now playing</span>
       <span class="np-src" id="npSrc"></span>
     </div>
-    <div class="np-stage">
-      <div class="np-glow" aria-hidden="true"></div>
-      <div class="np-disc" id="npDisc"><div class="np-label" id="npArt"></div><span class="np-hole" aria-hidden="true"></span></div>
-      <div class="np-arm" aria-hidden="true"><span></span></div>
+    <div class="np-card">
+      <div class="np-head">
+        <div class="np-cover" id="npArt"></div>
+        <div class="np-info">
+          <div class="np-title" id="npTitle">—</div>
+          <a class="np-artist" id="npArtist" href="#/music"></a>
+          <span class="np-chip" id="npChip"><i aria-hidden="true"></i><span id="npState">Paused</span></span>
+        </div>
+      </div>
+      <input class="np-seek" id="npSeek" type="range" min="0" max="1000" value="0" step="1" aria-label="Seek">
+      <div class="np-times"><span id="npCur">0:00</span><span id="npDur">0:00</span></div>
+      <div class="np-ctrls">
+        <button class="np-round np-side" type="button" id="npPrev" aria-label="Previous track"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg></button>
+        <button class="np-play" type="button" id="npPlay" aria-label="Play"><svg class="i-play" width="28" height="28" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"/></svg><svg class="i-pause" width="28" height="28" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg></button>
+        <button class="np-round np-side" type="button" id="npNext" aria-label="Next track"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg></button>
+      </div>
+      <div class="pl-rate" id="plRate" hidden>
+        <div class="stars" role="radiogroup" aria-label="Rate this track">
+          <button type="button" data-star="1" role="radio" aria-checked="false" aria-label="1 star">★</button><button type="button" data-star="2" role="radio" aria-checked="false" aria-label="2 stars">★</button><button type="button" data-star="3" role="radio" aria-checked="false" aria-label="3 stars">★</button><button type="button" data-star="4" role="radio" aria-checked="false" aria-label="4 stars">★</button><button type="button" data-star="5" role="radio" aria-checked="false" aria-label="5 stars">★</button>
+        </div>
+        <span class="rate-avg" id="plAvg"></span>
+      </div>
     </div>
-    <div class="np-viz" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
-    <div class="np-meta"><div class="np-title" id="npTitle">—</div><a class="np-artist" id="npArtist" href="#/music"></a></div>
-    <input class="np-seek" id="npSeek" type="range" min="0" max="1000" value="0" step="1" aria-label="Seek">
-    <div class="np-times"><span id="npCur">0:00</span><span id="npDur">0:00</span></div>
-    <div class="np-ctrls">
-      <button class="pl-btn np-side" type="button" id="npPrev" aria-label="Previous track"><svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg></button>
-      <button class="np-play" type="button" id="npPlay" aria-label="Play"><svg class="i-play" width="30" height="30" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"/></svg><svg class="i-pause" width="30" height="30" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg></button>
-      <button class="pl-btn np-side" type="button" id="npNext" aria-label="Next track"><svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg></button>
+    <div class="np-next" id="npNextWrap" hidden>
+      <div class="np-kicker">Up next</div>
+      <ol class="np-list" id="npList"></ol>
     </div>
   </div>
 </div>
@@ -456,6 +461,6 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/assets/ui.js"></script>
 <script src="/assets/genres.js"></script>
-<script src="/assets/bento.js"></script>
+<script src="/assets/bento.js?v=isl1"></script>
 </body>
 </html>

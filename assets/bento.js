@@ -370,6 +370,7 @@
     $("plPlay").setAttribute("aria-label", playing ? "Pause" : "Play");
     $("plPlay").classList.toggle("paused", !playing);
     $("npPlay").setAttribute("aria-label", playing ? "Pause" : "Play");
+    $("npState").textContent = playing ? "Playing" : (t ? "Paused" : "Stopped");
   }
 
   document.addEventListener("click", (e) => {
@@ -1597,10 +1598,20 @@
     $("npBg").style.backgroundImage = t.cover_url ? `url("${String(t.cover_url).replace(/"/g, "%22")}")` : "";
     $("npSeek").value = 0; $("npSeek").style.setProperty("--p", "0%"); $("npCur").textContent = "0:00";
     $("npDur").textContent = t.duration_sec ? fmtTime(t.duration_sec) : "0:00";
-    const d = $("npDisc"); d.classList.remove("swap"); void d.offsetWidth; d.classList.add("swap");
+    const d = $("npArt"); d.classList.remove("swap"); void d.offsetWidth; d.classList.add("swap");
+    renderUpNext();
     // the cover may arrive later (lookup): mirror it into the background
     setTimeout(() => { const img = $("npArt").querySelector("img"); if (img && !t.cover_url) $("npBg").style.backgroundImage = `url("${img.src}")`; }, 1500);
   }
+  // Up next: the following songs in the current queue (tap to jump)
+  function renderUpNext() {
+    const next = [];
+    for (let k = 1; k <= 3 && queue.length > 1; k++) { const i = (qi + k) % queue.length; if (i === qi || next.some((x) => x.i === i)) break; next.push({ i, t: queue[i] }); }
+    $("npNextWrap").hidden = !next.length;
+    $("npList").innerHTML = next.map(({ i, t }, n) => `<li><button class="np-item" type="button" data-q="${i}" style="--i:${n}"><span class="np-thumb">${trackCover(t)}</span><span class="np-it"><b>${esc(t.title)}</b><span>${esc(t.artist)}</span></span><span class="np-dur">${t.duration_sec ? fmtTime(t.duration_sec) : ""}</span></button></li>`).join("");
+    hydrateCovers($("npList"));
+  }
+  $("npList").addEventListener("click", (e) => { const b = e.target.closest("[data-q]"); if (b) playFrom(queue, +b.dataset.q); });
   function openNP() {
     if (!current()) return;
     syncNP(current());
@@ -1634,7 +1645,7 @@
 
   // Ripple on anything that plays a song
   document.addEventListener("pointerdown", (e) => {
-    const el = e.target.closest("[data-track], .pl-main, .np-play, [data-play-band], #playAll, #shuffleAll"); if (!el || reduceMotion) return;
+    const el = e.target.closest("[data-track], .np-item, [data-play-band], #playAll, #shuffleAll"); if (!el || reduceMotion) return;
     const r = el.getBoundingClientRect(), size = Math.max(r.width, r.height) * 1.2;
     const dot = document.createElement("span"); dot.className = "ripple";
     dot.style.cssText = `width:${size}px;height:${size}px;left:${e.clientX - r.left - size / 2}px;top:${e.clientY - r.top - size / 2}px`;
