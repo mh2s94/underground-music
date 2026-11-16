@@ -1207,9 +1207,11 @@
     const j = await globalCache.get(qs);
     if (!qs) globalChart = j;
     // Deezer 30-second previews play in the mini player
-    if (!j.queue) j.queue = j.hits.filter((h) => h.preview).map((h) => ({
+    // Previews are fetched fresh at play time (/api/preview) because Deezer's links expire
+    const src = (h) => h.id ? "/api/preview?id=" + encodeURIComponent(h.id) : h.preview;
+    if (!j.queue) j.queue = j.hits.filter((h) => h.id || h.preview).map((h) => ({
       id: "dz-" + h.rank + "-" + h.title, title: h.title, artist: h.artist, genre: "30s preview",
-      album: h.album, cover_url: h.cover, audio_url: h.preview, duration_sec: 30, preview: true
+      album: h.album, cover_url: h.cover, audio_url: src(h), duration_sec: 30, preview: true
     }));
     return j;
   }
@@ -1240,7 +1242,7 @@
     const inner = `<span class="c-rank">${i + 1}</span><span class="c-cover">${chartCover(h.cover, h.title, h.artist, h.title)}</span>
       <span class="c-meta"><span class="c-title">${esc(h.title)}</span><span class="c-sub">${esc(h.artist)}${h.album ? " · " + esc(h.album) : ""}</span></span>
       <span class="c-score">${meter}</span>`;
-    return h.preview
+    return h.id || h.preview
       ? `<li><button class="chart-row${place(i)}" type="button" data-track="${esc("dz-" + h.rank + "-" + h.title)}" data-from="${from}" style="--i:${i}" aria-label="Number ${i + 1}: play a 30 second preview of ${esc(h.title)} by ${esc(h.artist)}">${inner}</button></li>`
       : `<li><a class="chart-row${place(i)}" href="${esc(h.link || "#")}" target="_blank" rel="noopener" style="--i:${i}">${inner}</a></li>`;
   }
@@ -1283,7 +1285,7 @@
       $("chartsLead").textContent = genreLabel() ? `The biggest ${genreLabel()} bands and songs in the world right now, by streaming popularity.` : "The biggest metal bands and songs in the world right now, by streaming popularity.";
       $("bandsHint").textContent = genreLabel() || "Fans"; $("hitsHint").textContent = genreLabel() || "30s previews";
       $("chartMeta").textContent = "Updated every few hours";
-      $("chartFoot").innerHTML = 'Global data from <a href="https://www.deezer.com" target="_blank" rel="noopener">Deezer</a> (Metal genre). Popularity is relative to the number one song.';
+      $("chartFoot").innerHTML = 'Global data from <a href="https://www.deezer.com" target="_blank" rel="noopener">Deezer</a> metal playlists. Tap a song for a 30-second preview. Popularity is relative to the number one song.';
       try {
         const j = await fetchGlobal(true);
         if (run !== chartsBusy) return;
@@ -1564,7 +1566,7 @@
       stat(stories.length, stories.length === 1 ? "Story" : "Stories"),
       stat(songs.length, songs.length === 1 ? "Song here" : "Songs here")
     ].join("");
-    const playable = (dz && dz.top || []).filter((t) => t.preview).map((t, i) => ({ id: "bt-" + s + "-" + i, title: t.title, artist: disp, genre: "30s preview", album: t.album, cover_url: t.cover, audio_url: t.preview, duration_sec: 30, preview: true }));
+    const playable = (dz && dz.top || []).filter((t) => t.id || t.preview).map((t, i) => ({ id: "bt-" + s + "-" + i, title: t.title, artist: disp, genre: "30s preview", album: t.album, cover_url: t.cover, audio_url: t.id ? "/api/preview?id=" + encodeURIComponent(t.id) : t.preview, duration_sec: 30, preview: true }));
     chartQueues.bandSongs = songs; chartQueues.bandTop = playable;
     $("bhActions").innerHTML = (songs.length ? `<button class="btn btn-white" type="button" data-play-band="bandSongs">▶ Play songs</button>` : playable.length ? `<button class="btn btn-white" type="button" data-play-band="bandTop">▶ Play top tracks</button>` : "")
       + (dz && dz.link ? `<a class="btn btn-ghost-dark" href="${esc(dz.link)}" target="_blank" rel="noopener">Deezer ↗</a>` : "");
