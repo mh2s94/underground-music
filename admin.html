@@ -54,6 +54,40 @@
 .row .sub { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 6px; }
 .row .actions { display: flex; gap: 6px; }
 @media (max-width: 640px) { .row { grid-template-columns: 56px minmax(0, 1fr); } .row .thumb { width: 56px; } .row .actions { grid-column: 1 / -1; } }
+
+/* Demo inbox */
+.demo-row { width: 100%; display: flex; gap: 14px; align-items: center; justify-content: space-between; padding: 16px 8px; margin: 0 -8px; border: 0; border-top: 1px solid var(--line); background: transparent; color: inherit; text-align: left; cursor: pointer; border-radius: 12px; transition: background-color .2s; animation: sheetUp .45s var(--spring) both; animation-delay: var(--d, 0ms); box-sizing: content-box; }
+.demo-row:hover { background: var(--surface-2); }
+.demo-row:hover .demo-open { color: var(--accent); transform: translateX(3px); }
+.demo-main { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.demo-band { font-weight: 700; font-size: 16px; overflow-wrap: anywhere; }
+.demo-meta { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+.demo-msg { font-size: 14px; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.demo-side { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; flex: none; }
+.demo-open { font-size: 13px; font-weight: 600; color: var(--muted); transition: color .2s, transform .3s var(--ease); }
+.dv { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 20px; }
+.dv-backdrop { position: absolute; inset: 0; background: rgba(5, 5, 6, .72); backdrop-filter: blur(6px); animation: fadeIn .3s both; }
+.dv-sheet { position: relative; width: min(680px, 100%); max-height: calc(100dvh - 40px); overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 18px; animation: sheetUp .5s var(--spring) both; }
+.dv-sheet > * { flex-shrink: 0; }
+.dv .segmented { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-radius: 18px; }
+.dv .segmented span { justify-content: center; width: 100%; }
+@media (max-width: 420px) { .dv .segmented { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.dv-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.dv-head h2 { margin: 10px 0 4px; font-size: 28px; letter-spacing: -.02em; line-height: 1.15; overflow-wrap: anywhere; }
+.dv-player { position: relative; border-radius: var(--r-md); overflow: hidden; background: var(--bg); border: 1px solid var(--line); }
+.dv-player iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.dv-noplayer { padding: 18px; border: 1px dashed var(--line-strong); border-radius: var(--r-md); font-size: 14px; }
+.dv-listen { align-self: flex-start; }
+.dv-section { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.dv-msg { margin: 0; font-size: 16px; line-height: 1.65; white-space: pre-line; overflow-wrap: anywhere; }
+.dv-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.dv-link { color: var(--accent); font-weight: 600; overflow-wrap: anywhere; }
+.dv-actions { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; padding-top: 16px; border-top: 1px solid var(--line); }
+@media (max-width: 640px) {
+  .dv { padding: 0; place-items: end stretch; }
+  .dv-sheet { width: 100%; max-height: 92dvh; border-radius: 22px 22px 0 0; padding: 20px; }
+  .dv-grid { grid-template-columns: 1fr; }
+}
 </style>
 </head>
 <body>
@@ -163,6 +197,11 @@
     </section>
   </div>
 </main>
+
+<div id="demoView" class="dv" hidden>
+  <div class="dv-backdrop" data-dv-close></div>
+  <div class="dv-sheet panel" role="dialog" aria-modal="true" aria-labelledby="dvTitle" id="dvBody"></div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/assets/ui.js"></script>
@@ -414,34 +453,111 @@ async function loadDemos() {
   $("demoNew").hidden = !fresh; $("demoNew").textContent = fresh + " new";
   renderDemos();
 }
+const STATUSES = ["new", "listened", "featured", "declined"];
+const fmtDay = (d) => new Date(d).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+function updateNewBadge() {
+  const fresh = allDemos.filter((x) => x.status === "new").length;
+  $("demoNew").hidden = !fresh; $("demoNew").textContent = fresh + " new";
+}
+async function setDemoStatus(id, status) {
+  const { error } = await sb.from("demo_submissions").update({ status }).eq("id", id);
+  if (error) { toast("error", "Could not update status", error.message); return false; }
+  const d = allDemos.find((x) => x.id === id); if (d) d.status = status;
+  updateNewBadge(); renderDemos();
+  toast("success", "Status updated", d ? d.band_name + " → " + status : "");
+  return true;
+}
 function renderDemos() {
   const f = $("demoFilter").value;
   const list = f ? allDemos.filter((d) => d.status === f) : allDemos;
   if (!list.length) { $("demos").innerHTML = `<p class="muted" style="margin:8px 0 0">${allDemos.length ? "No demos with this status." : "No demo submissions yet."}</p>`; return; }
   $("demos").innerHTML = list.map((d, i) => `
-    <div class="row" style="--d:${Math.min(i, 10) * 40}ms;grid-template-columns:minmax(0,1fr) auto">
-      <div style="min-width:0">
-        <div class="t">${esc(d.band_name)} <span class="muted" style="font-weight:400">· ${esc(d.genre || "")}${d.country ? " · " + esc(d.country) : ""}</span></div>
-        ${d.message ? `<div class="muted" style="font-size:14px;margin-top:4px;white-space:pre-line">${esc(d.message)}</div>` : ""}
-        <div class="sub">
-          <a class="btn btn-sm" href="${esc(d.link)}" target="_blank" rel="noopener noreferrer">Listen ↗</a>
-          <a class="btn btn-sm btn-ghost" href="mailto:${esc(d.contact_email)}?subject=${encodeURIComponent("Your demo for UNDERGROUND: " + d.band_name)}">${esc(d.contact_email)}</a>
-          <span class="mono muted">${new Date(d.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span>
-        </div>
-      </div>
-      <select class="select" data-demo-status="${esc(d.id)}" aria-label="Status for ${esc(d.band_name)}" style="min-height:42px;width:150px">
-        ${["new", "listened", "featured", "declined"].map((s) => `<option value="${s}"${s === d.status ? " selected" : ""}>${s[0].toUpperCase() + s.slice(1)}</option>`).join("")}
-      </select>
-    </div>`).join("");
-  $("demos").querySelectorAll("[data-demo-status]").forEach((sel) => sel.onchange = async () => {
-    const { error } = await sb.from("demo_submissions").update({ status: sel.value }).eq("id", sel.dataset.demoStatus);
-    if (error) { toast("error", "Could not update status", error.message); return; }
-    const d = allDemos.find((x) => x.id === sel.dataset.demoStatus); if (d) d.status = sel.value;
-    const fresh = allDemos.filter((x) => x.status === "new").length;
-    $("demoNew").hidden = !fresh; $("demoNew").textContent = fresh + " new";
-    toast("success", "Status updated", d ? d.band_name + " → " + sel.value : "");
-  });
+    <button class="demo-row" type="button" data-open-demo="${esc(d.id)}" style="--d:${Math.min(i, 10) * 40}ms">
+      <span class="demo-main">
+        <span class="demo-band">${esc(d.band_name)}</span>
+        <span class="demo-meta">${esc(d.genre || "—")}${d.country ? " · " + esc(d.country) : ""} · ${new Date(d.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>
+        ${d.message ? `<span class="demo-msg">${esc(d.message)}</span>` : ""}
+      </span>
+      <span class="demo-side"><span class="badge ${d.status === "featured" ? "published" : d.status === "new" ? "review" : "draft"}">${esc(d.status)}</span><span class="demo-open" aria-hidden="true">Open →</span></span>
+    </button>`).join("");
+  $("demos").querySelectorAll("[data-open-demo]").forEach((b) => b.onclick = () => openDemo(b.dataset.openDemo));
 }
+
+/* Build a player for common music links */
+function embedFor(link) {
+  let u; try { u = new URL(link); } catch { return ""; }
+  const host = u.hostname.replace(/^www\.|^m\./, "");
+  let src = "", ratio = "16 / 9", height = "";
+  if (host === "youtube.com" || host === "music.youtube.com") {
+    const id = u.searchParams.get("v") || (u.pathname.match(/^\/(?:shorts|embed|live)\/([\w-]{11})/) || [])[1];
+    if (id) src = "https://www.youtube-nocookie.com/embed/" + id;
+  } else if (host === "youtu.be") {
+    const id = u.pathname.slice(1, 12); if (/^[\w-]{11}$/.test(id)) src = "https://www.youtube-nocookie.com/embed/" + id;
+  } else if (host === "open.spotify.com") {
+    const m = u.pathname.match(/\/(track|album|playlist|artist|episode)\/([A-Za-z0-9]+)/);
+    if (m) { src = `https://open.spotify.com/embed/${m[1]}/${m[2]}`; ratio = ""; height = m[1] === "track" ? "152px" : "352px"; }
+  } else if (host === "soundcloud.com") {
+    src = "https://w.soundcloud.com/player/?url=" + encodeURIComponent(link) + "&color=%23ff3b2f&visual=true"; ratio = ""; height = "300px";
+  }
+  if (!src) return "";
+  return `<div class="dv-player" style="${ratio ? "aspect-ratio:" + ratio : "height:" + height}"><iframe src="${esc(src)}" title="Music player" loading="lazy" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" allowfullscreen></iframe></div>`;
+}
+
+let dvLastFocus = null;
+function openDemo(id) {
+  const d = allDemos.find((x) => x.id === id); if (!d) return;
+  let host = ""; try { host = new URL(d.link).hostname.replace(/^www\./, ""); } catch {}
+  const player = embedFor(d.link);
+  $("dvBody").innerHTML = `
+    <div class="dv-head">
+      <div style="min-width:0">
+        <span class="eyebrow"><span class="dot" aria-hidden="true"></span>Demo submission</span>
+        <h2 id="dvTitle">${esc(d.band_name)}</h2>
+        <div class="demo-meta">${esc(d.genre || "—")}${d.country ? " · " + esc(d.country) : ""} · received ${fmtDay(d.created_at)}</div>
+      </div>
+      <button class="btn btn-icon btn-ghost" type="button" data-dv-close aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    ${player || `<div class="dv-noplayer"><span class="muted">No built-in player for ${esc(host || "this link")}. Open it in a new tab to listen.</span></div>`}
+    <a class="btn btn-primary dv-listen" href="${esc(d.link)}" target="_blank" rel="noopener noreferrer">Open on ${esc(host || "site")} <span class="arrow" aria-hidden="true">↗</span></a>
+    <div class="dv-section"><span class="label">About the music</span><p class="dv-msg">${d.message ? esc(d.message) : '<span class="muted">No message included.</span>'}</p></div>
+    <div class="dv-grid">
+      <div class="dv-section"><span class="label">Contact</span><a class="dv-link" href="mailto:${esc(d.contact_email)}?subject=${encodeURIComponent("Your demo for UNDERGROUND: " + d.band_name)}">${esc(d.contact_email)}</a></div>
+      <div class="dv-section"><span class="label">Link</span><a class="dv-link" href="${esc(d.link)}" target="_blank" rel="noopener noreferrer" style="word-break:break-all">${esc(d.link)}</a></div>
+    </div>
+    <div class="dv-section"><span class="label">Status</span>
+      <div class="segmented" role="radiogroup" aria-label="Demo status">
+        ${STATUSES.map((s) => `<label><input type="radio" name="dvStatus" value="${s}"${s === d.status ? " checked" : ""}><span>${s[0].toUpperCase() + s.slice(1)}</span></label>`).join("")}
+      </div>
+    </div>
+    <div class="dv-actions">
+      <a class="btn" href="mailto:${esc(d.contact_email)}?subject=${encodeURIComponent("Your demo for UNDERGROUND: " + d.band_name)}&body=${encodeURIComponent("Hi " + d.band_name + ",\n\nThanks for sending us your music.\n\n— UNDERGROUND")}">Reply by email</a>
+      <button class="btn btn-ghost btn-danger" type="button" data-dv-delete>Delete</button>
+    </div>`;
+  $("dvBody").querySelectorAll('input[name="dvStatus"]').forEach((r) => r.onchange = () => setDemoStatus(d.id, r.value));
+  $("dvBody").querySelector("[data-dv-delete]").onclick = async (e) => {
+    const btn = e.currentTarget;
+    if (!btn.dataset.armed) { btn.dataset.armed = "1"; btn.textContent = "Confirm delete?"; setTimeout(() => { if (btn.isConnected) { delete btn.dataset.armed; btn.textContent = "Delete"; } }, 3000); return; }
+    const { error } = await sb.from("demo_submissions").delete().eq("id", d.id);
+    if (error) { toast("error", "Could not delete", error.message); return; }
+    allDemos = allDemos.filter((x) => x.id !== d.id);
+    updateNewBadge(); renderDemos(); closeDemo();
+    toast("success", "Demo deleted");
+  };
+  dvLastFocus = document.activeElement;
+  $("demoView").hidden = false;
+  document.body.style.overflow = "hidden";
+  setTimeout(() => $("dvBody").querySelector("[data-dv-close]").focus(), 50);
+  if (d.status === "new") setDemoStatus(d.id, "listened").then((ok) => { if (ok) { const r = $("dvBody").querySelector('input[value="listened"]'); if (r) r.checked = true; } });
+}
+function closeDemo() {
+  if ($("demoView").hidden) return;
+  $("demoView").hidden = true;
+  $("dvBody").innerHTML = "";
+  document.body.style.overflow = "";
+  dvLastFocus?.focus?.();
+}
+$("demoView").addEventListener("click", (e) => { if (e.target.closest("[data-dv-close]")) closeDemo(); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeDemo(); });
 $("demoFilter").addEventListener("change", renderDemos);
 
 sb.auth.onAuthStateChange((evt) => { if (evt === "SIGNED_OUT") showLogin(); });
