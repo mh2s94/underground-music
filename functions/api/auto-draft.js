@@ -42,7 +42,7 @@ export async function onRequestPost({ request, env }) {
   let used = "";
   try { used = (await (await rest("articles?select=content&order=created_at.desc&limit=300")).json()).map((a) => a.content || "").join("\n"); } catch {}
   // Skip digests, podcasts, giveaways and deals: they don't make a single-band news story
-  const NOT_NEWS = /\b(top (ten|10|five|5) stories|this week'?s|week in (review|metal)|round-?up|recap|podcast|episode \d|giveaway|contest|win (a|tickets)|deal|discount|sale\b|% off|black friday|cyber monday|gift guide|poll:|quiz)\b/i;
+  const NOT_NEWS = /\b(top (ten|10|five|5) stories|this week'?s|week in (review|metal)|round-?up|recap|podcast|episode \d|giveaway|contest|win (a|tickets)|deals? (on|for)|discount|on sale|% off|black friday|cyber monday|gift guide|poll:|quiz)\b/i;
   const picks = items.filter((n) => n.link && !used.includes(n.link) && !NOT_NEWS.test(n.title.replace(/[\u2018\u2019]/g, "'"))).slice(0, count);
   if (!picks.length) return json({ created: [], note: "Every recent headline has already been written up." });
 
