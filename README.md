@@ -49,6 +49,8 @@ assets/
                       Turnstile hook. Uses supabase-js from cdn.jsdelivr.net.
   bento.css           Main theme and layout.   account.css  Account page (Amp Head, rack slide).
   launch.js/.css      Launch motion "09 Mosh Pit" (first open + short version on view change).
+  fx.js / fx.css      Interaction effects: hero glitch, card spotlight + 3D tilt, view transitions,
+                      reveal on scroll, skeleton numbers (window.UGFx.reveal is called by bento.js).
   ui.js / ui.css      window.UI: esc() HTML-escaping, toast() notifications.
   genres.js           window.UG_GENRES: 30 groups / ~415 genres (must match functions/api/genres-data.js).
   audiotags.js        window.readAudioTags(file): ID3, FLAC and MP4 tags + embedded cover, in the browser.

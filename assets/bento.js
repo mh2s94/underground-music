@@ -521,6 +521,7 @@
     void viewEl.offsetWidth;
     viewEl.classList.add("entered");
     setTimeout(() => { countUp(viewEl); grow(viewEl); }, 180);
+    if (window.UGFx) window.UGFx.reveal(viewEl); // cards below the fold appear on scroll (assets/fx.js)
   }
 
   // ---- Views & routing -----------------------------------------------------
@@ -528,16 +529,25 @@
     const btn = document.querySelector(`.nav-btn[data-view="${view}"]`);
     if (btn) $("navPill").style.transform = `translate(${btn.offsetLeft}px, ${btn.offsetTop}px)`;
   }
+  let vtReady = false; // no view transition on the very first view (the launch motion plays then)
   function showView(name) {
     if (!["home", "articles", "music", "charts", "about", "account", "band"].includes(name)) name = "home";
     const changed = name !== view || !document.querySelector(".view.entered");
-    view = name;
-    document.querySelectorAll(".view").forEach((v) => { v.hidden = v.dataset.view !== name; });
-    document.querySelectorAll(".nav-btn").forEach((b) => { if (b.dataset.view === name) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); });
-    movePill();
-    if (name === "account" && changed) renderAccount();
-    if (name === "charts" && changed) loadCharts();
-    if (changed) { $("main").scrollTop = 0; enter($("view-" + name)); }
+    const swap = () => {
+      view = name;
+      document.querySelectorAll(".view").forEach((v) => { v.hidden = v.dataset.view !== name; });
+      document.querySelectorAll(".nav-btn").forEach((b) => { if (b.dataset.view === name) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); });
+      movePill();
+      if (name === "account" && changed) renderAccount();
+      if (name === "charts" && changed) loadCharts();
+      if (changed) { $("main").scrollTop = 0; enter($("view-" + name)); }
+    };
+    // Smooth page change (View Transitions API; browsers without it switch instantly as before)
+    if (changed && vtReady && !reduceMotion && document.startViewTransition) {
+      view = name; // set now so a second click during the transition sees the new view
+      document.startViewTransition(swap);
+    } else swap();
+    vtReady = true;
   }
   // Views live in the hash (#/music); articles have real paths (/a/<slug>) that Google and link previews can read.
   function go(target) { // target: "/music" or "/a/slug"

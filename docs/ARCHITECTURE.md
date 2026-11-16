@@ -71,6 +71,7 @@ flowchart LR
 | Search | `/` or Ctrl+K: articles (server `ilike` query), tracks and genres. `?q=` in the URL opens search. |
 | Newsletter | Footer and article forms call RPC `ug_subscribe`. |
 | Motion | `assets/launch.js` + `launch.css`: launch motion "09 Mosh Pit" on first open (short version on view changes). Off with `prefers-reduced-motion`. |
+| Interaction effects | `assets/fx.js` + `fx.css` (owner-approved 2026-11-17 from a demo): glitch on the hero title (hover/tap), neon spotlight on `.card.lift` and 3D tilt on `.acard` (pointer or finger; uses the separate `rotate`/`translate` properties so entrance animations are not disturbed), View Transitions between views (`showView` wraps the swap in `document.startViewTransition`; not on the first view), reveal-on-scroll for cards below the fold (`UGFx.reveal` from `enter()`), skeleton placeholders in the stat numbers. All off with `prefers-reduced-motion`. Count-up numbers and the player equalizer already existed. |
 | Shared UI | `assets/ui.js` exposes `window.UI` (`esc`, `toast`). `assets/genres.js` exposes `window.UG_GENRES`. |
 
 CSS: `assets/bento.css` (main theme "Neon Basement"), `assets/account.css` (Amp Head account page, rack-slide auth form), `assets/launch.css`, `assets/ui.css` (toasts etc.).

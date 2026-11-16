@@ -37,6 +37,7 @@ Last audit: **2026-11-17**, against `main`. Update this file with every change.
 | Newsletter sending (Resend) | VERIFIED | test email received (before 2FA was added to the route) |
 | Unsubscribe links | IMPLEMENTED, NOT VERIFIED | |
 | Gigs / calendar | REMOVED from site | table `gigs` remains unused |
+| Interaction effects (glitch, spotlight, tilt, view transitions, scroll reveal, skeleton numbers) | IMPLEMENTED, NOT VERIFIED live | branch `visual-fx`; local tests at 412 px and 1280 px passed; owner approved the demo |
 | Launch motion "09 Mosh Pit" | IMPLEMENTED | chosen by owner on a live preview |
 | Privacy, Terms pages | IMPLEMENTED | |
 | Cloudflare Web Analytics | VERIFIED | enabled by owner |
