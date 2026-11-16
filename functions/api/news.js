@@ -27,7 +27,7 @@ const GENRE_WORDS = {
 
 const CACHE_SECONDS = 900;
 const MAX_AGE_DAYS = 30;
-const UA = "UndergroundMagazineBot/1.0 (+https://underground-music.pages.dev; scene radar)";
+const UA = "UndergroundMagazineBot/1.0 (+https://music.mikasa.me; scene radar)";
 
 export async function onRequestGet({ request, waitUntil }) {
   const url = new URL(request.url);
