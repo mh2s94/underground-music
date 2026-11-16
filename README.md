@@ -15,6 +15,7 @@ Static Cloudflare Pages site with a Supabase-backed editorial workflow and multi
 ## Music (Basement radio)
 1. Supabase Dashboard → SQL Editor → run `supabase/music.sql` once (after `community.sql`). It creates the `tracks` table, a public `music` storage bucket (25 MB per file, audio + cover images, admin-only uploads) and the `ug_admin_purge` cleanup function.
 2. Admin → **Music** tab: drop an MP3/M4A/OGG/WAV/FLAC, add title, artist, genre and an optional cover, then **Upload & publish**. Tracks can be edited, unpublished or deleted (files are removed from storage too).
+2b. **Recommended: Cloudflare R2 storage** (10 GB free, no streaming/egress fees, 50 MB per file). Cloudflare Dashboard → **R2 Object Storage** → enable R2 (Cloudflare may ask for a payment method to verify the account; the free tier is not charged) → **Create bucket** `underground-music`. Then **Workers & Pages → underground-music → Settings → Bindings → Add → R2 bucket**, variable name `MUSIC`, bucket `underground-music`, and redeploy. The admin then uploads to R2 automatically (`functions/api/music/[[path]].js` streams files with Range support for seeking). Without the binding, uploads fall back to Supabase Storage (1 GB, 5 GB egress/month).
 3. Visitors play tracks from the **Music** view; the mini player keeps playing while they browse, with lock-screen controls on phones.
 
 ## Admin settings: clean up data

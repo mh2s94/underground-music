@@ -145,6 +145,10 @@
 .cf-list { list-style: none; margin: 0; padding: 14px; border-radius: var(--r-md); background: var(--bg); border: 1px solid var(--line); display: flex; flex-direction: column; gap: 8px; font-size: 14px; }
 .cf-list li { display: flex; justify-content: space-between; gap: 12px; }
 .cf-list b { font-family: var(--font-display); font-size: 20px; font-weight: 400; color: var(--danger); }
+
+.storage-line { display: flex; align-items: center; gap: 8px; font: 400 11px/1.4 var(--font-mono); letter-spacing: .04em; color: var(--muted); }
+.storage-line .dot { background: var(--warning); }
+.storage-line.r2 .dot { background: var(--success); box-shadow: 0 0 8px var(--success); }
 </style>
 </head>
 <body>
@@ -280,6 +284,7 @@
       <div class="workspace">
         <section class="panel card-pad gen" aria-labelledby="upTitle">
           <div class="card-head"><h2 id="upTitle">Upload track</h2><span class="badge" id="upMode">New</span></div>
+          <div class="storage-line" id="storageLine"><span class="dot" aria-hidden="true"></span><span id="storageText">Checking storage…</span></div>
           <div class="alert warning" id="musicSetup" hidden>
             <span style="color:var(--warning)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v6"/><path d="M12 16.5v.5"/></svg></span>
             <div><strong>Music is not set up yet</strong><span class="muted">Run <span class="mono">supabase/music.sql</span> in the Supabase SQL Editor once, then reload this page.</span></div>
@@ -288,7 +293,7 @@
             <input type="file" id="audioFile" accept="audio/mpeg,audio/mp3,audio/mp4,audio/x-m4a,audio/aac,audio/ogg,audio/wav,audio/flac,.mp3,.m4a,.aac,.ogg,.wav,.flac" class="sr-only">
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg>
             <span class="drop-title" id="dropTitle">Drop an MP3 here or tap to choose</span>
-            <span class="hint" id="dropHint">MP3, M4A, OGG, WAV or FLAC · max 25 MB</span>
+            <span class="hint" id="dropHint">MP3, M4A, OGG, WAV or FLAC</span>
           </label>
           <audio id="upPreview" controls preload="metadata" hidden></audio>
           <label class="field"><span>Track title</span><input class="input" id="tTitle" maxlength="160" placeholder="Song title"></label>
@@ -856,7 +861,7 @@ function showTab(name, push) {
   if (push) history.replaceState(null, "", "#" + name);
   if (!loadedTabs.has(name)) {
     loadedTabs.add(name);
-    if (name === "music") loadTracks();
+    if (name === "music") { detectStorage(); loadTracks(); }
     if (name === "settings") loadCounts();
   } else if (name === "settings") loadCounts();
 }
@@ -872,7 +877,24 @@ window.addEventListener("resize", moveInk);
 
 /* ===================== Music ===================== */
 const BUCKET = "music";
-const MAX_AUDIO = 25 * 1024 * 1024, MAX_COVER = 5 * 1024 * 1024;
+let MAX_AUDIO = 25 * 1024 * 1024; const MAX_COVER = 5 * 1024 * 1024;
+let storageMode = null; // "r2" (Cloudflare R2) or "supabase"
+const limitText = () => `MP3, M4A, OGG, WAV or FLAC · max ${MAX_AUDIO / 1048576} MB`;
+async function detectStorage() {
+  if (storageMode) return storageMode;
+  try {
+    const r = await fetch("/api/music/status", { cache: "no-store" });
+    const j = await r.json();
+    storageMode = j.r2 ? "r2" : "supabase";
+    if (j.r2 && j.maxBytes) MAX_AUDIO = j.maxBytes;
+  } catch { storageMode = "supabase"; }
+  $("storageLine").classList.toggle("r2", storageMode === "r2");
+  $("storageText").textContent = storageMode === "r2"
+    ? "Storage: Cloudflare R2 · 10 GB free · unlimited streaming"
+    : "Storage: Supabase · 1 GB, 5 GB streaming/month. Connect Cloudflare R2 for more (see README).";
+  if (!$("drop").classList.contains("has-file")) $("dropHint").textContent = limitText();
+  return storageMode;
+}
 let allTracks = [];
 let editingTrack = null;
 let audioFile = null, coverFile = null, probedDuration = null;
@@ -908,7 +930,7 @@ function guessFromFilename(name) {
 async function pickAudio(file) {
   if (!file) return;
   if (!/^audio\//.test(file.type) && !/\.(mp3|m4a|aac|ogg|wav|flac)$/i.test(file.name)) { toast("warning", "Not an audio file", "Choose an MP3, M4A, OGG, WAV or FLAC file."); return; }
-  if (file.size > MAX_AUDIO) { toast("warning", "File too large", `${fmtSize(file.size)}. The limit is 25 MB; export a smaller MP3 (e.g. 192–320 kbps).`); return; }
+  if (file.size > MAX_AUDIO) { toast("warning", "File too large", `${fmtSize(file.size)}. The limit is ${MAX_AUDIO / 1048576} MB; export a smaller MP3 (e.g. 192–320 kbps).`); return; }
   audioFile = file;
   $("drop").classList.add("has-file");
   $("dropTitle").textContent = file.name;
@@ -941,7 +963,7 @@ function resetTrackForm() {
   ["tTitle", "tArtist", "tDesc", "tCoverUrl"].forEach((id) => { $(id).value = ""; $(id).classList.remove("invalid"); });
   $("tGenre").value = "Underground";
   $("audioFile").value = ""; $("coverFile").value = "";
-  $("drop").classList.remove("has-file"); $("dropTitle").textContent = "Drop an MP3 here or tap to choose"; $("dropHint").textContent = "MP3, M4A, OGG, WAV or FLAC · max 25 MB";
+  $("drop").classList.remove("has-file"); $("dropTitle").textContent = "Drop an MP3 here or tap to choose"; $("dropHint").textContent = limitText();
   const p = $("upPreview"); p.pause(); p.removeAttribute("src"); p.hidden = true;
   setCoverPreview("");
   document.querySelector('input[name="tstatus"][value="published"]').checked = true;
@@ -950,15 +972,33 @@ function resetTrackForm() {
 }
 $("tCancel").onclick = resetTrackForm;
 
+const mimeFor = (file, folder) => file.type || (folder === "covers" ? "image/jpeg" : ({ mp3: "audio/mpeg", m4a: "audio/mp4", aac: "audio/aac", ogg: "audio/ogg", wav: "audio/wav", flac: "audio/flac" }[extOf(file, "mp3")] || "audio/mpeg"));
 async function uploadFile(file, folder, fallbackExt) {
-  const path = `${folder}/${uid()}.${extOf(file, fallbackExt)}`;
-  const { error } = await sb.storage.from(BUCKET).upload(path, file, { contentType: file.type || undefined, cacheControl: "31536000", upsert: false });
+  const ext = extOf(file, fallbackExt);
+  if ((await detectStorage()) === "r2") {
+    const { data: { session: s } } = await sb.auth.getSession();
+    const r = await fetch(`/api/music/upload?folder=${folder}&ext=${encodeURIComponent(ext)}`, {
+      method: "PUT", body: file,
+      headers: { "content-type": mimeFor(file, folder), authorization: "Bearer " + (s?.access_token || "") }
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error || "Upload failed (HTTP " + r.status + ")");
+    return { path: "r2:" + j.key, url: j.url };
+  }
+  const path = `${folder}/${uid()}.${ext}`;
+  const { error } = await sb.storage.from(BUCKET).upload(path, file, { contentType: mimeFor(file, folder), cacheControl: "31536000", upsert: false });
   if (error) throw error;
   return { path, url: sb.storage.from(BUCKET).getPublicUrl(path).data.publicUrl };
 }
 async function removeFiles(paths) {
   const list = paths.filter(Boolean);
-  if (list.length) await sb.storage.from(BUCKET).remove(list);
+  const r2Keys = list.filter((p) => p.startsWith("r2:")).map((p) => p.slice(3));
+  const sbPaths = list.filter((p) => !p.startsWith("r2:"));
+  if (r2Keys.length) {
+    const { data: { session: s } } = await sb.auth.getSession();
+    await fetch("/api/music/delete", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + (s?.access_token || "") }, body: JSON.stringify({ keys: r2Keys }) });
+  }
+  if (sbPaths.length) await sb.storage.from(BUCKET).remove(sbPaths);
 }
 
 $("tSave").onclick = async () => {
@@ -1140,10 +1180,17 @@ $("purgeAll").onclick = () => openConfirm(Object.keys(PURGE).filter((k) => count
 
 async function purgeStorage() {
   let removed = 0;
+  if ((await detectStorage()) === "r2") {
+    const { data: { session: s } } = await sb.auth.getSession();
+    const r = await fetch("/api/music/purge", { method: "POST", headers: { authorization: "Bearer " + (s?.access_token || "") } });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error || "Could not delete files from R2");
+    removed += j.deleted || 0;
+  }
   for (const folder of ["audio", "covers"]) {
     for (let guard = 0; guard < 50; guard++) {
       const { data, error } = await sb.storage.from(BUCKET).list(folder, { limit: 1000 });
-      if (error) { if (/not found/i.test(error.message || "")) break; throw error; }
+      if (error) { if (/not found/i.test(error.message || "") || storageMode === "r2") break; throw error; }
       const files = (data || []).filter((f) => f.name && f.id !== null).map((f) => `${folder}/${f.name}`);
       if (!files.length) break;
       const { error: rmErr } = await sb.storage.from(BUCKET).remove(files);
