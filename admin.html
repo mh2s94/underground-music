@@ -171,6 +171,17 @@
 .nl-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
 .nl-list .mono { font-size: 12px; color: var(--muted); }
 .nl-list b { font-weight: 600; overflow-wrap: anywhere; }
+
+.nl-compose { display: flex; flex-direction: column; gap: 12px; padding: 16px; border-radius: 14px; background: var(--surface-2, rgba(255,255,255,.03)); border: 1px solid var(--line); }
+.nl-picks { display: flex; flex-direction: column; gap: 6px; max-height: 260px; overflow-y: auto; }
+.nl-picks label { display: flex; gap: 10px; align-items: center; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line); cursor: pointer; font-size: 14px; }
+.nl-picks label:has(input:checked) { border-color: var(--accent, #FF2E63); background: rgba(255, 46, 99, .08); }
+.nl-picks input { accent-color: #FF2E63; width: 18px; height: 18px; flex: none; }
+.gig-row { display: grid; grid-template-columns: 54px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 12px 0; border-top: 1px solid var(--line); }
+.gig-row .d { text-align: center; font-weight: 700; line-height: 1.1; }
+.gig-row .d small { display: block; font-size: 11px; color: var(--muted); text-transform: uppercase; }
+.gig-row.past { opacity: .55; }
+@media (max-width: 640px) { .gig-row { grid-template-columns: 48px minmax(0, 1fr); } .gig-row .actions { grid-column: 1 / -1; } }
 </style>
 </head>
 <body>
@@ -210,6 +221,7 @@
     <div class="tabs-bar" role="tablist" aria-label="Admin sections">
       <button class="tab" type="button" role="tab" id="tab-articles" aria-controls="panel-articles" aria-selected="true" data-tab="articles">Articles</button>
       <button class="tab" type="button" role="tab" id="tab-music" aria-controls="panel-music" aria-selected="false" data-tab="music">Music</button>
+      <button class="tab" type="button" role="tab" id="tab-gigs" aria-controls="panel-gigs" aria-selected="false" data-tab="gigs">Gigs</button>
       <button class="tab" type="button" role="tab" id="tab-settings" aria-controls="panel-settings" aria-selected="false" data-tab="settings">Settings</button>
       <span class="tab-ink" id="tabInk" aria-hidden="true"></span>
     </div>
@@ -383,6 +395,40 @@
     </div>
 
     <!-- ======================= SETTINGS ======================= -->
+    <div class="tab-panel" id="panel-gigs" role="tabpanel" aria-labelledby="tab-gigs" data-panel="gigs" hidden>
+      <div class="workspace">
+        <section class="panel card-pad" aria-labelledby="gigFormTitle" style="display:flex;flex-direction:column;gap:14px">
+          <div class="card-head"><h2 id="gigFormTitle">Add a gig</h2><span class="badge" id="gigMode">New</span></div>
+          <div class="alert warning" id="gigSetup" hidden><span style="color:var(--warning)">!</span><div><strong>Gigs are not set up yet</strong><span class="muted">Run <span class="mono">supabase/extras.sql</span> in the Supabase SQL Editor once.</span></div></div>
+          <label class="field"><span>Event name</span><input class="input" id="gTitle" maxlength="160" placeholder="Basement Night Vol. 3"></label>
+          <label class="field"><span>Bands <span class="hint">(comma separated)</span></span><input class="input" id="gBands" placeholder="Lorna Shore, Polaris"></label>
+          <div class="grid-2">
+            <label class="field"><span>Date &amp; time</span><input class="input" id="gStart" type="datetime-local"></label>
+            <label class="field"><span>Price <span class="hint">(optional)</span></span><input class="input" id="gPrice" maxlength="60" placeholder="Rp75.000 / Free"></label>
+          </div>
+          <div class="grid-2">
+            <label class="field"><span>Venue</span><input class="input" id="gVenue" maxlength="160" placeholder="Rumah Musik"></label>
+            <label class="field"><span>City</span><input class="input" id="gCity" maxlength="100" placeholder="Jayapura"></label>
+          </div>
+          <label class="field"><span>Ticket link <span class="hint">(optional)</span></span><input class="input" id="gTicket" placeholder="https://…"></label>
+          <label class="field"><span>Poster image URL <span class="hint">(optional, https)</span></span><input class="input" id="gPoster" placeholder="https://…"></label>
+          <label class="field"><span>Details <span class="hint">(optional)</span></span><textarea class="textarea" id="gDesc" rows="3" maxlength="2000" placeholder="Doors 7 PM, all ages…"></textarea></label>
+          <div class="segmented" role="radiogroup" aria-label="Gig status">
+            <label><input type="radio" name="gstatus" value="draft"><span>Draft</span></label>
+            <label><input type="radio" name="gstatus" value="published" checked><span>Publish</span></label>
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <button class="btn btn-primary" type="button" id="gSave" style="flex:1">Publish gig</button>
+            <button class="btn btn-ghost" type="button" id="gCancel" hidden>Cancel edit</button>
+          </div>
+        </section>
+        <section class="panel card-pad" aria-labelledby="gigListTitle">
+          <div class="list-head"><h2 id="gigListTitle" style="margin:0">Gigs <span class="badge" id="gigTotal" hidden></span></h2></div>
+          <div id="gigAdminList"></div>
+        </section>
+      </div>
+    </div>
+
     <div class="tab-panel" id="panel-settings" role="tabpanel" aria-labelledby="tab-settings" data-panel="settings" hidden>
       <section class="panel card-pad" aria-labelledby="purgeTitle">
         <div class="card-head"><h2 id="purgeTitle">Clean up data</h2><button class="btn btn-sm btn-ghost" type="button" id="purgeRefresh">Refresh counts</button></div>
@@ -392,6 +438,7 @@
           <label class="purge-item"><input type="checkbox" value="comments"><span class="pi-box"></span><span class="pi-body"><b>Comments</b><span>Every comment from members, on every article.</span></span><span class="pi-count" data-count="comments">–</span></label>
           <label class="purge-item"><input type="checkbox" value="saved"><span class="pi-box"></span><span class="pi-body"><b>Saved articles</b><span>Members' bookmarks. The articles themselves stay.</span></span><span class="pi-count" data-count="saved">–</span></label>
           <label class="purge-item"><input type="checkbox" value="tracks"><span class="pi-box"></span><span class="pi-body"><b>Music</b><span>All tracks plus their audio and cover files in storage.</span></span><span class="pi-count" data-count="tracks">–</span></label>
+          <label class="purge-item"><input type="checkbox" value="gigs"><span class="pi-box"></span><span class="pi-body"><b>Gigs</b><span>Every gig in the calendar.</span></span><span class="pi-count" data-count="gigs">–</span></label>
           <label class="purge-item"><input type="checkbox" value="demos"><span class="pi-box"></span><span class="pi-body"><b>Demo submissions</b><span>Everything in the Demo inbox.</span></span><span class="pi-count" data-count="demos">–</span></label>
         </div>
         <div class="purge-actions">
@@ -405,6 +452,17 @@
           <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-sm btn-ghost" type="button" id="nlRefresh">Refresh</button><button class="btn btn-sm" type="button" id="nlExport">Export CSV</button></div></div>
         <p class="muted" style="margin:0">People who signed up in the footer or under an article. Export the list as CSV to import into an email tool (Resend, Mailchimp, Brevo) when you start sending.</p>
         <div class="alert warning" id="nlSetup" hidden><span style="color:var(--warning)">!</span><div><strong>Newsletter is not set up yet</strong><span class="muted">Run <span class="mono">supabase/extras.sql</span> in the Supabase SQL Editor once.</span></div></div>
+        <div class="nl-compose">
+          <h3 style="margin:6px 0 0">Send a newsletter</h3>
+          <p class="muted" style="margin:0;font-size:14px">Pick stories, write a short intro, send a test to yourself, then send to everyone. Needs a free <a href="https://resend.com" target="_blank" rel="noopener">Resend</a> account (see README).</p>
+          <label class="field"><span>Subject</span><input class="input" id="nlSubject" maxlength="150" placeholder="This week in the underground"></label>
+          <label class="field"><span>Intro <span class="hint">(optional)</span></span><textarea class="textarea" id="nlIntro" rows="3" maxlength="1500" placeholder="A few lines from the editor…"></textarea></label>
+          <div class="field"><span class="label">Stories <span class="hint">(up to 8, newest first)</span></span><div class="nl-picks" id="nlPicks"></div></div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <button class="btn" type="button" id="nlTest">Send test to me</button>
+            <button class="btn btn-primary" type="button" id="nlSend">Send to all subscribers</button>
+          </div>
+        </div>
         <ul class="nl-list" id="nlList"></ul>
       </section>
     </div>
@@ -466,7 +524,7 @@ async function session() {
   loadDemos();
   loadRadar(false);
   const initial = (location.hash || "").slice(1);
-  showTab(["music", "settings"].includes(initial) ? initial : "articles", false);
+  showTab(["music", "gigs", "settings"].includes(initial) ? initial : "articles", false);
 }
 function showLogin() { $("login").hidden = false; $("app").hidden = true; $("userBar").hidden = true; setTimeout(() => $("email").focus(), 50); }
 
@@ -901,7 +959,7 @@ $("pubClear").addEventListener("click", () => setPubDate(null));
 $("radarRefresh").addEventListener("click", () => loadRadar(true));
 
 /* ===================== Tabs ===================== */
-const TAB_TITLES = { articles: "Newsroom", music: "Music", settings: "Settings" };
+const TAB_TITLES = { articles: "Newsroom", music: "Music", gigs: "Gigs", settings: "Settings" };
 const loadedTabs = new Set(["articles"]);
 function moveInk() {
   const t = document.querySelector('.tab[aria-selected="true"]'); if (!t) return;
@@ -919,7 +977,8 @@ function showTab(name, push) {
   if (!loadedTabs.has(name)) {
     loadedTabs.add(name);
     if (name === "music") { detectStorage(); loadTracks(); }
-    if (name === "settings") { loadCounts(); loadSubscribers(); }
+    if (name === "gigs") loadGigsAdmin();
+    if (name === "settings") { loadCounts(); loadSubscribers(); loadNlPicks(); }
   } else if (name === "settings") { loadCounts(); loadSubscribers(); }
 }
 document.querySelectorAll(".tab").forEach((t) => t.addEventListener("click", () => showTab(t.dataset.tab, true)));
@@ -964,6 +1023,106 @@ $("nlExport").onclick = () => {
   document.body.append(a); a.click(); a.remove();
   toast("success", "CSV downloaded", subscribers.length + " subscribers.");
 };
+
+
+// ---- Gigs (admin) ----
+let allGigs = [], editingGig = null;
+const gStatus = () => document.querySelector('input[name="gstatus"]:checked').value;
+function gigLabel() { $("gSave").textContent = editingGig ? (gStatus() === "published" ? "Save & publish" : "Save as draft") : (gStatus() === "published" ? "Publish gig" : "Save draft"); }
+document.querySelectorAll('input[name="gstatus"]').forEach((r) => r.addEventListener("change", gigLabel));
+function resetGigForm() {
+  editingGig = null;
+  ["gTitle", "gBands", "gStart", "gPrice", "gVenue", "gCity", "gTicket", "gPoster", "gDesc"].forEach((id) => { $(id).value = ""; $(id).classList.remove("invalid"); });
+  document.querySelector('input[name="gstatus"][value="published"]').checked = true;
+  $("gigMode").textContent = "New"; $("gigFormTitle").textContent = "Add a gig"; $("gCancel").hidden = true; gigLabel();
+}
+$("gCancel").onclick = resetGigForm;
+async function loadGigsAdmin() {
+  const { data, error } = await sb.from("gigs").select("*").order("starts_at", { ascending: false }).limit(500);
+  const missing = error && /gigs|schema cache|does not exist/i.test(error.message || "");
+  $("gigSetup").hidden = !missing;
+  if (error) { $("gigAdminList").innerHTML = missing ? "" : `<p class="muted">${esc(error.message)}</p>`; return; }
+  allGigs = data || [];
+  $("gigTotal").hidden = !allGigs.length; $("gigTotal").textContent = allGigs.length;
+  const now = Date.now();
+  $("gigAdminList").innerHTML = allGigs.length ? allGigs.map((g) => {
+    const d = new Date(g.starts_at);
+    return `<div class="gig-row${d < now ? " past" : ""}"><div class="d">${d.getDate()}<small>${d.toLocaleDateString("en-GB", { month: "short", year: "2-digit" })}</small></div>
+      <div style="min-width:0"><div style="font-weight:600">${esc(g.title)}</div><div class="muted" style="font-size:13px">${esc([d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }), g.venue, g.city].filter(Boolean).join(" · "))}${(g.bands || []).length ? " · " + esc(g.bands.join(", ")) : ""}</div>
+      <span class="badge ${g.status === "published" ? "published" : "draft"}">${d < now ? "past" : g.status}</span></div>
+      <div class="actions" style="display:flex;gap:8px"><button class="btn btn-sm btn-ghost" type="button" data-gedit="${esc(g.id)}">Edit</button><button class="btn btn-sm btn-ghost" type="button" data-gdel="${esc(g.id)}">Delete</button></div></div>`;
+  }).join("") : `<p class="muted">No gigs yet. Add the first one on the left; it appears on the home page and the Gigs page.</p>`;
+}
+$("gigAdminList").addEventListener("click", async (e) => {
+  const ed = e.target.closest("[data-gedit]"), del = e.target.closest("[data-gdel]");
+  if (ed) {
+    const g = allGigs.find((x) => String(x.id) === ed.dataset.gedit); if (!g) return;
+    editingGig = g;
+    $("gTitle").value = g.title; $("gBands").value = (g.bands || []).join(", "); $("gStart").value = toLocalInput(g.starts_at);
+    $("gPrice").value = g.price || ""; $("gVenue").value = g.venue || ""; $("gCity").value = g.city || ""; $("gTicket").value = g.ticket_url || ""; $("gPoster").value = g.poster_url || ""; $("gDesc").value = g.description || "";
+    document.querySelector(`input[name="gstatus"][value="${g.status}"]`).checked = true;
+    $("gigMode").textContent = "Editing"; $("gigFormTitle").textContent = "Edit gig"; $("gCancel").hidden = false; gigLabel();
+    $("gTitle").scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+  if (del) {
+    if (del.dataset.armed !== "1") { del.dataset.armed = "1"; del.textContent = "Tap again"; setTimeout(() => { del.dataset.armed = ""; del.textContent = "Delete"; }, 3000); return; }
+    const { error } = await sb.from("gigs").delete().eq("id", del.dataset.gdel);
+    if (error) toast("error", "Could not delete", error.message); else { toast("success", "Gig deleted"); if (editingGig && String(editingGig.id) === del.dataset.gdel) resetGigForm(); loadGigsAdmin(); }
+  }
+});
+$("gSave").onclick = async () => {
+  const title = $("gTitle").value.trim(), start = $("gStart").value;
+  const miss = []; if (title.length < 2) { $("gTitle").classList.add("invalid"); miss.push("event name"); } if (!start) { $("gStart").classList.add("invalid"); miss.push("date & time"); }
+  const urlOk = (v, re) => !v || re.test(v);
+  if (!urlOk($("gTicket").value.trim(), /^https?:\/\//i)) { $("gTicket").classList.add("invalid"); miss.push("a valid ticket link"); }
+  if (!urlOk($("gPoster").value.trim(), /^https:\/\//i)) { $("gPoster").classList.add("invalid"); miss.push("a poster URL starting with https://"); }
+  if (miss.length) { toast("warning", "Missing " + miss.join(", "), "Fill in the highlighted fields."); return; }
+  const payload = {
+    title, bands: $("gBands").value.split(",").map((x) => x.trim()).filter(Boolean).slice(0, 20),
+    starts_at: new Date(start).toISOString(), price: $("gPrice").value.trim() || null, venue: $("gVenue").value.trim() || null, city: $("gCity").value.trim() || null,
+    ticket_url: $("gTicket").value.trim() || null, poster_url: $("gPoster").value.trim() || null, description: $("gDesc").value.trim() || null,
+    status: gStatus(), updated_at: new Date().toISOString()
+  };
+  const btn = $("gSave"); btn.disabled = true;
+  const { error } = editingGig ? await sb.from("gigs").update(payload).eq("id", editingGig.id) : await sb.from("gigs").insert(payload);
+  btn.disabled = false;
+  if (error) { toast("error", "Could not save the gig", /gigs|schema cache/i.test(error.message || "") ? "Run supabase/extras.sql in the Supabase SQL Editor first." : error.message, { duration: 9000 }); return; }
+  toast("success", editingGig ? "Gig updated" : (payload.status === "published" ? "Gig published" : "Draft saved"), payload.status === "published" ? "It's on the home page and the Gigs page now." : "");
+  resetGigForm(); loadGigsAdmin();
+};
+gigLabel();
+
+// ---- Newsletter composer ----
+async function loadNlPicks() {
+  const { data } = await sb.from("articles").select("id,title,published_at").eq("status", "published").order("published_at", { ascending: false }).limit(20);
+  const list = data || [];
+  $("nlPicks").innerHTML = list.length ? list.map((a, i) => `<label><input type="checkbox" value="${esc(a.id)}"${i < 3 ? " checked" : ""}><span>${esc(a.title)}<br><small class="muted">${new Date(a.published_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</small></span></label>`).join("")
+    : `<p class="muted" style="margin:0">Publish some stories first.</p>`;
+}
+async function sendNewsletter(test) {
+  const ids = [...document.querySelectorAll("#nlPicks input:checked")].map((i) => i.value).slice(0, 8);
+  const subject = $("nlSubject").value.trim();
+  if (!subject) { $("nlSubject").classList.add("invalid"); shake($("nlSubject")); toast("warning", "Add a subject"); return; }
+  if (!ids.length) { toast("warning", "Pick at least one story"); return; }
+  if (!test) {
+    const n = subscribers.length;
+    const btn = $("nlSend");
+    if (btn.dataset.armed !== "1") { btn.dataset.armed = "1"; btn.textContent = `Tap again to email ${n} ${n === 1 ? "person" : "people"}`; setTimeout(() => { btn.dataset.armed = ""; btn.textContent = "Send to all subscribers"; }, 4000); return; }
+    btn.dataset.armed = "";
+  }
+  const btn = test ? $("nlTest") : $("nlSend"); const label = btn.textContent; btn.disabled = true; btn.textContent = "Sending…";
+  const { data: { session: s } } = await sb.auth.getSession();
+  try {
+    const r = await fetch("/api/newsletter/send", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + (s?.access_token || "") }, body: JSON.stringify({ subject, intro: $("nlIntro").value, article_ids: ids, test }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) toast(j.setup ? "info" : "error", j.setup ? "Email sending isn't set up yet" : "Not sent", j.error || "HTTP " + r.status, { duration: 12000 });
+    else toast("success", test ? "Test sent" : "Newsletter sent", test ? "Check your inbox (and spam folder)." : `Sent to ${j.sent} of ${j.total} subscribers.${j.errors && j.errors.length ? " Some failed: " + j.errors[0] : ""}`, { duration: 9000 });
+  } catch (e) { toast("error", "Network error", String(e.message || e)); }
+  btn.disabled = false; btn.textContent = test ? label : "Send to all subscribers";
+}
+$("nlTest").onclick = () => sendNewsletter(true);
+$("nlSend").onclick = () => sendNewsletter(false);
+$("nlSubject").addEventListener("input", () => $("nlSubject").classList.remove("invalid"));
 
 const BUCKET = "music";
 document.querySelectorAll("[data-genre-select]").forEach((el) => {
@@ -1367,7 +1526,8 @@ const PURGE = {
   comments: { table: "comments", label: "Comments" },
   saved: { table: "saved_articles", label: "Saved articles" },
   tracks: { table: "tracks", label: "Music tracks + audio and cover files" },
-  demos: { table: "demo_submissions", label: "Demo submissions" }
+  demos: { table: "demo_submissions", label: "Demo submissions" },
+  gigs: { table: "gigs", label: "Gigs" }
 };
 let counts = {};
 async function loadCounts() {

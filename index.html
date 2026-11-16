@@ -147,6 +147,11 @@
             <ol class="mini-tracks" id="homeTracks"><li class="skel" style="height:56px;list-style:none"></li></ol>
           </div>
 
+          <div class="card pad bento-item">
+            <div class="card-title"><h2>Upcoming gigs</h2><a class="link" href="#/gigs">All gigs</a></div>
+            <ol class="gig-list compact" id="gigPeek"><li class="skel" style="height:56px;list-style:none"></li></ol>
+          </div>
+
           <div class="card pad bento-item chart-peek">
             <div class="card-title"><h2>Charts</h2><a class="link" href="#/charts">See all</a></div>
             <p class="hint" id="peekHint" style="margin:-6px 0 8px">Top hits right now</p>
@@ -271,6 +276,17 @@
       <p class="hint chart-foot" id="chartFoot"></p>
     </section>
 
+    <!-- View: Gigs -->
+    <section class="view" id="view-gigs" data-view="gigs" aria-label="Gigs" hidden>
+      <div class="card charts-hero gigs-hero bento-item">
+        <div class="podium" aria-hidden="true"><span></span><span></span><span></span></div>
+        <span class="badge-dark"><i aria-hidden="true"></i>Live and loud</span>
+        <h1>Upcoming <span class="neon-txt">gigs</span></h1>
+        <p>Shows, festivals and basement nights worth leaving the house for. Tap a gig for tickets or to add it to your calendar.</p>
+      </div>
+      <div class="card pad bento-item" style="margin-top:18px"><ol class="gig-list" id="gigList"></ol></div>
+    </section>
+
     <!-- View: Band profile (/band/<name>) -->
     <section class="view" id="view-band" data-view="band" aria-label="Band profile" hidden></section>
 
@@ -312,6 +328,8 @@
                 <li><a href="#/home">Dashboard</a></li>
                 <li><a href="#/articles">Latest articles</a></li>
                 <li><a href="#/music">Basement radio</a></li>
+                <li><a href="#/charts">Charts</a></li>
+                <li><a href="#/gigs">Gigs</a></li>
                 <li><a href="#/about">About</a></li>
                 <li><a href="#/account">Account</a></li>
               </ul>
