@@ -178,6 +178,12 @@
 .nl-picks label:has(input:checked) { border-color: var(--accent, #FF2E63); background: rgba(255, 46, 99, .08); }
 .nl-picks input { accent-color: #FF2E63; width: 18px; height: 18px; flex: none; }
 
+.news-row .pick { display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; min-height: 32px; border: 1px solid var(--line); border-radius: 999px; font-size: 12px; font-weight: 600; cursor: pointer; user-select: none; }
+.news-row .pick input { width: 16px; height: 16px; accent-color: #FF2E63; margin: 0; }
+.news-row.picked { background: rgba(255, 46, 99, .06); }
+.news-row .written { font-family: var(--font-mono); font-size: 11px; color: #3DF5A7; text-transform: uppercase; letter-spacing: .06em; align-self: center; }
+.batch-bar { position: sticky; bottom: 12px; z-index: 5; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 12px; padding: 12px 14px; border-radius: 14px; background: var(--surface-2, #15121f); border: 1px solid rgba(255, 46, 99, .5); box-shadow: 0 12px 30px rgba(0, 0, 0, .45); }
+.batch-bar > span { flex: 1; min-width: 180px; font-size: 14px; }
 .draft-banner { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 12px 0 4px; padding: 12px 14px; border-radius: 12px; background: rgba(61, 245, 167, .08); border: 1px solid rgba(61, 245, 167, .35); font-size: 14px; }
 .draft-banner > span:nth-child(2) { flex: 1; min-width: 180px; }
 .db-dot { width: 8px; height: 8px; border-radius: 50%; background: #3DF5A7; box-shadow: 0 0 10px #3DF5A7; animation: dbBlink 1.2s infinite; }
@@ -299,6 +305,7 @@
         </div>
       </div>
       <div class="rows" id="radar"></div>
+      <div class="batch-bar" id="batchBar" hidden><span id="batchText"></span><button class="btn btn-sm btn-ghost" type="button" id="batchClear">Clear</button><button class="btn btn-sm btn-primary" type="button" id="batchGo">Write as drafts</button></div>
       <p class="mono muted" id="radarSources" style="margin:12px 0 0;font-size:11px"></p>
     </section>
 
@@ -308,7 +315,7 @@
         <h2 id="listTitle" style="margin:0;font-size:18px">Articles</h2>
         <input class="input" id="search" placeholder="Search titles…" style="max-width:260px;min-height:42px">
       </div>
-      <div class="draft-banner" id="draftBanner" hidden><span class="db-dot" aria-hidden="true"></span><span id="draftBannerText"></span><button class="btn btn-sm" type="button" id="draftBannerBtn">Review</button></div>
+      <div class="draft-banner" id="draftBanner" hidden><span class="db-dot" aria-hidden="true"></span><span id="draftBannerText"></span><button class="btn btn-sm" type="button" id="draftBannerBtn">Review</button><button class="btn btn-sm btn-primary" type="button" id="publishAllBtn">Publish all</button></div>
       <div class="rows" id="articles"></div>
     </section>
 
@@ -666,6 +673,7 @@ async function loadArticles() {
   if (error) { $("articles").innerHTML = ""; toast("error", "Could not load articles", error.message); return; }
   allArticles = data || [];
   renderList();
+  if (radarItems.length) renderRadar(); // mark headlines that are already written up
 }
 let draftsOnly = false;
 function renderList() {
@@ -675,6 +683,7 @@ function renderList() {
   $("draftBanner").hidden = !waiting.length;
   $("draftBannerText").textContent = waiting.length + (waiting.length === 1 ? " AI draft is" : " AI drafts are") + " waiting for your review";
   $("draftBannerBtn").textContent = draftsOnly ? "Show all" : "Review";
+  $("publishAllBtn").textContent = "Publish all (" + waiting.length + ")";
   let list = draftsOnly ? allArticles.filter((a) => a.status === "draft") : allArticles;
   if (q) list = list.filter((a) => a.title.toLowerCase().includes(q));
   if (!list.length) { $("articles").innerHTML = `<p class="muted" style="margin:8px 0 0">${allArticles.length ? "No matches." : "No articles yet. Generate your first one above."}</p>`; return; }
@@ -883,12 +892,116 @@ function renderRadar() {
         <div class="nm"><span>${esc(n.source)}</span>${n.date ? `<span title="${esc(fmtStamp(n.date))}">· ${esc(fmtStamp(n.date))} (${timeAgo(n.date)})</span>` : ""}${(n.genres || []).map((x) => `<span class="badge">${esc(x)}</span>`).join("")}</div>
       </div>
       <div class="acts">
+        ${isWritten(n) ? `<span class="written">✓ Written</span>` : `<label class="pick"><input type="checkbox" data-pick="${radarItems.indexOf(n)}"${picked.has(n.link) ? " checked" : ""}${batchRunning ? " disabled" : ""}> Select</label>`}
         <a class="btn btn-sm btn-ghost" href="${esc(n.link)}" target="_blank" rel="noopener noreferrer">Read ↗</a>
         <button class="btn btn-sm btn-primary" type="button" data-news="${radarItems.indexOf(n)}">Auto-write</button>
       </div>
     </div>`).join("");
+  $("radar").querySelectorAll("[data-pick]").forEach((c) => {
+    c.closest(".news-row").classList.toggle("picked", c.checked);
+    c.onchange = () => {
+      const n = radarItems[+c.dataset.pick];
+      if (c.checked && picked.size >= BATCH_MAX) { c.checked = false; toast("warning", "Up to " + BATCH_MAX + " at a time", "Write these first, then pick the next ones."); return; }
+      c.checked ? picked.set(n.link, n) : picked.delete(n.link);
+      c.closest(".news-row").classList.toggle("picked", c.checked);
+      updateBatchBar();
+    };
+  });
   $("radar").querySelectorAll("[data-news]").forEach((b) => b.onclick = () => useNews(radarItems[+b.dataset.news]));
 }
+/* ---------- Scene radar: write several at once ---------- */
+const BATCH_MAX = 5;
+const picked = new Map(); // link -> news item
+let batchRunning = false;
+const isWritten = (n) => allArticles.some((a) => (a.content || "").includes(n.link));
+function updateBatchBar(progress) {
+  $("batchBar").hidden = !picked.size && !batchRunning;
+  $("batchText").textContent = progress || (picked.size + " selected · the AI writes each one as a draft, then you publish them together");
+  $("batchGo").textContent = "Write " + picked.size + " as draft" + (picked.size === 1 ? "" : "s");
+  $("batchGo").disabled = batchRunning || !picked.size;
+  $("batchClear").disabled = batchRunning;
+}
+async function writeDraft(n, token, userId) {
+  const notes =
+    `News item reported by ${n.source}${n.date ? " on " + new Date(n.date).toDateString() : ""}.\n` +
+    `Headline: ${n.title}\n` + (n.summary ? `Summary: ${n.summary}\n` : "") +
+    `The band name above was guessed from the headline; correct it in BAND if needed.\n` +
+    `Write an original news piece in your own words based only on these facts. Do not copy the source's sentences. Mention that ${n.source} reported it.`;
+  const body = JSON.stringify({ band: n.band || n.title.split(/\s+/).slice(0, 3).join(" "), album: "", genre: "", category: "News", notes });
+  const call = () => fetch("/api/generate", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + token }, body });
+  let r; try { r = await call(); } catch { r = await call(); }
+  const j = await r.json().catch(() => ({ error: "Unexpected server response (HTTP " + r.status + ")." }));
+  if (!r.ok) throw new Error(j.error || "Generation failed");
+  const genre = j.genre || "Underground";
+  const { data: cat } = await sb.from("categories").select("id").eq("slug", slugify(genre)).maybeSingle();
+  let content = (j.content || "") + `\n\nSource: [${n.source}](${n.link})`;
+  if (j.youtube_url) content += "\n\n" + j.youtube_url;
+  const row = {
+    title: j.title, slug: slugify(j.title), excerpt: j.excerpt || "", content,
+    band_name: j.band || n.band || "", album_name: j.release || "", genre, category_id: cat?.id || null,
+    cover_image_url: /^https:\/\//.test(n.image || "") ? n.image : (j.cover_image_url || null),
+    tags: Array.isArray(j.tags) ? j.tags : [], status: "draft",
+    published_at: n.date || null, // the source's time is used when you publish
+    updated_at: new Date().toISOString(), author_id: userId,
+    kind: j.kind || "News", score: j.kind === "Review" && j.score != null ? j.score : null
+  };
+  const ins = (x) => sb.from("articles").insert(x).select("id").single();
+  let res = await ins(row);
+  if (res.error && res.error.code === "23505") { row.slug = row.slug.slice(0, 80) + "-" + Math.random().toString(36).slice(2, 6); res = await ins(row); }
+  if (res.error && /kind|score/i.test(res.error.message || "")) { const { kind, score, ...rest } = row; res = await ins(rest); }
+  if (res.error) throw new Error(res.error.message);
+  return j.title;
+}
+$("batchClear").addEventListener("click", () => { picked.clear(); updateBatchBar(); renderRadar(); });
+$("batchGo").addEventListener("click", async () => {
+  const { data: { session: s } } = await sb.auth.getSession();
+  if (!s) return showLogin();
+  const items = [...picked.values()];
+  if (!items.length || batchRunning) return;
+  batchRunning = true; renderRadar();
+  let done = 0, i = 0; const failed = [];
+  updateBatchBar(`Writing 0 of ${items.length}… keep this page open (about a minute each)`);
+  const worker = async () => {
+    while (i < items.length) {
+      const n = items[i++];
+      try { await writeDraft(n, s.access_token, s.user.id); picked.delete(n.link); }
+      catch (e) { failed.push(n.title + " — " + e.message); }
+      done++;
+      updateBatchBar(`Writing ${done} of ${items.length}… keep this page open`);
+    }
+  };
+  await Promise.all([worker(), worker()]); // two at a time
+  batchRunning = false;
+  await loadArticles();
+  renderRadar(); updateBatchBar();
+  const ok = items.length - failed.length;
+  if (ok) {
+    toast("success", ok + " draft" + (ok === 1 ? "" : "s") + " ready", "Check them below, then tap Publish all.", { duration: 8000 });
+    draftsOnly = true; renderList();
+    $("draftBanner").scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+  if (failed.length) toast("error", failed.length + " could not be written", failed.map((x) => "• " + x).join("\n") + "\nThey are still selected: tap Write to try again.", { duration: 14000 });
+});
+$("publishAllBtn").addEventListener("click", async () => {
+  const waiting = allArticles.filter((a) => a.status === "draft" && /\nSource: \[/.test(a.content || ""));
+  if (!waiting.length) return;
+  if (!confirm("Publish all " + waiting.length + " AI drafts now? They go live on the site immediately.")) return;
+  const btn = $("publishAllBtn"); btn.disabled = true;
+  const now = new Date().toISOString();
+  const withTime = waiting.filter((a) => a.published_at).map((a) => a.id);
+  const noTime = waiting.filter((a) => !a.published_at).map((a) => a.id);
+  const results = await Promise.all([
+    withTime.length ? sb.from("articles").update({ status: "published", updated_at: now }).in("id", withTime) : { error: null },
+    noTime.length ? sb.from("articles").update({ status: "published", published_at: now, updated_at: now }).in("id", noTime) : { error: null }
+  ]);
+  btn.disabled = false;
+  const err = results.find((r) => r.error)?.error;
+  if (err) { toast("error", "Could not publish", err.message); }
+  else toast("success", "Published " + waiting.length, "All AI drafts are live on the site.");
+  draftsOnly = false;
+  loadArticles();
+});
+
 function useNews(n) {
   if (!n) return;
   if ($("generateBtn").disabled) { toast("warning", "Already writing", "Wait for the current article to finish."); return; }
