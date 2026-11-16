@@ -35,6 +35,7 @@ RLS is enabled. Published articles are public; article writes require membership
    - `AI_PROVIDER_ORDER` = `claude,gemini,openai,deepseek,mistral,groq,openrouter,workersai`
    - Model overrides: `CLAUDE_MODEL`, `GEMINI_MODEL`, `OPENAI_MODEL`, `DEEPSEEK_MODEL`, `MISTRAL_MODEL`, `GROQ_MODEL`, `OPENROUTER_MODEL`, `WORKERSAI_MODEL`
 6b. Optional free fallback without an API key: Cloudflare Workers AI. In Cloudflare Pages → Settings → Bindings, add a **Workers AI** binding with variable name `AI` (for Production and Preview), then redeploy. It uses Cloudflare's free daily Neuron allocation; default model `@cf/meta/llama-3.3-70b-instruct-fp8-fast`.
+6c. Optional: `YOUTUBE_API_KEY` (Secret, YouTube Data API v3) for more reliable video lookup. Without it, the generator reads YouTube's public search page and falls back to a search link if no video is found.
 7. Redeploy the latest commit after changing environment variables.
 8. Open `/admin.html` and sign in.
 

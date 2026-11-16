@@ -35,13 +35,31 @@ export async function onRequestPost({ request, env }) {
   const clean = v => String(v || "").slice(0, 12000);
   if (!clean(input.band).trim()) return json({ error: "Band / artist is required." }, 400);
 
-  const prompt = `You are an editor for an independent underground extreme music magazine. Write in English. Produce accurate, original editorial copy using ONLY the supplied facts. Never invent release dates, track names, labels, quotes, tour dates, personnel, or claims. If information is missing, omit it or clearly flag it as unverified. Avoid promotional hype and generic filler. Return ONLY valid JSON with keys title, excerpt, content. The content should be 300-400 words in Markdown, with a clear editorial angle, useful context, and no fabricated citations.
+  const GENRES = ["Metalcore", "Hardcore", "Deathcore", "Darkcore", "Post-Hardcore", "Black Metal", "Djent", "Underground"];
+  const startedAt = Date.now();
+  const TOTAL_BUDGET_MS = 85000; // stay under Cloudflare's ~100s response limit
+  let currentTimeout = 40000;
+
+  // Start the YouTube lookup in parallel with the AI call.
+  const youtubePromise = findYouTube(clean(input.band).slice(0, 200), clean(input.album).slice(0, 200), env).catch(() => null);
+
+  const prompt = `You are a staff writer for UNDERGROUND, an independent extreme music magazine. Write in English.
+Write a complete, publish-ready article about the band and song/release below, using your own knowledge of the band, its sound and its history plus any notes supplied. Supplied notes always take priority over your own knowledge.
+Accuracy rules: do not invent quotes, interviews, chart positions, exact release dates, track lengths or personnel you are not confident about. When unsure of a specific detail, leave it out instead of guessing. Never write about missing information, the editorial process or these instructions; just write the best article you can.
+Style: a clear editorial angle, vivid but specific description of the music, useful context about the band, no promotional hype, no generic filler. 350-500 words of Markdown in "content", using 2-3 "## " subheadings. Do not include the title inside "content". Do not include links.
+
+Return ONLY valid JSON with exactly these keys:
+- "title": a strong headline (max 90 characters)
+- "excerpt": 1-2 sentence teaser (max 200 characters)
+- "content": the article body in Markdown
+- "tags": array of 3-6 short lowercase tags
+- "genre": the best match from this list: ${GENRES.join(", ")}
 
 Band/artist: ${clean(input.band)}
-Release/topic: ${clean(input.album)}
-Genre: ${clean(input.genre)}
-Category: ${clean(input.category)}
-Verified source notes: ${clean(input.notes)}`;
+Song / release: ${clean(input.album) || "(not specified: write a band feature instead)"}
+Article type: ${clean(input.category) || "Review"}
+Genre hint: ${clean(input.genre)}
+Editor notes (optional): ${clean(input.notes) || "(none)"}`;
 
   const providers = {
     claude: {
@@ -51,7 +69,7 @@ Verified source notes: ${clean(input.notes)}`;
         const r = await fetch("https://api.anthropic.com/v1/messages", {
           method: "POST",
           headers: { "content-type": "application/json", "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
-          signal: AbortSignal.timeout(60000),
+          signal: AbortSignal.timeout(currentTimeout),
           body: JSON.stringify({ model: env.CLAUDE_MODEL || "claude-sonnet-5-5", max_tokens: 1600, temperature: 0.45, messages: [{ role: "user", content: prompt }] })
         });
         const data = await r.json();
@@ -64,7 +82,7 @@ Verified source notes: ${clean(input.notes)}`;
       model: env.GEMINI_MODEL || "gemini-3.8-flash",
       run: async () => {
         const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(env.GEMINI_MODEL || "gemini-3.8-flash")}:generateContent?key=${encodeURIComponent(env.GEMINI_API_KEY)}`, {
-          method: "POST", headers: { "content-type": "application/json" }, signal: AbortSignal.timeout(60000),
+          method: "POST", headers: { "content-type": "application/json" }, signal: AbortSignal.timeout(currentTimeout),
           body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.45, responseMimeType: "application/json", maxOutputTokens: 1800, thinkingConfig: { thinkingLevel: "low" } } })
         });
         const data = await r.json();
@@ -113,7 +131,7 @@ Verified source notes: ${clean(input.notes)}`;
           max_tokens: 1800,
           temperature: 0.45
         }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error("Workers AI timed out")), 60000))
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Workers AI timed out")), currentTimeout))
       ]);
       const out = result?.response ?? result?.choices?.[0]?.message?.content ?? "";
       return typeof out === "string" ? out : JSON.stringify(out);
@@ -128,7 +146,7 @@ Verified source notes: ${clean(input.notes)}`;
     const r = await fetch(url, {
       method: "POST",
       headers: { "content-type": "application/json", Authorization: "Bearer " + key },
-      signal: AbortSignal.timeout(60000),
+      signal: AbortSignal.timeout(currentTimeout),
       body: JSON.stringify({
         model,
         messages: [
@@ -151,7 +169,9 @@ Verified source notes: ${clean(input.notes)}`;
     if (start < 0 || end <= start) throw new Error("Provider returned no JSON article.");
     const article = JSON.parse(cleaned.slice(start, end + 1));
     if (!article.title || !article.content) throw new Error("Provider returned incomplete article fields.");
-    return { title: String(article.title), excerpt: String(article.excerpt || ""), content: String(article.content) };
+    const tags = Array.isArray(article.tags) ? article.tags.map(t => String(t).trim().toLowerCase()).filter(Boolean).slice(0, 8) : [];
+    const genre = GENRES.find(g => g.toLowerCase() === String(article.genre || "").trim().toLowerCase()) || "";
+    return { title: String(article.title), excerpt: String(article.excerpt || ""), content: String(article.content), tags, genre };
   }
 
   const requestedOrder = (env.AI_PROVIDER_ORDER || "claude,gemini,openai,deepseek,mistral,groq,openrouter,workersai")
@@ -163,10 +183,25 @@ Verified source notes: ${clean(input.notes)}`;
 
   const failures = [];
   for (const name of configured) {
+    const remaining = TOTAL_BUDGET_MS - (Date.now() - startedAt);
+    if (remaining < 8000) {
+      failures.push({ provider: name, reason: "Skipped: out of time budget" });
+      continue;
+    }
+    currentTimeout = Math.min(40000, remaining);
     try {
       const raw = await providers[name].run();
       const article = parseArticle(raw);
-      return json({ ...article, provider: name, model: providers[name].model, fallback_used: failures.length > 0 });
+      const yt = await Promise.race([youtubePromise, new Promise(r => setTimeout(() => r(null), 5000))]);
+      const ytSearch = "https://www.youtube.com/results?search_query=" + encodeURIComponent((clean(input.band) + " " + clean(input.album)).trim());
+      return json({
+        ...article,
+        youtube_url: yt?.url || "",
+        youtube_title: yt?.title || "",
+        youtube_search_url: ytSearch,
+        cover_image_url: yt?.id ? `https://i.ytimg.com/vi/${yt.id}/hqdefault.jpg` : "",
+        provider: name, model: providers[name].model, fallback_used: failures.length > 0
+      });
     } catch (error) {
       failures.push({ provider: name, reason: String(error?.message || "Request failed").slice(0, 240) });
     }
@@ -176,4 +211,31 @@ Verified source notes: ${clean(input.notes)}`;
     error: "All configured AI providers failed. Check API keys, model access, provider quota, and billing.",
     attempts: failures
   }, 502);
+}
+
+// Find the best-matching YouTube video. Uses the YouTube Data API when
+// YOUTUBE_API_KEY is set; otherwise reads the public search results page.
+async function findYouTube(band, title, env) {
+  const q = (band + " " + title + (title ? " official" : "")).trim();
+  if (!q) return null;
+  if (env.YOUTUBE_API_KEY) {
+    const r = await fetch("https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=1&q=" +
+      encodeURIComponent(q) + "&key=" + encodeURIComponent(env.YOUTUBE_API_KEY), { signal: AbortSignal.timeout(6000) });
+    if (r.ok) {
+      const item = (await r.json()).items?.[0];
+      if (item?.id?.videoId) return { id: item.id.videoId, url: "https://www.youtube.com/watch?v=" + item.id.videoId, title: item.snippet?.title || "" };
+    }
+  }
+  const r = await fetch("https://www.youtube.com/results?hl=en&search_query=" + encodeURIComponent(q), {
+    headers: { "accept-language": "en-US,en;q=0.9", "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36", cookie: "CONSENT=YES+1" },
+    signal: AbortSignal.timeout(6000)
+  });
+  if (!r.ok) return null;
+  const html = await r.text();
+  const m = html.match(/"videoRenderer":\{"videoId":"([\w-]{11})"[\s\S]{0,1500}?"title":\{"runs":\[\{"text":"((?:[^"\\]|\\.)*)"/);
+  const id = m?.[1] || html.match(/"videoId":"([\w-]{11})"/)?.[1];
+  if (!id) return null;
+  let t = "";
+  try { t = m ? JSON.parse('"' + m[2] + '"') : ""; } catch {}
+  return { id, url: "https://www.youtube.com/watch?v=" + id, title: t };
 }
