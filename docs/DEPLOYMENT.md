@@ -34,7 +34,7 @@ Audited 2026-11-17. Secret values are never written here.
 | Binding | Type | Used by | Status |
 | --- | --- | --- | --- |
 | `AI` | Workers AI | `generate.js`, `track-info.js` (provider `workersai`) | VERIFIED (auto-draft used `workersai`) |
-| `MUSIC` | R2 bucket `underground-music` | `/api/music/*` | PENDING verification (see [MUSIC-SYSTEM.md](MUSIC-SYSTEM.md#storage-r2-first-supabase-fallback)) |
+| `MUSIC` | R2 bucket `underground-music` | `/api/music/*` | VERIFIED in dashboard (2026-11-17) |
 | `ASSETS` | automatic | `a/[slug].js`, `band/[slug].js` (fetch `index.html`) | built in |
 
 ## Environment variables
@@ -48,7 +48,7 @@ Set in Cloudflare → Workers & Pages → underground-music → **Settings → V
 | `SUPABASE_SERVICE_ROLE_KEY` (aliases `SUPABASE_SECRET_KEY`, `SUPABASE_SERVICE_KEY`, `SUPABASE_SERVICE_ROLE`, `SERVICE_ROLE_KEY`) | secret key that bypasses RLS, used **only** by auto-draft | for auto-draft | **secret** | `auto-draft` | yes (run succeeded) |
 | `AUTODRAFT_TOKEN` | shared token between GitHub Actions and `/api/auto-draft` | for auto-draft | **secret** | `auto-draft` | yes; **rotation PENDING** |
 | `AUTODRAFT_COUNT` | drafts per run (1–3, default 2) | no | plain | `auto-draft` | unknown |
-| `AUTODRAFT_NOTIFY` | email for the morning summary | no | plain | `auto-draft` | unknown |
+| `AUTODRAFT_NOTIFY` | email for the morning summary | no | plain | `auto-draft` | yes |
 | `RESEND_API_KEY` | Resend API key | for newsletter | **secret** | `newsletter/send`, `auto-draft` | yes (test email sent) |
 | `NEWSLETTER_FROM` | sender, e.g. `UNDERGROUND <news@mikasa.me>` (domain verified in Resend) | for newsletter | plain | `newsletter/send`, `auto-draft` | yes |
 | `NEWSLETTER_REPLY_TO` | reply-to (default `hello@mikasa.me`) | no | plain | `newsletter/send` | unknown |
@@ -95,3 +95,6 @@ Cloudflare Web Analytics is enabled by the owner (automatic beacon). The CSP all
 - `functions/sitemap.xml.js`: home, privacy, terms, published articles, band pages.
 - `manifest.webmanifest` plus the icons and `assets/og.png` share image.
 - Google Search Console: Domain property `mikasa.me` verified. Indexing of the site is not yet confirmed (PENDING).
+
+
+**Dashboard check 2026-11-17 (owner screenshot):** variables present: `ANTHROPIC_API_KEY`, `AUTODRAFT_NOTIFY`, `AUTODRAFT_TOKEN`, `GEMINI_API_KEY`, `GROQ_API_KEY`, `NEWSLETTER_FROM`, `RESEND_API_KEY`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_R…` (service key), `SUPABASE_URL`. Bindings: R2 `MUSIC` → `underground-music`, Workers AI `AI`. Build output directory `.`, root directory empty.

@@ -25,7 +25,7 @@ Last audit: **2026-11-17**, against `main`. Update this file with every change.
 | Comments, saved articles, demos (+ rate limits) | IMPLEMENTED, NOT VERIFIED | |
 | Account self-deletion | IMPLEMENTED, NOT VERIFIED | |
 | Music upload ≤ 25 MB (Supabase Storage) | IMPLEMENTED, NOT VERIFIED in this audit | |
-| Music upload ≤ 100 MB (R2, chunked) | PENDING verification | `MUSIC` binding not confirmed |
+| Music upload ≤ 100 MB (R2, chunked) | IMPLEMENTED, NOT VERIFIED (upload) | `MUSIC` binding to bucket `underground-music` VERIFIED in the Cloudflare dashboard (owner screenshot 2026-11-17) |
 | Music auto-fill (tags + `/api/track-info`) | IMPLEMENTED, NOT VERIFIED since 2FA | |
 | Player, Now Playing ("Floating Island") | IMPLEMENTED | design chosen by owner |
 | Global charts (Deezer) + playable previews | VERIFIED | owner confirmed |
@@ -37,6 +37,7 @@ Last audit: **2026-11-17**, against `main`. Update this file with every change.
 | Newsletter sending (Resend) | VERIFIED | test email received (before 2FA was added to the route) |
 | Unsubscribe links | IMPLEMENTED, NOT VERIFIED | |
 | Gigs / calendar | REMOVED from site | table `gigs` remains unused |
+| Motion polish A–G (hover lift fix, mobile hover, hero entrance, spotlight, avatar dot, equalizers, spring) | VERIFIED on preview by owner; deployed 2026-11-17 (PR #42) | live check on music.mikasa.me pending |
 | Launch motion "09 Mosh Pit" | IMPLEMENTED | chosen by owner on a live preview |
 | Privacy, Terms pages | IMPLEMENTED | |
 | Cloudflare Web Analytics | VERIFIED | enabled by owner |
@@ -61,7 +62,6 @@ Last audit: **2026-11-17**, against `main`. Update this file with every change.
 2. Turnstile: create the widget, send the site key, then add the secret key in Supabase **after** the code is deployed.
 3. Cloudflare rate-limiting rule for `/api/*` (do not enable Bot Fight Mode).
 4. Rotate `AUTODRAFT_TOKEN` in Cloudflare **and** GitHub, then redeploy.
-5. Confirm the R2 binding `MUSIC` (open `/api/music/status`).
 6. Decide whether to replace or remove New Noise in Scene Radar.
 7. Delete the leftover GitHub branch `radar-audit` (optional).
 8. Decide whether to move the site into a `public/` folder so docs and SQL are no longer downloadable (see below).
