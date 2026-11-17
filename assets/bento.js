@@ -187,16 +187,32 @@
     return art(a.id) + (img ? `<img class="cover" src="${esc(img)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : "");
   };
 
+  // Featured bands: show only complete rows (max 2), so no row is left half empty.
+  function fillAvatarRows() {
+    const box = $("avatars");
+    const items = [...box.querySelectorAll(".avatar")];
+    if (!items.length) return;
+    items.forEach((el) => { el.hidden = false; });
+    const cols = getComputedStyle(box).gridTemplateColumns.split(" ").filter(Boolean).length || 1;
+    const keep = items.length < cols ? items.length : Math.min(2, Math.floor(items.length / cols)) * cols;
+    items.forEach((el, i) => { el.hidden = i >= keep; });
+  }
+  if ("ResizeObserver" in window) {
+    let lastW = 0;
+    new ResizeObserver(([e]) => { const w = Math.round(e.contentRect.width); if (w !== lastW) { lastW = w; fillAvatarRows(); } }).observe($("avatars"));
+  }
+
   // ---- Render: dashboard ---------------------------------------------------
   function renderHome() {
     const now = Date.now();
-    const bl = bands().slice(0, 6);
+    const bl = bands().slice(0, 16);
     $("avatars").innerHTML = bl.length ? bl.map(({ name, a }) => {
       const img = coverOf(a);
       const fresh = now - new Date(a.published_at) < 14 * DAY;
       const initials = name.split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase();
       return `<a class="avatar" href="/a/${keyOf(a)}" title="${esc(name)}"><span class="ring"><span class="face">${esc(initials)}${img ? `<img src="${esc(img)}" alt="" loading="lazy" onerror="this.remove()">` : ""}</span>${fresh ? '<span class="status" aria-label="New"></span>' : ""}</span><span class="name">${esc(name)}</span></a>`;
     }).join("") : `<div class="empty-note" style="width:100%">Bands appear here as stories are published.</div>`;
+    fillAvatarRows();
 
     $("kpi30").dataset.count = articles.filter((a) => now - new Date(a.published_at) < 30 * DAY).length;
     $("activityBars").innerHTML = barsHtml(weekly(8));
