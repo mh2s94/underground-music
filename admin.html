@@ -517,6 +517,9 @@ async function session() {
   loadRadar(false);
   const initial = (location.hash || "").slice(1);
   showTab(["music", "settings"].includes(initial) ? initial : "articles", false);
+  // Deep link from the Telegram bot: admin.html#edit=<article id> opens that draft
+  const deep = initial.match(/^edit=([0-9a-zA-Z-]{1,40})$/);
+  if (deep) { history.replaceState(null, "", location.pathname); editArticle(deep[1]); }
 }
 // Visitors never see this panel: not signed in or not an admin -> the visitor's own account page.
 // Admins sign in on the site (Account page) and open "Admin panel" from their profile.

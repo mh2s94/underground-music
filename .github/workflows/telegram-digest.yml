@@ -1,0 +1,25 @@
+# 3x a day the Telegram bot sends the editor the newest Scene Radar headlines,
+# each with [Tulis draft] [Abaikan] buttons. Nothing is published automatically.
+name: Telegram radar digest
+
+on:
+  schedule:
+    - cron: "7 23 * * *"   # 08:07 WIT (UTC+9)
+    - cron: "7 5 * * *"    # 14:07 WIT
+    - cron: "7 11 * * *"   # 20:07 WIT
+  workflow_dispatch:       # "Run workflow" button: send a digest now (also registers the bot)
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ask the site to send the digest
+        env:
+          TOKEN: ${{ secrets.AUTODRAFT_TOKEN }}
+        run: |
+          if [ -z "$TOKEN" ]; then echo "AUTODRAFT_TOKEN secret is missing"; exit 1; fi
+          code=$(curl -sS -o out.json -w "%{http_code}" --max-time 120 -X POST \
+            -H "Authorization: Bearer $TOKEN" https://music.mikasa.me/api/telegram/digest) || code=000
+          cat out.json || true; echo; echo "HTTP $code"
+          [ "$code" = "200" ]

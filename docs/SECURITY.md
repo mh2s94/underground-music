@@ -131,5 +131,10 @@ If you do step 3 before step 2, every sign-in fails.
 - YouTube embeds use `youtube-nocookie.com` with an 11-character id pattern.
 - Scene Radar stores and shows only headlines, summaries of at most 45 words, and links.
 
+## Telegram bot (editor shortcut)
+- The bot lets the editor publish **without the website's 2FA**: whoever controls the editor's Telegram account can write, publish and delete **drafts**. It cannot edit, unpublish or delete published articles.
+- Checks: the webhook requires Telegram's `X-Telegram-Bot-Api-Secret-Token` (SHA-256 of the bot token, so it changes when the token is revoked); only `TELEGRAM_CHAT_ID` is obeyed (sender and chat must match); callback keys are validated.
+- Owner should turn on Telegram **Two-Step Verification**. To shut the bot off: revoke the token in @BotFather or delete `TELEGRAM_BOT_TOKEN`.
+
 ## Known exposure (decision needed)
 The Pages output directory is the repository root, so **every file in the repo is publicly downloadable**: `README.md`, `docs/*`, `supabase/*.sql`. They contain no secrets, but they reveal the schema and architecture. The fix is to move the site into a `public/` folder and set it as the output directory. That changes deployment, so it needs the owner's approval. Tracked in [PROJECT-STATUS.md](PROJECT-STATUS.md).
