@@ -29,7 +29,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap">
-<link rel="stylesheet" href="/assets/bento.css?v=fb1">
+<link rel="stylesheet" href="/assets/bento.css?v=hv1">
 <link rel="stylesheet" href="/assets/launch.css?v=mv2">
 <link rel="stylesheet" href="/assets/account.css?v=ac1">
 </head>
@@ -105,9 +105,14 @@
             <span class="badge-dark"><i aria-hidden="true"></i>Independent extreme music magazine</span>
             <h1><span class="neon-txt">Beneath</span> the <span class="uv-txt">noise.</span></h1>
             <p>Reviews, features and new releases from metalcore, hardcore, deathcore and the heavier corners of the scene. Written by people who still go to the shows.</p>
-            <div class="actions">
-              <button class="btn btn-white" type="button" id="readLatest">Read latest <span class="arr" aria-hidden="true">→</span></button>
-              <a class="btn btn-ghost-dark" href="#/articles">Explore genres</a>
+            <div class="hero-row">
+              <div class="actions">
+                <button class="btn btn-white" type="button" id="readLatest">Read latest <span class="arr" aria-hidden="true">→</span></button>
+                <a class="btn btn-ghost-dark" href="#/articles">Explore genres</a>
+              </div>
+              <div class="hero-vid" aria-hidden="true">
+                <video id="heroVid" muted loop playsinline preload="none" poster="/assets/media/hero-drummer.jpg" data-src="/assets/media/hero-drummer.mp4"></video>
+              </div>
             </div>
           </div>
 
@@ -477,7 +482,7 @@
 <script src="/assets/ui.js"></script>
 <script src="/assets/genres.js"></script>
 <script src="/assets/launch.js?v=lm2"></script>
-<script src="/assets/bento.js?v=fb1"></script>
+<script src="/assets/bento.js?v=hv1"></script>
 <script src="/assets/readers.js?v=rc1" defer></script>
 </body>
 </html>
