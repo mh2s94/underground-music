@@ -41,7 +41,7 @@ Last audit: **2026-11-17**, against `main`. Update this file with every change.
 | Launch motion "09 Mosh Pit" | IMPLEMENTED | chosen by owner on a live preview |
 | Privacy, Terms pages | IMPLEMENTED | |
 | Cloudflare Web Analytics | VERIFIED | enabled by owner |
-| Telegram bot: radar digest 3x a day, write/publish/discard drafts from Telegram | IMPLEMENTED, NOT VERIFIED live | owner ACC on preview 2026-11-18; mock-tested; needs `supabase/telegram.sql`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` |
+| Telegram bot: radar digest 3x a day, write/publish/discard drafts from Telegram | Digest VERIFIED live 2026-11-18 (owner screenshot); draft/publish buttons NOT VERIFIED live | SQL, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` set by owner |
 | Footer "Where our readers are" (style B strip, `/api/readers`) | VERIFIED | live on music.mikasa.me (owner screenshot 2026-11-17) |
 | Google Search Console | VERIFIED (ownership) / PENDING (indexing) | |
 
@@ -66,7 +66,7 @@ Last audit: **2026-11-17**, against `main`. Update this file with every change.
 4. Rotate `AUTODRAFT_TOKEN` in Cloudflare **and** GitHub, then redeploy.
 6. Decide whether to replace or remove New Noise in Scene Radar.
 7. Delete the leftover GitHub branch `radar-audit` (optional).
-10. Telegram bot: run `supabase/telegram.sql`; create the bot in @BotFather; add `TELEGRAM_BOT_TOKEN` (secret); run the "Telegram radar digest" workflow; send `/start`; add `TELEGRAM_CHAT_ID`; redeploy.
+10. ~~Telegram bot: run `supabase/telegram.sql`; create the bot in @BotFather; add `TELEGRAM_BOT_TOKEN` (secret); run the "Telegram radar digest" workflow; send `/start`; add `TELEGRAM_CHAT_ID`; redeploy.~~ Done 2026-11-18.
 9. ~~Add `CF_ACCOUNT_ID` (plain) and `CF_ANALYTICS_TOKEN` (secret, "Account Analytics: Read") to Pages Production variables, then redeploy, for the footer readers box.~~ Done 2026-11-17.
 8. Decide whether to move the site into a `public/` folder so docs and SQL are no longer downloadable (see below).
 
