@@ -41,6 +41,7 @@ Last audit: **2026-11-17**, against `main`. Update this file with every change.
 | Launch motion "09 Mosh Pit" | IMPLEMENTED | chosen by owner on a live preview |
 | Privacy, Terms pages | IMPLEMENTED | |
 | Cloudflare Web Analytics | VERIFIED | enabled by owner |
+| Footer "Where our readers are" (style B strip, `/api/readers`) | IMPLEMENTED, NOT VERIFIED live | chosen by owner (style B); mock-tested desktop + mobile; hidden until `CF_ACCOUNT_ID` + `CF_ANALYTICS_TOKEN` are set |
 | Google Search Console | VERIFIED (ownership) / PENDING (indexing) | |
 
 ## Security
@@ -64,6 +65,7 @@ Last audit: **2026-11-17**, against `main`. Update this file with every change.
 4. Rotate `AUTODRAFT_TOKEN` in Cloudflare **and** GitHub, then redeploy.
 6. Decide whether to replace or remove New Noise in Scene Radar.
 7. Delete the leftover GitHub branch `radar-audit` (optional).
+9. Add `CF_ACCOUNT_ID` (plain) and `CF_ANALYTICS_TOKEN` (secret, "Account Analytics: Read") to Pages Production variables, then redeploy, for the footer readers box.
 8. Decide whether to move the site into a `public/` folder so docs and SQL are no longer downloadable (see below).
 
 ## Known issues and risks

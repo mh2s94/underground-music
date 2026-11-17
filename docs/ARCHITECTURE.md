@@ -133,6 +133,7 @@ The database layer is the one that matters. The other two give good error messag
 | `/sitemap.xml` | GET | public | Home, legal pages, published articles, band pages | IMPLEMENTED, NOT VERIFIED |
 | `/unsubscribe?t=` | GET, POST | public | Calls `ug_unsubscribe(token)`; POST supports one-click unsubscribe | IMPLEMENTED, NOT VERIFIED |
 | `/api/news` | GET | public | Scene Radar RSS aggregator, 15 min edge cache | VERIFIED (New Noise blocked by captcha) |
+| `/api/readers` | GET | public | Footer "Where our readers are": top 5 countries + other as rounded percentages of page views, last 30 days, from Cloudflare Web Analytics (GraphQL `rumPageloadEventsAdaptiveGroups`, filtered by `requestHost`). 1 h edge cache. Answers `{ok:false}` when `CF_ACCOUNT_ID`/`CF_ANALYTICS_TOKEN` are missing, the query fails, or there are fewer than 50 page views; the box then stays hidden. Never returns counts. | IMPLEMENTED, NOT VERIFIED (needs the token) |
 | `/api/charts` | GET | public | Global charts from Deezer (`?group=`, `?genre=`), 6 h cache | VERIFIED (owner) |
 | `/api/preview?id=` | GET | public | 302 to a fresh Deezer 30 s preview | VERIFIED (owner) |
 | `/api/cover?a=&t=` | GET | public | Artwork from iTunes/Deezer, 7 day cache | IMPLEMENTED, NOT VERIFIED |

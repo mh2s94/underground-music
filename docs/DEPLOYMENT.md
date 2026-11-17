@@ -54,6 +54,9 @@ Set in Cloudflare → Workers & Pages → underground-music → **Settings → V
 | `NEWSLETTER_REPLY_TO` | reply-to (default `hello@mikasa.me`) | no | plain | `newsletter/send` | unknown |
 | `AI_PROVIDER_ORDER` | provider order (default `gemini,workersai,groq,openrouter,mistral,deepseek,openai,claude`) | no | plain | `generate`, `track-info` | unknown |
 | `GEMINI_API_KEY`, `GROQ_API_KEY`, `OPENROUTER_API_KEY`, `MISTRAL_API_KEY`, `DEEPSEEK_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` | AI provider keys; at least one provider (or the `AI` binding) is needed | at least one | **secret** | `generate`, `track-info` | unknown each |
+| `CF_ACCOUNT_ID` | Cloudflare account ID for the footer "Where our readers are" box | no (box hidden without it) | plain | `readers` | PENDING (owner to add) |
+| `CF_ANALYTICS_TOKEN` | Cloudflare API token, permission **Account Analytics: Read** only | no (box hidden without it) | **secret** | `readers` | PENDING (owner to add) |
+| `CF_WA_HOST` | Hostname counted by `/api/readers` (default `music.mikasa.me`) | no | plain | `readers` | optional |
 | `GEMINI_MODEL`, `WORKERSAI_MODEL`, `GROQ_MODEL`, `OPENROUTER_MODEL`, `MISTRAL_MODEL`, `DEEPSEEK_MODEL`, `OPENAI_MODEL`, `CLAUDE_MODEL` | model overrides | no | plain | `generate`, `track-info` | unknown |
 | `YOUTUBE_API_KEY` | YouTube Data API v3 for video lookup (else page parsing) | no | **secret** | `generate` | unknown |
 
