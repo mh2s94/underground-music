@@ -22,8 +22,8 @@ body[data-lm="09"].lm-intro .main { animation: lm04shake .35s .3s both; }
 #lm.m09 .lm-word { font-size: clamp(30px, 10vw, 80px); letter-spacing: .2em; padding-left: .2em; white-space: nowrap; color: #fff; text-shadow: var(--neon-glow); animation: lm09slam .4s cubic-bezier(.6, 0, .9, .5) both; }
 #lm.m09 .lm-logo svg { display: none; }
 @keyframes lm09slam { from { transform: scale(3.2) rotate(-6deg); opacity: 0; } 70% { opacity: 1; } to { transform: none; } }
-@keyframes lm09l { from { opacity: 0; transform: translateX(-140px) rotate(-14deg); } to { opacity: 1; transform: none; } }
-@keyframes lm09r { from { opacity: 0; transform: translateX(140px) rotate(12deg); } to { opacity: 1; transform: none; } }
+@keyframes lm09l { from { opacity: 0; translate: -140px 0; rotate: -14deg; } to { opacity: 1; translate: 0 0; rotate: 0deg; } } /* translate/rotate keep hover transform working */
+@keyframes lm09r { from { opacity: 0; translate: 140px 0; rotate: 12deg; } to { opacity: 1; translate: 0 0; rotate: 0deg; } }
 
 @keyframes lmFade { to { opacity: 0; } }
 @keyframes lm04shake { 20% { transform: translate(-6px, 4px); } 40% { transform: translate(5px, -3px); } 60% { transform: translate(-3px, 2px); } 80% { transform: translate(2px, -1px); } }
