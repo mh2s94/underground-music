@@ -187,6 +187,20 @@
     return art(a.id) + (img ? `<img class="cover" src="${esc(img)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : "");
   };
 
+  // Hero drummer video: loads only when the hero is on screen; never for reduced motion or Save-Data.
+  (() => {
+    const v = $("heroVid");
+    if (!v) return;
+    const saveData = navigator.connection && navigator.connection.saveData;
+    if (reduceMotion || saveData || !("IntersectionObserver" in window)) return; // the poster stays
+    new IntersectionObserver(([e]) => {
+      if (e.isIntersecting) {
+        if (!v.src) v.src = v.dataset.src;
+        v.play().catch(() => {});
+      } else v.pause();
+    }, { threshold: .25 }).observe(v);
+  })();
+
   // Featured bands: show only complete rows (max 2), so no row is left half empty.
   function fillAvatarRows() {
     const box = $("avatars");
