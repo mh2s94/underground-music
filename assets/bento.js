@@ -228,6 +228,15 @@
     }).join("") : `<div class="empty-note" style="width:100%">Bands appear here as stories are published.</div>`;
     fillAvatarRows();
 
+    const top = articles[0];
+    if (top) {
+      const d = $("heroDrop");
+      d.href = "/a/" + keyOf(top);
+      $("heroDropT").textContent = top.title;
+      $("heroDropS").textContent = `${top.genre || "Underground"} · ${timeAgo(top.published_at)}`;
+      d.hidden = false;
+    }
+
     $("kpi30").dataset.count = articles.filter((a) => now - new Date(a.published_at) < 30 * DAY).length;
     $("activityBars").innerHTML = barsHtml(weekly(8));
     $("statArticles").dataset.count = articles.length;
