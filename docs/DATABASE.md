@@ -20,6 +20,7 @@ Every file is idempotent ("safe to re-run"): `create … if not exists`, `create
 | 5 | `supabase/extras.sql` | `articles.kind/score`, `ug_band_rating`, `newsletter_subscribers`, `ug_subscribe`, unsubscribe token + `ug_unsubscribe`, `ug_delete_my_account`, `gigs` (unused), `ug_admin_purge` (extended) | 1–4 |
 | 6 | `supabase/security.sql` | Admin powers need 2FA: `ug_is_admin()` requires `aal2`, `ug_mfa_ok()`, restrictive policies on `articles` and `categories` | 1–5, **and the admin must have set up 2FA first** |
 | 7 | `supabase/security-check.sql` | `ug_security_check()` diagnostic (read-only, test inserts rolled back) | 6 |
+| 8 | `supabase/telegram.sql` | `telegram_radar` for the Telegram bot (service key only) | — |
 
 Owner-reported state on 2026-11-17: files 6 and 7 applied; 2FA working; "Admins can read all articles" added. The application status of files 1–5 is inferred from working features, not from a schema dump.
 
@@ -70,6 +71,9 @@ Used column: `user_id` (auth user id). Membership = admin. Owner-reported RLS: a
 
 ### Storage bucket `music` (`music.sql`)
 Public read, 25 MB per file (`26214400`), audio and image MIME types only, admin-only writes through `storage.objects` policies. Used only when R2 is not available.
+
+### `telegram_radar` (`supabase/telegram.sql`)
+Headlines the Telegram bot has sent: `hash` (pk, short SHA-256 of the link), `link`, `title`, `item` jsonb (headline, source, summary, date, image, band, genres), `status` (`sent` / `writing` / `drafted` / `skipped`), `article_id`, `sent_at`, `updated_at`. RLS on with **no policies** and grants revoked from `anon`/`authenticated`: only the server's service key uses it. Status: PENDING (owner must run the SQL).
 
 ## 3. Relationships
 

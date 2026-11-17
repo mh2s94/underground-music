@@ -57,6 +57,8 @@ Set in Cloudflare → Workers & Pages → underground-music → **Settings → V
 | `CF_ACCOUNT_ID` | Cloudflare account ID for the footer "Where our readers are" box | no (box hidden without it) | plain | `readers` | PENDING (owner to add) |
 | `CF_ANALYTICS_TOKEN` | Cloudflare API token, permission **Account Analytics: Read** only | no (box hidden without it) | **secret** | `readers` | PENDING (owner to add) |
 | `CF_WA_HOST` | Hostname counted by `/api/readers` (default `music.mikasa.me`) | no | plain | `readers` | optional |
+| `TELEGRAM_BOT_TOKEN` | Editor's Telegram bot (from @BotFather); the webhook secret is derived from it | no (bot off without it) | **secret** | `telegram/*`, `auto-draft` | PENDING (owner to add) |
+| `TELEGRAM_CHAT_ID` | The only chat the bot obeys (the bot replies with it after `/start`) | no | plain | `telegram/*`, `auto-draft` | PENDING (owner to add) |
 | `GEMINI_MODEL`, `WORKERSAI_MODEL`, `GROQ_MODEL`, `OPENROUTER_MODEL`, `MISTRAL_MODEL`, `DEEPSEEK_MODEL`, `OPENAI_MODEL`, `CLAUDE_MODEL` | model overrides | no | plain | `generate`, `track-info` | unknown |
 | `YOUTUBE_API_KEY` | YouTube Data API v3 for video lookup (else page parsing) | no | **secret** | `generate` | unknown |
 
