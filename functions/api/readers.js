@@ -37,7 +37,7 @@ const json = (body, maxAge) => new Response(JSON.stringify(body), {
 });
 
 export async function onRequestGet({ request, env, waitUntil }) {
-  if (!env.CF_ACCOUNT_ID || !env.CF_ANALYTICS_TOKEN) return json({ ok: false }, 300);
+  if (!env.CF_ACCOUNT_ID || !env.CF_ANALYTICS_TOKEN) return json({ ok: false, reason: "not_configured" }, 60);
 
   const cache = caches.default;
   const cacheKey = new Request(new URL(request.url).origin + "/api/readers?v=1", { method: "GET" });
@@ -62,13 +62,15 @@ export async function onRequestGet({ request, env, waitUntil }) {
     });
     data = await r.json();
   } catch {
-    return json({ ok: false }, 300);
+    return json({ ok: false, reason: "unreachable" }, 60);
   }
 
   const acc = data?.data?.viewer?.accounts?.[0];
   if (!acc || data.errors?.length) {
-    console.log("readers: analytics query failed", JSON.stringify(data?.errors || []).slice(0, 300));
-    return json({ ok: false }, 300);
+    const msg = String(data?.errors?.[0]?.message || "no data").slice(0, 160);
+    console.log("readers: analytics query failed", msg);
+    // The message comes from Cloudflare's API and contains no secrets.
+    return json({ ok: false, reason: "query_failed", detail: msg }, 60);
   }
 
   const total = acc.total?.[0]?.count || 0;
