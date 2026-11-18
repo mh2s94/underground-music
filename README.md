@@ -27,6 +27,7 @@
 | [docs/MUSIC-SYSTEM.md](docs/MUSIC-SYSTEM.md) | Upload limits, R2 vs Supabase, chunked upload, streaming, tags, player, charts and ratings |
 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Pages settings, bindings, **all environment variables**, DNS and email, redeploy, GitHub Actions |
 | [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | Real problems and how to diagnose them safely |
+| [docs/THEMES.md](docs/THEMES.md) | Theme engine: design tokens, schema, runtime, `window.UG` contract, regions, how to build a theme |
 | [docs/DEVELOPMENT-GUIDE.md](docs/DEVELOPMENT-GUIDE.md) | Rules, owner preferences, workflow, conventions, release checklist |
 | [docs/PROJECT-STATUS.md](docs/PROJECT-STATUS.md) | Feature and security status, owner to-dos, known issues, tests done, next checks |
 
@@ -47,7 +48,10 @@ assets/
   bento.js            The whole public app: config, routing, data loading, rendering, accounts,
                       comments, saves, demos, player, charts, ratings, search, newsletter, band pages,
                       Turnstile hook. Uses supabase-js from cdn.jsdelivr.net.
-  bento.css           Main theme and layout.   account.css  Account page (Amp Head, rack slide).
+  bento.css           Design tokens --ug-* (top of file) + main layout + default theme "Neon Bento".
+  account.css         Account page (Amp Head, rack slide).
+  theme/schema.js     Theme catalogue, token allow-list and sanitizer (browser + edge).
+  theme/runtime.js    window.UGTheme: active theme, token injection, theme loader with fallback.
   launch.js/.css      Launch motion "09 Mosh Pit" (first open + short version on view change).
   ui.js / ui.css      window.UI: esc() HTML-escaping, toast() notifications.
   genres.js           window.UG_GENRES: 30 groups / ~415 genres (must match functions/api/genres-data.js).

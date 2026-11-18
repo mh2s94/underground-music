@@ -29,9 +29,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap">
-<link rel="stylesheet" href="/assets/bento.css?v=hd1">
-<link rel="stylesheet" href="/assets/launch.css?v=mv2">
-<link rel="stylesheet" href="/assets/account.css?v=ac1">
+<script src="/assets/theme/schema.js?v=t1"></script>
+<script src="/assets/theme/runtime.js?v=t1"></script>
+<link rel="stylesheet" href="/assets/bento.css?v=t1">
+<link rel="stylesheet" href="/assets/launch.css?v=t1">
+<link rel="stylesheet" href="/assets/account.css?v=t1">
 </head>
 <body>
 
@@ -45,7 +47,7 @@
 
 <div class="app">
   <!-- Sidebar -->
-  <aside class="sidebar">
+  <aside class="sidebar" data-ug-region="nav">
     <a class="emblem" href="#/home" aria-label="UNDERGROUND home">
       <svg width="38" height="38" viewBox="0 0 48 48" fill="none" aria-hidden="true"><path d="M14 9v15a10 10 0 0 0 20 0V9" stroke="#FF5C86" stroke-width="3.6" stroke-linecap="round"/><path d="M14 9v15a10 10 0 0 0 20 0V9" stroke="#FFE3EC" stroke-width="1.2" stroke-linecap="round"/></svg>
     </a>
@@ -88,7 +90,7 @@
   </aside>
 
   <div class="stage">
-  <div class="main" id="main">
+  <div class="main" id="main" data-ug-region="main">
     <!-- View 1: Dashboard -->
     <section class="view" id="view-home" data-view="home" aria-label="Dashboard">
       <div class="home">
@@ -290,7 +292,7 @@
     <section class="view" id="view-account" data-view="account" aria-label="Account" hidden></section>
 
     <!-- Footer -->
-    <footer class="ft" id="siteFooter">
+    <footer class="ft" id="siteFooter" data-ug-region="footer">
       <div class="ft-inner">
         <div class="ft-pass-col ft-reveal">
           <span class="ft-lanyard" aria-hidden="true"></span>
@@ -364,7 +366,7 @@
   </div>
 
   <!-- Mini player (persists across views) -->
-  <div class="player" id="player" role="region" aria-label="Music player" hidden>
+  <div class="player" id="player" data-ug-region="player" role="region" aria-label="Music player" hidden>
     <div class="isl">
       <button class="isl-cover" id="plCover" type="button" aria-label="Open the now playing screen"></button>
       <button class="isl-open" id="plOpen" type="button" aria-label="Open the now playing screen"><span class="isl-title" id="plTitle">—</span><span class="isl-artist" id="plArtist"></span></button>
@@ -425,7 +427,7 @@
 </div>
 
 <!-- Search -->
-<div class="search" id="search" hidden>
+<div class="search" id="search" data-ug-region="search" hidden>
   <div class="search-backdrop" data-close-search></div>
   <div class="search-sheet" role="dialog" aria-modal="true" aria-label="Search UNDERGROUND">
     <div class="search-bar">
@@ -465,7 +467,7 @@
 </div>
 
 <!-- Reader -->
-<div class="reader" id="reader" hidden>
+<div class="reader" id="reader" data-ug-region="reader" hidden>
   <div class="reader-backdrop" data-close></div>
   <article class="reader-sheet" role="dialog" aria-modal="true" aria-labelledby="readerTitle" tabindex="-1">
     <div class="reader-bar">
@@ -485,7 +487,7 @@
 <script src="/assets/ui.js"></script>
 <script src="/assets/genres.js"></script>
 <script src="/assets/launch.js?v=lm2"></script>
-<script src="/assets/bento.js?v=hd1"></script>
+<script src="/assets/bento.js?v=t1"></script>
 <script src="/assets/readers.js?v=rc1" defer></script>
 </body>
 </html>

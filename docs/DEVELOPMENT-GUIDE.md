@@ -55,6 +55,9 @@ These rules are permanent. They apply to every AI assistant and developer who wo
 | Change | Files |
 | --- | --- |
 | Public UI or behaviour | `assets/bento.js`, `assets/bento.css` (+ `account.css`, `launch.css`), `index.html` |
+| Colours, fonts, radius | design tokens at the top of `assets/bento.css` (never hard-code them in component CSS) |
+| Theme catalogue, token rules | `assets/theme/schema.js` (shared by browser and edge) |
+| A theme layout | `assets/themes/<id>/theme.css` + `shell.js`, scoped to `html[data-theme="<id>"]`; data only through `window.UG` (see THEMES.md) |
 | Admin UI | `admin.html` (inline script) |
 | Server logic, secrets, external APIs | `functions/api/*.js` |
 | SEO HTML for a path | `functions/<path>/[param].js` with HTMLRewriter over `env.ASSETS` |
@@ -72,8 +75,11 @@ These rules are permanent. They apply to every AI assistant and developer who wo
 - **Scene Radar** must keep using only headlines, summaries of at most 45 words, and links (copyright).
 - **Visitors never see `admin.html`.** Keep the `html.gate` pattern and the redirects.
 - **Repo root is public:** every file in the repo is downloadable from the site. Never commit anything private.
+- **Themes:** the default theme `neon-bento` must keep working with no theme files (it is the permanent fallback). A theme may move or restyle `data-ug-region` areas but never remove one, and reads data only through `window.UG`. Never loosen `X-Frame-Options`, CSP, RLS or MFA for a theme feature.
+- **Visual regression:** for changes that should not change the look, compare screenshots of every view (desktop 1280 px, phone 390 px) before and after, with animations off and a fixed clock.
 
 ## Testing checklist for releases
 - Home, Articles, an article page `/a/<slug>`, Music (play, seek), Charts (community and global, preview plays), Band page, Search, Account (sign up, sign in, reset), newsletter sign-up, at 412 px and desktop.
 - Admin: 2FA screen → panel, Generate, Save draft, Publish, Scene Radar batch, Music upload, Settings → Security check (lines 4 and 5 ok).
 - Browser console: no errors, no CSP violations.
+- Theme engine: `UGTheme.current()` is `neon-bento`; `UGTheme.load("does-not-exist")` falls back without breaking the page; `window.UG.articles.length` matches the articles shown.
