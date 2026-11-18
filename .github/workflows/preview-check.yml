@@ -25,6 +25,8 @@ jobs:
         run: node tests/supabase-js-pin.test.mjs
       - name: Theme catalogue and theme files (scoping, tokens, contrast, budget, ASSET_REV)
         run: node tests/themes.test.mjs
+      - name: Basement Radio cuts (trim math, admin saves only trim columns)
+        run: node tests/trim.test.mjs
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 15

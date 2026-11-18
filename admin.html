@@ -32,7 +32,7 @@
 
 /* Workspace */
 .workspace { display: grid; grid-template-columns: minmax(0, 380px) minmax(0, 1fr); gap: 20px; align-items: start; }
-@media (max-width: 980px) { .workspace { grid-template-columns: 1fr; } }
+@media (max-width: 980px) { .workspace { grid-template-columns: minmax(0, 1fr); } }
 .card-pad { padding: 24px; display: flex; flex-direction: column; gap: 16px; }
 .card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .card-head h2, .list-head h2 { margin: 0; font: 400 28px/1 var(--font-display) !important; letter-spacing: .05em; text-transform: uppercase; }
@@ -124,6 +124,40 @@
 .drop.has-file { border-style: solid; border-color: var(--uv); color: var(--text); }
 .drop-title { font-weight: 600; overflow-wrap: anywhere; }
 #upPreview { width: 100%; height: 40px; }
+/* Trim editor (non-destructive: only trim_start_ms / trim_end_ms are saved, the file is never changed) */
+@media (min-width: 981px) { .workspace.trimming { grid-template-columns: minmax(0, 560px) minmax(0, 1fr); } }
+.workspace.trimming .gen { position: static; }
+#tLookup { max-width: 100%; white-space: normal; text-align: left; line-height: 1.25; } /* the editor makes the card taller than the screen */
+.trim { display: flex; flex-direction: column; gap: 12px; padding: 14px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--bg); }
+.trim-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.trim-head .label { font-weight: 600; }
+.trim-wave { position: relative; height: 140px; margin-top: 18px; border-radius: 10px; background: var(--surface-2); touch-action: none; user-select: none; -webkit-user-select: none; cursor: crosshair; }
+.trim-wave canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.trim-sel { position: absolute; top: 0; bottom: 0; background: rgba(255, 46, 99, .10); border-top: 2px solid var(--accent); border-bottom: 2px solid var(--accent); pointer-events: none; }
+.trim-ph { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; background: #fff; pointer-events: none; display: none; }
+.trim-h { position: absolute; top: -6px; bottom: -6px; width: 44px; margin-left: -22px; padding: 0; border: 0; background: transparent; cursor: ew-resize; touch-action: none; }
+.trim-h::before { content: ""; position: absolute; left: 50%; top: 0; bottom: 0; width: 4px; margin-left: -2px; border-radius: 2px; background: var(--accent); }
+.trim-h::after { content: ""; position: absolute; left: 50%; top: 50%; width: 14px; height: 30px; margin: -15px 0 0 -7px; border-radius: 6px; background: var(--accent); box-shadow: 0 0 0 2px var(--bg); }
+.trim-h:focus-visible { outline: none; } .trim-h:focus-visible::after { box-shadow: 0 0 0 3px #fff; }
+.trim-h span { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); margin-bottom: 2px; font: 700 11px/1 var(--font-mono); color: var(--accent); white-space: nowrap; pointer-events: none; }
+.trim-nums { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; align-items: end; font-size: 13px; }
+.trim-nums label, .trim-nums div { display: flex; flex-direction: column; gap: 4px; color: var(--muted); }
+.trim-nums .input { min-height: 40px; font-family: var(--font-mono); font-size: 14px; padding: 0 10px; }
+.trim-nums b { font-family: var(--font-mono); font-size: 14px; color: var(--text); min-height: 40px; display: flex; align-items: center; }
+.trim-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.trim-row .btn { flex: 1 1 auto; }
+.trim-nudge { display: grid; grid-template-columns: auto repeat(4, minmax(0, 1fr)); gap: 6px; align-items: center; font-size: 12px; color: var(--muted); }
+.trim-nudge .btn { min-height: 38px; padding: 0 6px; font-family: var(--font-mono); font-size: 12px; }
+.trim-check { display: flex; gap: 10px; align-items: center; font-size: 14px; cursor: pointer; }
+.trim-check input { width: 18px; height: 18px; accent-color: var(--accent); }
+.badge.cut { color: var(--accent); border-color: rgba(255, 46, 99, .4); white-space: nowrap; }
+.workspace.trimming .track-row { grid-template-columns: 56px minmax(0, 1fr); }
+.workspace.trimming .track-row .actions { grid-column: 1 / -1; justify-content: flex-start; }
+@media (max-width: 760px) {
+  .trim { padding: 12px; } .trim-wave { height: 110px; }
+  .trim-nums { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .trim-h::after { width: 18px; height: 36px; margin: -18px 0 0 -9px; }
+}
 .cover-prev { width: 76px; height: 76px; flex: none; border-radius: 12px; background: var(--surface-2) center/cover no-repeat; border: 1px solid var(--line); }
 .up-progress { height: 4px; border-radius: 4px; background: var(--surface-2); overflow: hidden; }
 .up-progress span { display: block; height: 100%; width: 40%; background: var(--accent); box-shadow: 0 0 12px var(--accent); animation: indet 1.1s ease-in-out infinite; }
@@ -342,7 +376,7 @@
 
     <!-- ======================= MUSIC ======================= -->
     <div class="tab-panel" id="panel-music" role="tabpanel" aria-labelledby="tab-music" data-panel="music" hidden>
-      <div class="workspace">
+      <div class="workspace" id="musicWs">
         <section class="panel card-pad gen" aria-labelledby="upTitle">
           <div class="card-head"><h2 id="upTitle">Upload track</h2><span class="badge" id="upMode">New</span></div>
           <div class="storage-line" id="storageLine"><span class="dot" aria-hidden="true"></span><span id="storageText">Checking storage…</span></div>
@@ -357,6 +391,41 @@
             <span class="hint" id="dropHint">MP3, M4A, OGG, WAV or FLAC</span>
           </label>
           <audio id="upPreview" controls preload="metadata" hidden></audio>
+          <div class="trim" id="trimBox" hidden>
+            <div class="trim-head"><span class="label">Cut for the site <span class="hint">(the file is never changed)</span></span><span class="badge" id="trimBadge">Full song</span></div>
+            <div class="trim-wave" id="trimWave">
+              <canvas id="trimCanvas" aria-hidden="true"></canvas>
+              <div class="trim-sel" id="trimSel"></div>
+              <div class="trim-ph" id="trimPh"></div>
+              <button class="trim-h" type="button" id="trimA" role="slider" aria-label="Cut start" aria-valuemin="0"><span id="trimALbl">0:00.0</span></button>
+              <button class="trim-h" type="button" id="trimB" role="slider" aria-label="Cut end" aria-valuemin="0"><span id="trimBLbl">0:00.0</span></button>
+            </div>
+            <p class="hint" id="trimNote" style="margin:0" hidden></p>
+            <button class="btn btn-sm btn-ghost" type="button" id="trimLoadWave" hidden>Draw the waveform (loads the song once)</button>
+            <div class="trim-nums">
+              <label>Start<input class="input" id="trimAIn" inputmode="decimal" autocomplete="off" aria-label="Cut start (m:ss.s)"></label>
+              <label>End<input class="input" id="trimBIn" inputmode="decimal" autocomplete="off" aria-label="Cut end (m:ss.s)"></label>
+              <div>Length<b id="trimLen">0:00.0</b></div>
+              <div>Original<b id="trimOrig">0:00.0</b></div>
+            </div>
+            <div class="trim-row">
+              <button class="btn btn-sm btn-primary" type="button" id="trimPlay">&#9654; Play the cut</button>
+              <button class="btn btn-sm" type="button" id="trimHearA">Hear the start</button>
+              <button class="btn btn-sm" type="button" id="trimHearB">Hear the end</button>
+            </div>
+            <div class="trim-nudge" role="group" aria-label="Fine tune">
+              <span>Start</span><button class="btn" type="button" data-nudge="a:-1000">&minus;1s</button><button class="btn" type="button" data-nudge="a:-100">&minus;0.1</button><button class="btn" type="button" data-nudge="a:100">+0.1</button><button class="btn" type="button" data-nudge="a:1000">+1s</button>
+              <span>End</span><button class="btn" type="button" data-nudge="b:-1000">&minus;1s</button><button class="btn" type="button" data-nudge="b:-100">&minus;0.1</button><button class="btn" type="button" data-nudge="b:100">+0.1</button><button class="btn" type="button" data-nudge="b:1000">+1s</button>
+            </div>
+            <div class="trim-row">
+              <button class="btn btn-sm btn-ghost" type="button" id="trimSetA">Start here</button>
+              <button class="btn btn-sm btn-ghost" type="button" id="trimSetB">End here</button>
+              <button class="btn btn-sm btn-ghost" type="button" id="trimZoom" aria-pressed="false">Zoom to cut</button>
+              <button class="btn btn-sm btn-ghost" type="button" id="trimReset">Use full song</button>
+            </div>
+            <label class="trim-check"><input type="checkbox" id="trimAllowFull" checked> Let listeners play the full song after the cut</label>
+            <button class="btn" type="button" id="trimSaveOnly" hidden>Save the cut only</button>
+          </div>
           <div class="autofill" id="autoFill" hidden role="status" aria-live="polite">
             <span class="spinner" aria-hidden="true"></span>
             <div><strong id="afTitle">Reading the song…</strong><span class="muted" id="afText">Checking embedded tags.</span></div>
@@ -531,6 +600,7 @@
 <script src="/assets/audiotags.js"></script>
 <script src="/assets/genres.js"></script>
 <script src="/assets/theme/schema.js?v=t5"></script>
+<script src="/assets/trim.js?v=tr1"></script>
 <script>
 const sb = window.supabase.createClient("https://lhhmzfwjznlwkentbakv.supabase.co", "sb_publishable_MQDqmSmPb3qiSODbBOSKmA_U7aBEFtN");
 const { toast, shake, esc } = window.UI;
@@ -1405,6 +1475,8 @@ async function pickAudio(file) {
   if (audioFile !== file) return;
   probedDuration = dur;
   $("tDur").value = dur ? fmtDur(dur) : "";
+  openTrim({ src: p.dataset.url, dur, file });
+  waveFromFile(file);
   $("dropHint").textContent = fmtSize(file.size) + (dur ? " · " + fmtDur(dur) : "");
   const g = guessFromFilename(file.name);
   setField("tTitle", tags.title || g.title); setField("tArtist", tags.artist || g.artist);
@@ -1443,6 +1515,7 @@ function resetTrackForm() {
   $("audioFile").value = ""; $("coverFile").value = "";
   $("drop").classList.remove("has-file"); $("dropTitle").textContent = "Drop an MP3 here or tap to choose"; $("dropHint").textContent = limitText();
   const p = $("upPreview"); p.pause(); p.removeAttribute("src"); p.hidden = true;
+  closeTrim();
   setCoverPreview("");
   document.querySelector('input[name="tstatus"][value="published"]').checked = true;
   $("upMode").textContent = "New"; $("upTitle").textContent = "Upload track"; $("tCancel").hidden = true;
@@ -1509,6 +1582,214 @@ async function removeFiles(paths) {
   if (sbPaths.length) await sb.storage.from(BUCKET).remove(sbPaths);
 }
 
+
+/* ===================== Trim editor (Basement Radio cut) =====================
+ * Non-destructive: saves only trim_start_ms / trim_end_ms / allow_full / waveform on the track.
+ * The audio file is uploaded whole (or kept) and never changed. supabase/music-v3-trim.sql adds the columns. */
+const UT = window.UGTrim;
+const TRIM_COLS = ["trim_start_ms", "trim_end_ms", "allow_full", "waveform"];
+const isPhone = () => matchMedia("(pointer: coarse)").matches || innerWidth < 760;
+const trim = { on: false, dur: 0, a: 0, b: 0, peaks: null, wave: null, src: "", objUrl: "", view: null, track: null, file: null, run: 0 };
+const trimAudio = new Audio(); trimAudio.preload = "metadata";
+let trimStopAt = null, trimRaf = 0, trimPos = 0;
+
+function trimSetPeaks(p) { trim.peaks = p && UT.validWave(p) ? p : null; trim.wave = trim.peaks; drawTrim(); }
+function trimView() { return trim.view || [0, trim.dur]; }
+const msToX = (ms, w) => { const [f, t] = trimView(); return (ms - f) / Math.max(1, t - f) * w; };
+const xToMs = (x, w) => { const [f, t] = trimView(); return f + Math.min(1, Math.max(0, x / w)) * (t - f); };
+function drawTrim() {
+  if (!trim.on) return;
+  const c = $("trimCanvas"), box = $("trimWave"), w = box.clientWidth, h = box.clientHeight, dpr = Math.min(2, devicePixelRatio || 1);
+  if (!w) return;
+  c.width = Math.round(w * dpr); c.height = Math.round(h * dpr);
+  const g = c.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
+  const css = getComputedStyle(document.documentElement);
+  const on = css.getPropertyValue("--accent").trim() || "#ff2e63", off = css.getPropertyValue("--line-strong").trim() || "#444";
+  const bars = Math.max(20, Math.floor(w / 3)), mid = h / 2;
+  for (let i = 0; i < bars; i++) {
+    const ms0 = xToMs(i * 3, w), ms1 = xToMs(i * 3 + 3, w);
+    let v = 0.12;
+    if (trim.peaks && trim.dur) {
+      const n = trim.peaks.length, i0 = Math.floor(ms0 / trim.dur * n), i1 = Math.max(i0 + 1, Math.ceil(ms1 / trim.dur * n));
+      v = 0; for (let k = i0; k < i1 && k < n; k++) v = Math.max(v, trim.peaks[k] / 255);
+      v = Math.max(0.03, v);
+    }
+    const inCut = (ms0 + ms1) / 2 >= trim.a && (ms0 + ms1) / 2 <= trim.b;
+    g.fillStyle = inCut ? on : off; g.globalAlpha = inCut ? 1 : 0.55;
+    const bh = Math.max(2, v * (h - 16)); g.fillRect(i * 3, mid - bh / 2, 2, bh);
+  }
+  g.globalAlpha = 1;
+  const xa = msToX(trim.a, w), xb = msToX(trim.b, w);
+  $("trimSel").style.left = Math.max(0, xa) + "px"; $("trimSel").style.width = Math.max(0, Math.min(w, xb) - Math.max(0, xa)) + "px";
+  $("trimA").style.left = xa + "px"; $("trimB").style.left = xb + "px";
+  $("trimA").hidden = xa < -2 || xa > w + 2; $("trimB").hidden = xb < -2 || xb > w + 2;
+  drawPlayhead();
+}
+function drawPlayhead() {
+  const w = $("trimWave").clientWidth, ph = $("trimPh");
+  const show = !trimAudio.paused || trimPos > 0;
+  ph.style.display = show ? "block" : "none";
+  if (show) ph.style.left = msToX(trimAudio.paused ? trimPos : trimAudio.currentTime * 1000, w) + "px";
+}
+function trimText() {
+  const cut = trim.a > 0 || trim.b < trim.dur;
+  $("trimALbl").textContent = UT.fmt(trim.a); $("trimBLbl").textContent = UT.fmt(trim.b);
+  if (document.activeElement !== $("trimAIn")) $("trimAIn").value = UT.fmt(trim.a);
+  if (document.activeElement !== $("trimBIn")) $("trimBIn").value = UT.fmt(trim.b);
+  $("trimLen").textContent = UT.fmt(trim.b - trim.a); $("trimOrig").textContent = UT.fmt(trim.dur);
+  $("trimBadge").textContent = cut ? "Cut · " + UT.fmt(trim.b - trim.a).replace(/\.\d$/, "") : "Full song";
+  $("trimBadge").classList.toggle("cut", cut);
+  [["trimA", trim.a], ["trimB", trim.b]].forEach(([id, v]) => { const el = $(id); el.setAttribute("aria-valuemax", String(Math.round(trim.dur / 1000))); el.setAttribute("aria-valuenow", String(Math.round(v / 1000))); el.setAttribute("aria-valuetext", UT.fmt(v)); });
+  $("tDur").value = trim.dur ? (cut ? fmtDur(Math.round((trim.b - trim.a) / 1000)) + " cut · " + fmtDur(Math.round(trim.dur / 1000)) + " full" : fmtDur(Math.round(trim.dur / 1000))) : $("tDur").value;
+}
+function setTrim(a, b, which) {
+  if (!trim.dur) return;
+  a = Math.round(a / 100) * 100; b = Math.round(b / 100) * 100;
+  a = Math.max(0, Math.min(a, trim.dur - UT.MIN_MS)); b = Math.min(trim.dur, Math.max(b, UT.MIN_MS));
+  if (b - a < UT.MIN_MS) { if (which === "b") a = Math.max(0, b - UT.MIN_MS); else b = Math.min(trim.dur, a + UT.MIN_MS); }
+  trim.a = a; trim.b = b; trimText(); drawTrim();
+}
+function openTrim({ src, dur, peaks, track, file }) {
+  trim.run++; stopTrimAudio();
+  Object.assign(trim, { on: true, src, track: track || null, file: file || null, view: null, peaks: null, wave: null });
+  trim.dur = dur ? Math.round(dur * 1000) : 0;
+  $("trimBox").hidden = false; $("musicWs").classList.add("trimming");
+  $("trimZoom").setAttribute("aria-pressed", "false"); $("trimZoom").textContent = "Zoom to cut";
+  $("trimAllowFull").checked = !track || track.allow_full !== false;
+  $("trimSaveOnly").hidden = !track;
+  $("trimNote").hidden = true; $("trimLoadWave").hidden = true;
+  trimAudio.src = src; trimPos = 0;
+  const start = track && track.trim_start_ms != null ? track.trim_start_ms : 0;
+  const end = track && track.trim_end_ms != null ? track.trim_end_ms : null;
+  const ready = () => { trim.a = 0; trim.b = trim.dur; setTrim(start, end == null ? trim.dur : Math.min(end, trim.dur)); };
+  if (trim.dur) ready();
+  else { const r = trim.run; trimAudio.addEventListener("loadedmetadata", () => { if (r === trim.run && isFinite(trimAudio.duration)) { trim.dur = Math.round(trimAudio.duration * 1000); ready(); } }, { once: true }); trimAudio.load(); }
+  if (peaks && UT.validWave(peaks)) trimSetPeaks(peaks);
+  requestAnimationFrame(drawTrim);
+}
+function closeTrim() {
+  trim.run++; stopTrimAudio(); trim.on = false; trim.peaks = trim.wave = null; trim.track = trim.file = null; trim.dur = 0;
+  trimAudio.removeAttribute("src"); trimAudio.load();
+  $("trimBox").hidden = true; $("musicWs").classList.remove("trimming");
+}
+function trimNote(text) { $("trimNote").textContent = text; $("trimNote").hidden = !text; }
+async function waveFromFile(file) {
+  const run = trim.run;
+  if (!UT.canDecode(file.size, trim.dur / 1000 || 0, isPhone())) { trimNote("This file is too big to draw a waveform on this device. Use the times, the buttons and Play the cut to choose the part."); return; }
+  trimNote("Drawing the waveform…");
+  try {
+    const w = await UT.waveformFrom(await file.arrayBuffer(), 600);
+    if (run !== trim.run) return;
+    if (!trim.dur && w.sec) { trim.dur = Math.round(w.sec * 1000); setTrim(0, trim.dur); }
+    trimSetPeaks(w.peaks); trimNote("");
+  } catch { if (run === trim.run) trimNote("This browser could not draw the waveform for this format. The cut still works: use the times and Play the cut."); }
+}
+async function waveFromUrl(url) {
+  const run = trim.run; $("trimLoadWave").hidden = true; trimNote("Loading the song to draw the waveform…");
+  try {
+    const r = await fetch(url, { cache: "force-cache" });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const len = +r.headers.get("content-length") || 0;
+    if (len && !UT.canDecode(len, trim.dur / 1000 || 0, isPhone())) { try { r.body && r.body.cancel(); } catch {} trimNote("This song is too big to draw a waveform on this device. Use the times, the buttons and Play the cut."); return; }
+    const w = await UT.waveformFrom(await r.arrayBuffer(), 600);
+    if (run !== trim.run) return;
+    trimSetPeaks(w.peaks); trimNote("Waveform ready. It is saved with the cut so it loads instantly next time.");
+  } catch (e) { if (run === trim.run) trimNote("Could not draw the waveform (" + (e.message || e) + "). The cut still works: use the times and Play the cut."); }
+}
+function trimPayload() {
+  if (!trim.on || !trim.dur) return null;
+  const n = UT.normalize(trim.a, trim.b, trim.dur);
+  const out = { trim_start_ms: n.start, trim_end_ms: n.end, allow_full: $("trimAllowFull").checked };
+  if (trim.wave) out.waveform = trim.wave;
+  return out;
+}
+const trimColsError = (err) => !!err && /trim_start_ms|trim_end_ms|allow_full|waveform/i.test((err.message || "") + " " + (err.details || ""));
+const TRIM_SQL_HINT = "Run supabase/music-v3-trim.sql once in the Supabase SQL Editor to save cuts. The song was saved and plays in full.";
+
+// Save only the cut of an existing track: no upload, no file change, status unchanged
+async function saveTrimOnly() {
+  const t = trim.track; const tp = trimPayload(); if (!t || !tp) return;
+  const pl = {}; TRIM_COLS.forEach((k) => { if (k in tp) pl[k] = tp[k]; });
+  pl.updated_at = new Date().toISOString();
+  const btn = $("trimSaveOnly"); btn.disabled = true; btn.textContent = "Saving the cut…";
+  const { data, error } = await sb.from("tracks").update(pl).eq("id", t.id).select("*").single();
+  btn.disabled = false; btn.textContent = "Save the cut only";
+  if (error) { toast("error", "Cut not saved", trimColsError(error) ? TRIM_SQL_HINT.replace(" The song was saved and plays in full.", "") : error.message, { duration: 10000 }); return; }
+  Object.assign(t, data || pl); if (editingTrack && editingTrack.id === t.id) Object.assign(editingTrack, data || pl);
+  toast("success", pl.trim_start_ms == null && pl.trim_end_ms == null ? "Full song restored" : "Cut saved", `${t.title}: the site now plays ${pl.trim_start_ms == null && pl.trim_end_ms == null ? "the whole song" : UT.fmt(pl.trim_start_ms || 0) + " to " + UT.fmt(pl.trim_end_ms == null ? trim.dur : pl.trim_end_ms)}. The audio file was not changed.`);
+  renderTracks();
+} /* end saveTrimOnly */
+
+function stopTrimAudio() { trimAudio.pause(); trimStopAt = null; cancelAnimationFrame(trimRaf); setTrimPlayLabel(); }
+function setTrimPlayLabel() { $("trimPlay").innerHTML = trimAudio.paused ? "&#9654; Play the cut" : "&#10074;&#10074; Pause"; }
+function trimLoop() {
+  if (trimStopAt != null && trimAudio.currentTime * 1000 >= trimStopAt) { trimPos = trimStopAt; stopTrimAudio(); drawPlayhead(); return; }
+  drawPlayhead(); trimRaf = requestAnimationFrame(trimLoop);
+}
+function playTrim(fromMs, toMs) {
+  if (!trim.dur) return;
+  previewAudio?.pause(); $("upPreview").pause();
+  const go = () => { trimAudio.currentTime = fromMs / 1000; trimStopAt = toMs; trimAudio.play().then(() => { setTrimPlayLabel(); cancelAnimationFrame(trimRaf); trimLoop(); }).catch(() => toast("warning", "Could not play this file")); };
+  if (trimAudio.readyState >= 1) go(); else { trimAudio.addEventListener("loadedmetadata", go, { once: true }); trimAudio.load(); }
+}
+trimAudio.addEventListener("pause", () => { trimPos = trimAudio.currentTime * 1000; setTrimPlayLabel(); });
+trimAudio.addEventListener("ended", stopTrimAudio);
+$("trimPlay").onclick = () => { if (!trimAudio.paused) { stopTrimAudio(); return; } const from = trimPos > trim.a && trimPos < trim.b - 300 ? trimPos : trim.a; playTrim(from, trim.b); };
+$("trimHearA").onclick = () => playTrim(trim.a, Math.min(trim.b, trim.a + 3000));
+$("trimHearB").onclick = () => playTrim(Math.max(trim.a, trim.b - 3000), trim.b);
+$("trimSetA").onclick = () => { const p = trimAudio.paused ? trimPos : trimAudio.currentTime * 1000; setTrim(p, trim.b, "a"); };
+$("trimSetB").onclick = () => { const p = trimAudio.paused ? trimPos : trimAudio.currentTime * 1000; setTrim(trim.a, p, "b"); };
+$("trimReset").onclick = () => { trim.view = null; $("trimZoom").setAttribute("aria-pressed", "false"); $("trimZoom").textContent = "Zoom to cut"; setTrim(0, trim.dur); };
+$("trimZoom").onclick = () => {
+  const on = $("trimZoom").getAttribute("aria-pressed") !== "true";
+  if (on) { const pad = Math.max(2000, (trim.b - trim.a) * 0.08); trim.view = [Math.max(0, trim.a - pad), Math.min(trim.dur, trim.b + pad)]; } else trim.view = null;
+  $("trimZoom").setAttribute("aria-pressed", String(on)); $("trimZoom").textContent = on ? "Show whole song" : "Zoom to cut"; drawTrim();
+};
+$("trimLoadWave").onclick = () => waveFromUrl(trim.src);
+$("trimSaveOnly").onclick = saveTrimOnly;
+document.querySelector(".trim-nudge").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-nudge]"); if (!b) return;
+  const [k, d] = b.dataset.nudge.split(":");
+  if (k === "a") setTrim(trim.a + +d, trim.b, "a"); else setTrim(trim.a, trim.b + +d, "b");
+});
+[["trimAIn", "a"], ["trimBIn", "b"]].forEach(([id, k]) => {
+  const el = $(id);
+  const apply = () => { const v = UT.parse(el.value); if (v == null) { el.classList.add("invalid"); return; } el.classList.remove("invalid"); if (k === "a") setTrim(v, trim.b, "a"); else setTrim(trim.a, v, "b"); };
+  el.addEventListener("change", apply);
+  el.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); apply(); el.blur(); } });
+  el.addEventListener("blur", () => { el.classList.remove("invalid"); trimText(); });
+});
+[["trimA", "a"], ["trimB", "b"]].forEach(([id, k]) => $(id).addEventListener("keydown", (e) => {
+  const step = e.shiftKey ? 1000 : 100;
+  let d = 0;
+  if (e.key === "ArrowLeft" || e.key === "ArrowDown") d = -step; else if (e.key === "ArrowRight" || e.key === "ArrowUp") d = step;
+  else if (e.key === "Home") d = -1e9; else if (e.key === "End") d = 1e9; else if (e.key === " ") { e.preventDefault(); $("trimPlay").click(); return; } else return;
+  e.preventDefault();
+  if (k === "a") setTrim(trim.a + d, trim.b, "a"); else setTrim(trim.a, trim.b + d, "b");
+}));
+// Drag a handle, or tap the waveform to move the listening position
+let trimDrag = null;
+$("trimWave").addEventListener("pointerdown", (e) => {
+  if (!trim.dur) return;
+  const r = $("trimWave").getBoundingClientRect(), x = e.clientX - r.left;
+  const xa = msToX(trim.a, r.width), xb = msToX(trim.b, r.width);
+  const near = Math.abs(x - xa) <= 24 || Math.abs(x - xb) <= 24;
+  trimDrag = near ? (Math.abs(x - xa) <= Math.abs(x - xb) ? "a" : "b") : "seek";
+  if (e.target.closest("#trimA")) trimDrag = "a"; if (e.target.closest("#trimB")) trimDrag = "b";
+  $("trimWave").setPointerCapture(e.pointerId); e.preventDefault();
+  if (trimDrag !== "seek") $(trimDrag === "a" ? "trimA" : "trimB").focus({ preventScroll: true });
+  moveDrag(x, r.width);
+});
+function moveDrag(x, w) {
+  const ms = xToMs(x, w);
+  if (trimDrag === "a") setTrim(ms, trim.b, "a");
+  else if (trimDrag === "b") setTrim(trim.a, ms, "b");
+  else if (trimDrag === "seek") { trimPos = Math.round(ms); if (!trimAudio.paused) trimAudio.currentTime = ms / 1000; drawPlayhead(); }
+}
+$("trimWave").addEventListener("pointermove", (e) => { if (!trimDrag) return; const r = $("trimWave").getBoundingClientRect(); moveDrag(e.clientX - r.left, r.width); });
+["pointerup", "pointercancel"].forEach((ev) => $("trimWave").addEventListener(ev, () => { trimDrag = null; }));
+addEventListener("resize", () => { if (trim.on) drawTrim(); });
+
 $("tSave").onclick = async () => {
   const title = $("tTitle").value.trim(), artist = $("tArtist").value.trim();
   const missing = [];
@@ -1543,11 +1824,22 @@ $("tSave").onclick = async () => {
     } else if (coverUrlTyped !== (editingTrack?.cover_path ? "" : (editingTrack?.cover_url || ""))) {
       payload.cover_path = null; payload.cover_url = coverUrlTyped || null;
     }
+    const tp = trimPayload();
+    const o = editingTrack || {};
+    const trimChanged = !!tp && (!!audioFile || (tp.trim_start_ms ?? null) !== (o.trim_start_ms ?? null) || (tp.trim_end_ms ?? null) !== (o.trim_end_ms ?? null) || tp.allow_full !== (o.allow_full !== false) || (!!tp.waveform && !UT.validWave(o.waveform)));
+    const trimWanted = !!tp && (tp.trim_start_ms != null || tp.trim_end_ms != null || tp.allow_full === false || (!!editingTrack && UT.isCut(editingTrack)));
+    if (trimChanged) Object.assign(payload, tp);
     label.textContent = "Saving…";
     const save = (pl) => editingTrack
       ? sb.from("tracks").update(pl).eq("id", editingTrack.id).select("*").single()
       : sb.from("tracks").insert(pl).select("*").single();
     let res = await save(payload);
+    if (res.error && trimColsError(res.error)) {
+      // Database not updated for cuts yet: save the song without the cut (it plays in full)
+      TRIM_COLS.forEach((k) => delete payload[k]);
+      res = await save(payload);
+      if (!res.error && trimWanted) toast("info", "The cut was not saved", TRIM_SQL_HINT, { duration: 12000 });
+    }
     if (res.error && /album|release_year/i.test(res.error.message || "")) {
       // Database not updated yet: save without the new columns and say how to fix it
       const { album, release_year, ...rest } = payload;
@@ -1617,10 +1909,11 @@ function renderTracks() {
     <div class="track-row${previewId === t.id ? " playing" : ""}" style="--d:${Math.min(i, 10) * 35}ms">
       <div class="thumb" style="${t.cover_url ? `background-image:url('${esc(t.cover_url)}')` : ""}"></div>
       <div style="min-width:0"><div class="tt">${esc(t.title)}</div>
-        <div class="sub"><span class="badge ${t.status === "published" ? "published" : "draft"}">${t.status === "published" ? "published" : "draft"}</span><span class="mono muted">${esc(t.artist)} · ${esc(t.genre || "")}${t.duration_sec ? " · " + fmtDur(t.duration_sec) : ""}</span></div></div>
+        <div class="sub"><span class="badge ${t.status === "published" ? "published" : "draft"}">${t.status === "published" ? "published" : "draft"}</span><span class="mono muted">${esc(t.artist)} · ${esc(t.genre || "")}${t.duration_sec ? " · " + fmtDur(t.duration_sec) : ""}</span>${UT.isCut(t) ? `<span class="badge cut" title="The site plays only this part; the file is complete">cut ${UT.fmt(t.trim_start_ms || 0).replace(/\.\d$/, "")}–${UT.fmt(t.trim_end_ms != null ? t.trim_end_ms : (t.duration_sec || 0) * 1000).replace(/\.\d$/, "")}</span>` : ""}</div></div>
       <div class="actions">
         <button class="btn btn-sm btn-ghost" type="button" data-tprev="${esc(t.id)}">${previewId === t.id ? "Stop" : "Play"}</button>
         <button class="btn btn-sm" type="button" data-tpub="${esc(t.id)}">${t.status === "published" ? "Unpublish" : "Publish"}</button>
+        <button class="btn btn-sm" type="button" data-ttrim="${esc(t.id)}">Cut</button>
         <button class="btn btn-sm" type="button" data-tedit="${esc(t.id)}">Edit</button>
         <button class="btn btn-sm btn-danger" type="button" data-tdel="${esc(t.id)}">Delete</button>
       </div>
@@ -1629,7 +1922,7 @@ function renderTracks() {
 $("tSearch").addEventListener("input", renderTracks);
 $("trackRows").addEventListener("click", async (e) => {
   const b = e.target.closest("button"); if (!b) return;
-  const id = b.dataset.tprev || b.dataset.tpub || b.dataset.tedit || b.dataset.tdel;
+  const id = b.dataset.tprev || b.dataset.tpub || b.dataset.tedit || b.dataset.ttrim || b.dataset.tdel;
   const t = allTracks.find((x) => String(x.id) === id); if (!t) return;
   if (b.dataset.tprev) {
     if (previewId === t.id) { previewAudio?.pause(); previewId = null; }
@@ -1642,7 +1935,7 @@ $("trackRows").addEventListener("click", async (e) => {
     if (error) return toast("error", "Could not update", error.message);
     t.status = st; renderTracks(); toast("success", st === "published" ? "Published" : "Unpublished", t.title); return;
   }
-  if (b.dataset.tedit) {
+  if (b.dataset.tedit || b.dataset.ttrim) {
     resetTrackForm();
     editingTrack = t;
     $("tTitle").value = t.title; $("tArtist").value = t.artist; setField("tGenre", t.genre || "Underground", true); delete $("tGenre").dataset.auto; $("tDesc").value = t.description || "";
@@ -1652,7 +1945,11 @@ $("trackRows").addEventListener("click", async (e) => {
     $("dropTitle").textContent = "Current audio kept · drop a file to replace it"; $("dropHint").textContent = t.duration_sec ? "Length " + fmtDur(t.duration_sec) : "";
     $("upMode").textContent = "Editing"; $("upTitle").textContent = "Edit track"; $("tCancel").hidden = false;
     updateTrackSaveLabel();
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    // Cut editor for the existing song: streams the same file the site plays, no re-upload
+    openTrim({ src: t.audio_url, dur: t.duration_sec, peaks: t.waveform, track: t });
+    if (!UT.validWave(t.waveform)) { if (b.dataset.ttrim && !isPhone()) waveFromUrl(t.audio_url); else $("trimLoadWave").hidden = false; }
+    if (b.dataset.ttrim) setTimeout(() => $("trimBox").scrollIntoView({ behavior: "smooth", block: "start" }), 60);
+    else window.scrollTo({ top: 0, behavior: "smooth" });
     return;
   }
   if (b.dataset.tdel) {
