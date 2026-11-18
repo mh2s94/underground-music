@@ -1,6 +1,6 @@
 # Project status
 
-Last audit: **2026-11-17**, against `main`. Update this file with every change.
+Last audit: **2026-11-19**, against `main` @ `82afca0` (Final Audit). Update this file with every change.
 
 ## Status labels
 - **VERIFIED:** checked live on production by the owner, or by CI or GitHub Actions results. The evidence is named.
@@ -42,8 +42,12 @@ Last audit: **2026-11-17**, against `main`. Update this file with every change.
 | Privacy, Terms pages | IMPLEMENTED | |
 | Cloudflare Web Analytics | VERIFIED | enabled by owner |
 | Theme engine Tahap 1 (tokens, schema/sanitizer, `UGTheme` runtime with fallback, `window.UG` contract, regions) | IMPLEMENTED, merged (PR #48) | no visual change |
-| Theme Tahap 2: `supabase/themes.sql` (tables, RLS, `ug_active_theme`, `ug_apply_theme`, `ug_restore_theme`, `ug_reset_theme`, history) | IMPLEMENTED, NOT APPLIED | tested on local PostgreSQL 16 (49 SQL tests, parity 273 inputs, concurrency, re-run); owner runs it in Supabase after review |
-| Theme Tahap 3: edge middleware, `/api/theme/refresh`, Theme Manager (preview in new tab, apply, restore, reset, history) | IMPLEMENTED, preview only | branch `theme-manager`; 67 end-to-end tests desktop + HP against a local emulator with the real SQL; awaiting owner ACC. Production stays on Neon Bento until the SQL is run. Themes 01–10: PENDING (Tahap 4+) |
+| Theme Tahap 2: `supabase/themes.sql` (tables, RLS, `ug_active_theme`, `ug_apply_theme`, `ug_restore_theme`, `ug_reset_theme`, history) | VERIFIED | applied by owner 2026-11-18; local: 49 SQL tests, parity 273 inputs, concurrency, re-run safe |
+| Theme Manager (PR #49): edge middleware, `/api/theme/refresh`, catalogue of 11 themes, preview in new tab, save draft, Apply, Restore, Reset, history | VERIFIED | owner tested all actions on production 2026-11-18; E2E 71/71 desktop + HP; Preview check on the deployment |
+| Theme edge resilience (PR #50): 2 s RPC timeout, last valid theme on failure (`;stale`), Neon Bento only when none was ever read | VERIFIED | 48 edge tests (CI); production `neon-bento@5;rpc`/`;cache` from Indonesia, DFW and ARN on 2026-11-18 |
+| Themes 01–10 | PENDING (follow-up, by owner decision) | shown as "Tahap berikutnya"; cannot be previewed as final or applied |
+| supabase-js pinned to 2.119.0 with SRI (`index.html`, `admin.html`) | IMPLEMENTED (this PR) | same file that `@2` served on 2026-11-19; hash checked in CI (`tests/supabase-js-pin.test.mjs`) and in a browser on the preview |
+| Production smoke test every 6 h (`smoke-production.yml`, read-only) | IMPLEMENTED (this PR) | first scheduled run after merge |
 | Hero drummer video (C · beside buttons, neon tint, full 5 s loop; `assets/media/hero-drummer.mp4` 294 KB, Kling AI clip supplied by owner, watermark kept) | IMPLEMENTED | owner ACC 2026-11-18; loads only on screen, never for reduced motion / Save-Data |
 | Telegram bot: radar digest 3x a day, write/publish/discard drafts from Telegram | Digest VERIFIED live 2026-11-18 (owner screenshot); draft/publish buttons NOT VERIFIED live | SQL, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` set by owner |
 | Footer "Where our readers are" (style B strip, `/api/readers`) | VERIFIED | live on music.mikasa.me (owner screenshot 2026-11-17) |
@@ -56,15 +60,16 @@ Last audit: **2026-11-17**, against `main`. Update this file with every change.
 | RLS on articles and admin_users | VERIFIED | owner checked policies |
 | Admin 2FA (panel, API, DB) | VERIFIED | owner enrolled; `security.sql` applied; Security check shows aal2 |
 | "Admins can read all articles" SELECT policy | VERIFIED live / PENDING in repo | created in dashboard; its SQL must be copied into `supabase/` |
-| Admin page hidden from visitors | IMPLEMENTED, NOT VERIFIED live | mock-tested (guest, member, admin) |
-| CSP + HSTS headers | IMPLEMENTED, NOT VERIFIED live | local CSP test had no violations |
+| Admin page hidden from visitors | VERIFIED | E2E (guest, member, admin without 2FA); admin APIs answer 401 without login on production |
+| CSP + HSTS headers | VERIFIED | production checks 2026-11-18: CSP identical to `_headers`, HSTS, DENY, nosniff on HTML and static files |
 | Turnstile captcha | PENDING | owner must create a widget and send the **site key** |
 | Cloudflare rate-limiting rule for `/api/*` | PENDING | owner action (steps in SECURITY.md) |
 | Rotate `AUTODRAFT_TOKEN` | PENDING | the old value appeared in a chat transcript |
 | DMARC record | PENDING confirmation | recommended value in DEPLOYMENT.md |
 
 ## Waiting for the owner
-1. Copy the SQL of "Admins can read all articles" (from `pg_policies`) so it can be added to `supabase/security.sql`.
+1. Run the read-only base-schema export in [DATABASE.md §7](DATABASE.md#export-the-base-schema-for-supabasebasesql) and send the result. It becomes `supabase/base.sql` (includes the "Admins can read all articles" policy).
+5. Production checklist with one test member account (sign up, sign in, comment, save, demo, newsletter + unsubscribe, delete account) and, as admin with 2FA, R2 upload, Scene Radar batch, one Telegram button.
 2. Turnstile: create the widget, send the site key, then add the secret key in Supabase **after** the code is deployed.
 3. Cloudflare rate-limiting rule for `/api/*` (do not enable Bot Fight Mode).
 4. Rotate `AUTODRAFT_TOKEN` in Cloudflare **and** GitHub, then redeploy.
@@ -82,6 +87,16 @@ Last audit: **2026-11-17**, against `main`. Update this file with every change.
 - **The old admin login form** in `admin.html` is unused (sign-in now happens on the Account page).
 - **Model defaults** in `generate.js` (for example `gemini-3.8-flash`, `gpt-6-astra`) are not verified against each vendor's current model list.
 
+## Final Audit (2026-11-19, `main` @ `82afca0`)
+Status: READY WITH MINOR ISSUES. Evidence, all automated unless noted:
+- Syntax of every JS file and import of all 24 Pages Functions: no errors.
+- Theme edge tests 48/48, E2E 71/71 (desktop + phone, emulator with the real SQL), theme runtime 30/30, schema 16/16, theme SQL 49/49, validator parity identical.
+- All 9 SQL files applied in order to an empty PostgreSQL 16 database (with a stand-in for the dashboard tables) and re-run: no errors. RLS on in 15/15 tables; 46/46 access probes (visitor, member, admin without 2FA, admin with 2FA); all 19 SECURITY DEFINER functions have a fixed `search_path`.
+- Accessibility/layout scan of 6 views at 1280 and 390 px: no image without alt, no unnamed control, no unlabeled input, no horizontal overflow.
+- Production (2026-11-18): headers, APIs and theme checked from DFW and ARN (70/71, the one miss is Cloudflare's managed `robots.txt` prefix); owner confirmed `neon-bento@5;rpc` from Indonesia.
+- Scheduled workflows: auto-draft and Telegram digest succeeded on every scheduled run of 17–18 Nov.
+- Not verified live: member flows (accounts, comments, saves, demos, newsletter, unsubscribe, account deletion), music upload, Scene Radar batch, Telegram buttons.
+
 ## Tests done (2026-11-16/17)
 - Playwright with a stubbed Supabase:
   - admin gate (guest, member, admin)
@@ -98,11 +113,8 @@ Last audit: **2026-11-17**, against `main`. Update this file with every change.
 - GitHub Actions: auto-draft run `43867308189` succeeded. Every merge's "Cloudflare Pages" check succeeded.
 
 ## Check next session
-- Run Scene Radar **Write as drafts** live once (after the RLS fix).
-- Music upload live: one small file, and one over 25 MB if R2 is on.
-- `/api/track-info` and `/api/newsletter/send` with an `aal2` session.
-- That the security headers are present on production (browser devtools → Network → response headers), with no CSP errors in the console.
-- Recent "Daily AI drafts" runs in GitHub Actions.
+- Owner checklist (item 5 of "Waiting for the owner"): member flows, R2 upload, Scene Radar batch, Telegram button.
+- First scheduled runs of "Production smoke test" are green.
 
 ## Cancelled
 - **RADAR Intelligence / ALL POSTS SCAN** (2026-11-17): a large archive-analysis plan (about 206,580 historical posts were found across 4 sources). Cancelled by the owner. Scene Radar stays as it is, with batch drafting added instead. The design document exists as a Claude artifact; nothing was built.

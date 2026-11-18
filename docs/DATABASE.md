@@ -21,9 +21,11 @@ Every file is idempotent ("safe to re-run"): `create … if not exists`, `create
 | 6 | `supabase/security.sql` | Admin powers need 2FA: `ug_is_admin()` requires `aal2`, `ug_mfa_ok()`, restrictive policies on `articles` and `categories` | 1–5, **and the admin must have set up 2FA first** |
 | 7 | `supabase/security-check.sql` | `ug_security_check()` diagnostic (read-only, test inserts rolled back) | 6 |
 | 8 | `supabase/telegram.sql` | `telegram_radar` for the Telegram bot (service key only) | — |
-| 9 | `supabase/themes.sql` | Theme Manager: `site_theme_active`, `site_theme_configs`, `site_theme_history`, `ug_clean_theme_tokens`, `ug_theme_id_ok`, `ug_active_theme`, `ug_apply_theme`, `ug_restore_theme`, `ug_reset_theme` | 6 (`ug_is_admin()` with 2FA). **PENDING: owner reviews the file, then runs it** |
+| 9 | `supabase/themes.sql` | Theme Manager: `site_theme_active`, `site_theme_configs`, `site_theme_history`, `ug_clean_theme_tokens`, `ug_theme_id_ok`, `ug_active_theme`, `ug_apply_theme`, `ug_restore_theme`, `ug_reset_theme` | 6 (`ug_is_admin()` with 2FA). Applied by the owner on 2026-11-18 and verified. Do not re-run without a technical reason. |
 
-Owner-reported state on 2026-11-17: files 6 and 7 applied; 2FA working; "Admins can read all articles" added. The application status of files 1–5 is inferred from working features, not from a schema dump.
+Owner-reported state: files 6 and 7 applied on 2026-11-17 (2FA working; "Admins can read all articles" added in the dashboard); file 9 (`themes.sql`) applied and verified on 2026-11-18. The application status of files 1–5 and 8 is inferred from working features, not from a schema dump.
+
+**Rebuilding from the repo is not yet complete.** Step 0 (`articles`, `categories`, `admin_users` and their dashboard policies) is not in the repository. Files 1–9 were applied in order to an empty PostgreSQL 16 database with a stand-in for step 0 on 2026-11-19: all applied, and all re-ran without errors; RLS is on for all 15 tables. `supabase/base.sql` will be added from an export of the production schema (owner action: run the read-only export query in [section 7](#7-verifying-the-database) and send the result).
 
 ⚠️ `community.sql`, `music.sql` and `security.sql` all define `ug_is_admin()`. Since 2026-11-17 **all three contain the 2FA version**. Never re-introduce the old body (admin membership only) in any file, or a re-run would silently drop the 2FA requirement.
 
@@ -76,7 +78,7 @@ Public read, 25 MB per file (`26214400`), audio and image MIME types only, admin
 ### `telegram_radar` (`supabase/telegram.sql`)
 Headlines the Telegram bot has sent: `hash` (pk, short SHA-256 of the link), `link`, `title`, `item` jsonb (headline, source, summary, date, image, band, genres), `status` (`sent` / `writing` / `drafted` / `skipped`), `article_id`, `sent_at`, `updated_at`. RLS on with **no policies** and grants revoked from `anon`/`authenticated`: only the server's service key uses it. Status: PENDING (owner must run the SQL).
 
-### Theme Manager (`supabase/themes.sql`, PENDING)
+### Theme Manager (`supabase/themes.sql`, applied 2026-11-18)
 | Table | Contents | Visitors | Signed-in non-admin | Admin with 2FA |
 | --- | --- | --- | --- | --- |
 | `site_theme_active` | one row (`id = 1`): `theme_id`, `tokens`, `version`, `config_id`, `applied_by`, `applied_at` | no table access; read `{theme, tokens, version}` through `ug_active_theme()` | nothing | read; write only through the functions |
@@ -89,7 +91,7 @@ Headlines the Telegram bot has sent: `hash` (pk, short SHA-256 of the link), `li
 - Tokens are cleaned by `ug_clean_theme_tokens()` (trigger on configs, and inside every apply). It mirrors `assets/theme/schema.js`; a parity test checks both give identical output. **Change both together.**
 - `ug_apply_theme(theme_id, tokens, config_id, note)`, `ug_restore_theme(history_id)`, `ug_reset_theme()` are SECURITY DEFINER with `search_path = ''`, check `ug_is_admin()` first, and write the active row + a history row in one transaction (`version` increases by 1 each time; parallel applies never share a version). The internal `ug_theme_write()` is not executable by any client role.
 - Theme ids are checked against the catalogue in `ug_theme_id_ok()` (keep in sync with `THEMES` in `schema.js`). Whether a theme is ready is decided by the code; the site falls back to `neon-bento` for any theme that is not.
-- Tested on PostgreSQL 16 with a Supabase-style setup (non-superuser owner, with and without BYPASSRLS; roles `anon`, `authenticated`, `service_role`), 2026-11-18: 49 security/behaviour checks (ownership, privilege matrix, RLS, 2FA, apply/restore/reset, 8 parallel applies with the row present and missing, no leaks from `ug_active_theme`, tamper attempts), validator parity on 273 inputs plus identical token and font lists, and two re-runs on a database with data (no change). Not yet run on the production database.
+- Tested on PostgreSQL 16 with a Supabase-style setup (non-superuser owner, with and without BYPASSRLS; roles `anon`, `authenticated`, `service_role`), 2026-11-18: 49 security/behaviour checks (ownership, privilege matrix, RLS, 2FA, apply/restore/reset, 8 parallel applies with the row present and missing, no leaks from `ug_active_theme`, tamper attempts), validator parity on 273 inputs plus identical token and font lists, and two re-runs on a database with data (no change). Applied to production by the owner on 2026-11-18; Apply, Restore and Reset verified there (active version 5 on 2026-11-19).
 
 ## 3. Relationships
 
@@ -193,6 +195,33 @@ where pronamespace = 'public'::regnamespace and proname like 'ug\_%' order by 1;
 -- RLS on?
 select relname, relrowsecurity from pg_class
 where relnamespace = 'public'::regnamespace and relkind = 'r' order by 1;
+```
+
+### Export the base schema (for `supabase/base.sql`)
+Read-only. Returns one JSON value with columns, constraints, indexes, policies, triggers, RLS flag and grants of the
+three dashboard-created tables. It contains no data rows and no secrets. Copy the whole result and send it; it is
+turned into `supabase/base.sql` without guessing.
+
+```sql
+-- Export of the base schema (articles, categories, admin_users). Read-only: returns one JSON value.
+with t(name) as (values ('articles'), ('categories'), ('admin_users'))
+select jsonb_pretty(jsonb_object_agg(t.name, jsonb_build_object(
+  'rls', (select c.relrowsecurity from pg_class c where c.oid = ('public.' || t.name)::regclass),
+  'columns', (select jsonb_agg(jsonb_build_object('name', a.attname, 'type', format_type(a.atttypid, a.atttypmod),
+      'not_null', a.attnotnull, 'default', pg_get_expr(d.adbin, d.adrelid), 'identity', nullif(a.attidentity, '')) order by a.attnum)
+    from pg_attribute a left join pg_attrdef d on d.adrelid = a.attrelid and d.adnum = a.attnum
+    where a.attrelid = ('public.' || t.name)::regclass and a.attnum > 0 and not a.attisdropped),
+  'constraints', (select jsonb_agg(jsonb_build_object('name', conname, 'def', pg_get_constraintdef(oid)) order by conname)
+    from pg_constraint where conrelid = ('public.' || t.name)::regclass),
+  'indexes', (select jsonb_agg(indexdef order by indexname) from pg_indexes where schemaname = 'public' and tablename = t.name),
+  'policies', (select jsonb_agg(jsonb_build_object('name', policyname, 'permissive', permissive, 'cmd', cmd, 'roles', roles,
+      'using', qual, 'check', with_check) order by policyname) from pg_policies where schemaname = 'public' and tablename = t.name),
+  'triggers', (select jsonb_agg(pg_get_triggerdef(oid) order by tgname) from pg_trigger
+    where tgrelid = ('public.' || t.name)::regclass and not tgisinternal),
+  'grants', (select jsonb_agg(grantee || ':' || privilege_type order by grantee, privilege_type)
+    from information_schema.role_table_grants where table_schema = 'public' and table_name = t.name)
+))) as base_schema
+from t;
 ```
 
 The SQL editor runs as `postgres` (no JWT), so `auth.uid()` and `aal` are empty there. To test what a **signed-in admin** sees, use admin → Settings → **Security check**.
