@@ -83,7 +83,7 @@ html[data-theme="main-stage"] .ft { background: #000; }
 }
 @media (max-width: 760px) {
   html[data-theme="main-stage"] .app { flex-direction: column; }
-  html[data-theme="main-stage"] .sidebar { top: auto; bottom: 0; height: 60px; padding: 0 6px env(safe-area-inset-bottom); justify-content: center; background: linear-gradient(0deg, rgba(0, 0, 0, .95), rgba(0, 0, 0, .7)); }
+  html[data-theme="main-stage"] .sidebar { top: auto; bottom: 0; height: 60px; padding: 0 6px env(safe-area-inset-bottom); justify-content: center; background: #000; border-top: 1px solid var(--line); }
   html[data-theme="main-stage"] .sidebar .emblem, html[data-theme="main-stage"] .sidebar-foot { display: none; }
   html[data-theme="main-stage"] .nav { width: 100%; justify-content: flex-start; gap: 0; overflow-x: auto; scrollbar-width: none; }
   html[data-theme="main-stage"] .nav::-webkit-scrollbar { display: none; }

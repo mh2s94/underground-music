@@ -941,3 +941,13 @@ body:not(.is-playing) .np-chip i { background: var(--muted); }
 .hero-drop .s { font: 400 10.5px/1.2 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
 @media (hover: hover) { .hero-drop:hover .t { color: var(--ug-accent-tint); text-shadow: 0 0 12px rgb(var(--ug-accent-rgb) / .7); } }
 @media (min-width: 700px) { .hero-drop .t { -webkit-line-clamp: 2; } }
+
+/* Phones: the genre filters of Articles and Music become one row that scrolls sideways (like the
+   charts genre row) instead of a wall of 30+ buttons that pushes the stories off the screen. */
+@media (max-width: 760px) {
+  .lib-head { grid-template-columns: minmax(0, 1fr); }
+  .lib-head > * { min-width: 0; }
+  #pills, #musicPills { min-width: 0; max-width: 100%; flex-wrap: nowrap; overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none; padding: 2px; -webkit-mask-image: linear-gradient(90deg, #000 85%, transparent); mask-image: linear-gradient(90deg, #000 85%, transparent); }
+  #pills::-webkit-scrollbar, #musicPills::-webkit-scrollbar { display: none; }
+  #pills .pill, #musicPills .pill { flex: none; scroll-snap-align: start; white-space: nowrap; }
+}
