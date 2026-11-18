@@ -68,16 +68,24 @@ Last audit: **2026-11-19**, against `main` @ `82afca0` (Final Audit). Update thi
 | DMARC record | PENDING confirmation | recommended value in DEPLOYMENT.md |
 
 ## Waiting for the owner
-1. Run the read-only base-schema export in [DATABASE.md §7](DATABASE.md#export-the-base-schema-for-supabasebasesql) and send the result. It becomes `supabase/base.sql` (includes the "Admins can read all articles" policy).
-5. Production checklist with one test member account (sign up, sign in, comment, save, demo, newsletter + unsubscribe, delete account) and, as admin with 2FA, R2 upload, Scene Radar batch, one Telegram button.
-2. Turnstile: create the widget, send the site key, then add the secret key in Supabase **after** the code is deployed.
-3. Cloudflare rate-limiting rule for `/api/*` (do not enable Bot Fight Mode).
-4. Rotate `AUTODRAFT_TOKEN` in Cloudflare **and** GitHub, then redeploy.
+In the order of the Final Audit (2026-11-19):
+
+1. Rotate `AUTODRAFT_TOKEN` in Cloudflare **and** GitHub, then redeploy.
+2. Run the read-only base-schema export in [DATABASE.md §7](DATABASE.md#export-the-base-schema-for-supabasebasesql) and send the result. It becomes `supabase/base.sql` (includes the "Admins can read all articles" policy).
+3. Production checklist with one test member account (sign up, sign in, comment, save, demo, newsletter + unsubscribe, delete account) and, as admin with 2FA, R2 upload, Scene Radar batch, one Telegram button.
+4. Turnstile: create the widget, send the site key, then add the secret key in Supabase **after** the code is deployed.
+5. Cloudflare rate-limiting rule for `/api/*` (do not enable Bot Fight Mode).
+
+Optional decisions (not needed to finish the project):
+
 6. Decide whether to replace or remove New Noise in Scene Radar.
-7. Delete the leftover GitHub branch `radar-audit` (optional).
-10. ~~Telegram bot: run `supabase/telegram.sql`; create the bot in @BotFather; add `TELEGRAM_BOT_TOKEN` (secret); run the "Telegram radar digest" workflow; send `/start`; add `TELEGRAM_CHAT_ID`; redeploy.~~ Done 2026-11-18.
-9. ~~Add `CF_ACCOUNT_ID` (plain) and `CF_ANALYTICS_TOKEN` (secret, "Account Analytics: Read") to Pages Production variables, then redeploy, for the footer readers box.~~ Done 2026-11-17.
-8. Decide whether to move the site into a `public/` folder so docs and SQL are no longer downloadable (see below).
+7. Decide whether to move the site into a `public/` folder so docs and SQL are no longer downloadable (see below).
+8. Delete leftover GitHub branches (`radar-audit` and merged feature branches).
+
+Done:
+
+- ~~Add `CF_ACCOUNT_ID` (plain) and `CF_ANALYTICS_TOKEN` (secret, "Account Analytics: Read") to Pages Production variables, then redeploy, for the footer readers box.~~ Done 2026-11-17.
+- ~~Telegram bot: run `supabase/telegram.sql`; create the bot in @BotFather; add `TELEGRAM_BOT_TOKEN` (secret); run the "Telegram radar digest" workflow; send `/start`; add `TELEGRAM_CHAT_ID`; redeploy.~~ Done 2026-11-18.
 
 ## Known issues and risks
 - **Repo root is the public output directory.** `README.md`, `docs/*` and `supabase/*.sql` are downloadable from the site. They hold no secrets but reveal the architecture. Fix: move the site files into `public/` and change the Pages output directory. Needs approval.
@@ -113,7 +121,7 @@ Status: READY WITH MINOR ISSUES. Evidence, all automated unless noted:
 - GitHub Actions: auto-draft run `43867308189` succeeded. Every merge's "Cloudflare Pages" check succeeded.
 
 ## Check next session
-- Owner checklist (item 5 of "Waiting for the owner"): member flows, R2 upload, Scene Radar batch, Telegram button.
+- Owner checklist (item 3 of "Waiting for the owner"): member flows, R2 upload, Scene Radar batch, Telegram button.
 - First scheduled runs of "Production smoke test" are green.
 
 ## Cancelled
