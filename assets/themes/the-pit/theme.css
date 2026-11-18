@@ -1,0 +1,129 @@
+/* 02 · The Pit — brutalist.
+   Black, off-white, acid yellow. No rounded corners, 2 px rules, huge uppercase type. The icon rail
+   is replaced by a top bar with a MENU button that opens a full-screen text menu (shell.js); the
+   article list becomes a giant numbered title index. */
+
+html[data-theme="the-pit"] body::after { display: none; }
+html[data-theme="the-pit"] * { text-shadow: none !important; }
+html[data-theme="the-pit"] .app { inset: 0; border: 0; border-radius: 0; box-shadow: none; flex-direction: column; background: var(--bg); }
+html[data-theme="the-pit"] .main { background: var(--bg); }
+html[data-theme="the-pit"] .sidebar { display: none; }
+
+/* top bar + full-screen menu (shell.js) */
+html[data-theme="the-pit"] .pit-bar { flex: none; display: flex; align-items: stretch; justify-content: space-between; border-bottom: 2px solid var(--ink); background: var(--bg); position: relative; z-index: 40; }
+html[data-theme="the-pit"] .pit-logo { display: flex; align-items: center; padding: 0 18px; font: 400 clamp(22px, 3vw, 34px)/1 var(--display); letter-spacing: -.02em; text-transform: uppercase; color: var(--ink); }
+html[data-theme="the-pit"] .pit-where { flex: 1; display: flex; align-items: center; padding: 0 18px; border-left: 2px solid var(--ink); font: 700 12px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+html[data-theme="the-pit"] .pit-btn { min-width: 132px; min-height: 58px; border: 0; border-left: 2px solid var(--ink); background: var(--neon); color: var(--on-neon); font: 400 22px/1 var(--display); text-transform: uppercase; cursor: pointer; }
+html[data-theme="the-pit"] .pit-btn:hover, html[data-theme="the-pit"] .pit-btn:focus-visible { background: var(--ink); color: var(--bg); }
+html[data-theme="the-pit"] .pit-menu { position: fixed; inset: 0; z-index: 120; background: var(--neon); color: var(--on-neon); display: flex; flex-direction: column; overflow-y: auto; }
+html[data-theme="the-pit"] .pit-menu[hidden] { display: none; }
+html[data-theme="the-pit"] .pit-menu-top { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--on-neon); padding: 0 0 0 18px; min-height: 58px; font: 700 12px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; }
+html[data-theme="the-pit"] .pit-close { min-width: 132px; min-height: 58px; border: 0; border-left: 2px solid var(--on-neon); background: var(--on-neon); color: var(--neon); font: 400 22px/1 var(--display); text-transform: uppercase; cursor: pointer; }
+html[data-theme="the-pit"] .pit-menu ol { list-style: none; margin: 0; padding: 0; counter-reset: pit; }
+html[data-theme="the-pit"] .pit-menu li { border-bottom: 2px solid var(--on-neon); counter-increment: pit; }
+html[data-theme="the-pit"] .pit-menu li button { width: 100%; display: flex; align-items: baseline; gap: 18px; padding: 10px 18px; border: 0; background: none; color: inherit; text-align: left; cursor: pointer; font: 400 clamp(46px, 10vw, 128px)/.95 var(--display); text-transform: uppercase; letter-spacing: -.03em; }
+html[data-theme="the-pit"] .pit-menu li button::before { content: counter(pit, decimal-leading-zero); font: 700 14px/1 var(--mono); letter-spacing: .1em; }
+html[data-theme="the-pit"] .pit-menu li button:hover, html[data-theme="the-pit"] .pit-menu li button:focus-visible { background: var(--on-neon); color: var(--neon); outline: none; }
+html[data-theme="the-pit"] .pit-menu li button[aria-current="page"]::after { content: "\2190"; margin-left: auto; font-size: .6em; }
+
+/* surfaces */
+html[data-theme="the-pit"] .view { max-width: none; padding: 0; }
+html[data-theme="the-pit"] .card { background: var(--bg); border: 0; border-bottom: 2px solid var(--ink); border-radius: 0; box-shadow: none; }
+html[data-theme="the-pit"] .card.lift:hover { transform: none; box-shadow: none; background: var(--card-2); }
+html[data-theme="the-pit"] .card.pad { padding: 22px 18px; }
+html[data-theme="the-pit"] .card-title h2, html[data-theme="the-pit"] .card-title h3 { font: 400 clamp(26px, 3vw, 40px)/.95 var(--display); text-transform: uppercase; letter-spacing: -.02em; }
+html[data-theme="the-pit"] .neon-txt { color: var(--neon); animation: none; }
+html[data-theme="the-pit"] .uv-txt { color: var(--uv); }
+html[data-theme="the-pit"] .btn, html[data-theme="the-pit"] .pill, html[data-theme="the-pit"] .tag, html[data-theme="the-pit"] .session, html[data-theme="the-pit"] .score-badge { border-radius: 0 !important; }
+html[data-theme="the-pit"] .btn { border: 2px solid var(--ink); font: 400 18px/1 var(--display); text-transform: uppercase; letter-spacing: 0; }
+html[data-theme="the-pit"] .btn-white, html[data-theme="the-pit"] .btn-forest { background: var(--neon); color: var(--on-neon); border-color: var(--neon); }
+html[data-theme="the-pit"] .btn:hover { transform: none; box-shadow: 6px 6px 0 var(--ink); }
+html[data-theme="the-pit"] .pill { border: 2px solid var(--ink); color: var(--ink); }
+html[data-theme="the-pit"] .pill[aria-pressed="true"] { background: var(--ink); color: var(--bg); box-shadow: none; }
+html[data-theme="the-pit"] .tag, html[data-theme="the-pit"] .tag.warm { background: var(--neon); color: var(--on-neon); box-shadow: none; }
+
+/* home: stacked slabs */
+html[data-theme="the-pit"] .home { grid-template-columns: minmax(0, 1fr) minmax(320px, 420px); gap: 0; }
+html[data-theme="the-pit"] .home > .col { gap: 0; }
+html[data-theme="the-pit"] .home > .col + .col { border-left: 2px solid var(--ink); }
+html[data-theme="the-pit"] .row-2 { gap: 0; }
+html[data-theme="the-pit"] .row-2 > .card + .card { border-left: 2px solid var(--ink); }
+html[data-theme="the-pit"] .ticker { border: 0; border-bottom: 2px solid var(--ink); border-radius: 0; background: var(--neon); }
+html[data-theme="the-pit"] .ticker span { color: var(--on-neon); font-size: 26px; letter-spacing: 0; }
+html[data-theme="the-pit"] .ticker span::after { background: var(--on-neon); box-shadow: none; border-radius: 0; }
+html[data-theme="the-pit"] .hero { background: var(--bg); min-height: 70vh; padding: 28px 18px; }
+html[data-theme="the-pit"] .hero .floor, html[data-theme="the-pit"] .hero .cam, html[data-theme="the-pit"] .hero .rec { display: none; }
+html[data-theme="the-pit"] .hero h1 { font: 400 clamp(72px, 13vw, 210px)/.82 var(--display); text-transform: uppercase; letter-spacing: -.04em; }
+html[data-theme="the-pit"] .hero p { font-size: 18px; color: var(--ink); max-width: 640px; text-shadow: none; }
+html[data-theme="the-pit"] .badge-dark { background: none; border: 2px solid var(--ink); border-radius: 0; color: var(--ink); }
+html[data-theme="the-pit"] .badge-dark i { background: var(--neon); box-shadow: none; border-radius: 0; }
+html[data-theme="the-pit"] .hero-vid { border-radius: 0; border: 2px solid var(--ink); box-shadow: 10px 10px 0 var(--neon); }
+html[data-theme="the-pit"] .hero-vid::before { background: var(--neon); mix-blend-mode: multiply; }
+html[data-theme="the-pit"] .hero-vid video { filter: grayscale(1) contrast(1.5); }
+html[data-theme="the-pit"] .hero-drop .t { font-size: 18px; }
+html[data-theme="the-pit"] .kpi { font-size: clamp(40px, 9vw, 72px); color: var(--neon); }
+html[data-theme="the-pit"] .kpis > *, html[data-theme="the-pit"] .stats > * { min-width: 0; overflow-wrap: anywhere; }
+html[data-theme="the-pit"] .demo .ring-deco { display: none; }
+html[data-theme="the-pit"] .wire li + li { border-top: 2px solid var(--line); }
+html[data-theme="the-pit"] .wire .ico { border-radius: 0; background: var(--neon); color: var(--on-neon); box-shadow: none; }
+html[data-theme="the-pit"] .wire .t { font-size: 16px; font-weight: 800; text-transform: uppercase; }
+
+/* articles: giant numbered title index */
+html[data-theme="the-pit"] .lib-head { padding: 22px 18px 0; margin: 0; border-bottom: 2px solid var(--ink); }
+html[data-theme="the-pit"] .lib-head h1 { font: 400 clamp(64px, 11vw, 170px)/.82 var(--display); letter-spacing: -.04em; }
+html[data-theme="the-pit"] .lib-head h1 em { color: var(--neon); }
+html[data-theme="the-pit"] .lib-head .card { border-bottom: 0; }
+html[data-theme="the-pit"] .grid4 { display: block; counter-reset: pitidx; }
+html[data-theme="the-pit"] .grid4 > .acard { display: grid; grid-template-columns: 90px minmax(0, 1fr) 220px; align-items: center; gap: 18px; padding: 18px; border-bottom: 2px solid var(--ink); counter-increment: pitidx; }
+html[data-theme="the-pit"] .grid4 > .acard::before { content: counter(pitidx, decimal-leading-zero); font: 400 54px/1 var(--display); color: var(--neon); }
+html[data-theme="the-pit"] .grid4 > .acard .art-wrap { order: 3; aspect-ratio: 16 / 10; border: 2px solid var(--ink); opacity: 0; transition: opacity .2s; }
+html[data-theme="the-pit"] .grid4 > .acard:hover .art-wrap, html[data-theme="the-pit"] .grid4 > .acard:focus-visible .art-wrap { opacity: 1; }
+html[data-theme="the-pit"] .grid4 > .acard .art-wrap img.cover { filter: grayscale(1) contrast(1.4); }
+html[data-theme="the-pit"] .grid4 > .acard .body { padding: 0; }
+html[data-theme="the-pit"] .grid4 > .acard h3 { font: 400 clamp(30px, 4.2vw, 64px)/.92 var(--display); text-transform: uppercase; letter-spacing: -.03em; }
+html[data-theme="the-pit"] .grid4 > .acard:hover h3 { color: var(--neon); }
+html[data-theme="the-pit"] .grid4 > .acard p { display: none; }
+html[data-theme="the-pit"] .grid4 > .acard .meta { justify-content: flex-start; gap: 18px; color: var(--muted); }
+html[data-theme="the-pit"] .seg, html[data-theme="the-pit"] .seg i { border-radius: 0 !important; }
+
+/* music / charts / reader */
+html[data-theme="the-pit"] .music-hero, html[data-theme="the-pit"] .charts-hero { background: var(--bg); border-bottom: 2px solid var(--ink); }
+html[data-theme="the-pit"] .music-hero h1, html[data-theme="the-pit"] .charts-hero h1 { font: 400 clamp(64px, 11vw, 170px)/.82 var(--display); text-transform: uppercase; letter-spacing: -.04em; }
+html[data-theme="the-pit"] .track, html[data-theme="the-pit"] .mini-track, html[data-theme="the-pit"] .chart-row { border-radius: 0; border-bottom: 2px solid var(--line); }
+html[data-theme="the-pit"] .tr-cover, html[data-theme="the-pit"] .c-cover { border-radius: 0 !important; }
+html[data-theme="the-pit"] #view-music > *:not(.music-hero), html[data-theme="the-pit"] #view-charts > *:not(.charts-hero), html[data-theme="the-pit"] #view-about > *, html[data-theme="the-pit"] #view-account > *, html[data-theme="the-pit"] #view-band > * { margin-left: 18px; margin-right: 18px; }
+html[data-theme="the-pit"] .reader-sheet { border-radius: 0; border: 2px solid var(--ink); box-shadow: 14px 14px 0 var(--neon); }
+html[data-theme="the-pit"] .reader-bar { background: var(--bg); border-bottom: 2px solid var(--ink); }
+html[data-theme="the-pit"] .reader h1 { font: 400 clamp(44px, 7vw, 92px)/.88 var(--display); text-transform: uppercase; letter-spacing: -.03em; }
+html[data-theme="the-pit"] .prose blockquote { border-radius: 0; background: var(--neon); color: var(--on-neon); border: 0; }
+html[data-theme="the-pit"] .search-sheet { border-radius: 0; border: 2px solid var(--ink); }
+html[data-theme="the-pit"] .ft { background: var(--bg); border-top: 2px solid var(--ink); }
+html[data-theme="the-pit"] .ft::before { display: none; }
+html[data-theme="the-pit"] .ft-pass { border-radius: 0; box-shadow: 10px 10px 0 var(--neon); }
+html[data-theme="the-pit"] .ft-title { text-transform: uppercase; letter-spacing: -.03em; }
+
+@media (max-width: 1150px) {
+  html[data-theme="the-pit"] .home { grid-template-columns: 1fr; }
+  html[data-theme="the-pit"] .home > .col + .col { border-left: 0; border-top: 2px solid var(--ink); }
+}
+@media (max-width: 760px) {
+  html[data-theme="the-pit"] .pit-where { display: none; }
+  html[data-theme="the-pit"] .pit-btn { min-width: 96px; }
+  html[data-theme="the-pit"] .hero { min-height: 0; }
+  html[data-theme="the-pit"] .grid4 > .acard { grid-template-columns: 54px minmax(0, 1fr); gap: 12px; padding: 14px; }
+  html[data-theme="the-pit"] .grid4 > .acard::before { font-size: 34px; }
+  html[data-theme="the-pit"] .grid4 > .acard .art-wrap { display: none; }
+  html[data-theme="the-pit"] .row-2 > .card + .card { border-left: 0; }
+  html[data-theme="the-pit"] #view-music > *:not(.music-hero), html[data-theme="the-pit"] #view-charts > *:not(.charts-hero) { margin-left: 12px; margin-right: 12px; }
+}
+
+/* About on phones: the profile title wraps instead of running off the screen */
+@media (max-width: 520px) {
+  html[data-theme="the-pit"] .profile-id { min-width: 0; flex-wrap: wrap; }
+  html[data-theme="the-pit"] .profile-id h1 { font-size: 30px; overflow-wrap: anywhere; }
+}
+
+/* legal pages (privacy, terms) use fixed colours for their text: follow the theme instead */
+html[data-theme="the-pit"] .legal h2 { color: var(--ink); }
+html[data-theme="the-pit"] .legal p, html[data-theme="the-pit"] .legal li { color: var(--ug-ink-soft); }
+html[data-theme="the-pit"] body:has(> main.legal) { background: var(--bg); }

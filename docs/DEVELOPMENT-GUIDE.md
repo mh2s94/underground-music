@@ -59,7 +59,7 @@ These rules are permanent. They apply to every AI assistant and developer who wo
 | Theme catalogue, token rules | `assets/theme/schema.js` (shared by browser and edge) |
 | Active theme at the edge, security headers on HTML | `functions/_middleware.js` + `functions/api/theme/edge.js` (headers must match `_headers`) |
 | Theme Manager (admin) | `assets/theme/manager.js`, `manager.css`, section `#themeManager` in `admin.html` |
-| A theme layout | `assets/themes/<id>/theme.css` + `shell.js`, scoped to `html[data-theme="<id>"]`; data only through `window.UG` (see THEMES.md) |
+| A theme (layout + its tokens) | `assets/themes/<id>/theme.css` + `shell.js` (scoped to `html[data-theme="<id>"]`, data only through `window.UG`), tokens in the catalogue entry in `assets/theme/schema.js` (see THEMES.md §6) |
 | Admin UI | `admin.html` (inline script) |
 | Server logic, secrets, external APIs | `functions/api/*.js` |
 | SEO HTML for a path | `functions/<path>/[param].js` with HTMLRewriter over `env.ASSETS` |
@@ -86,6 +86,8 @@ These rules are permanent. They apply to every AI assistant and developer who wo
 - Browser console: no errors, no CSP violations.
 - Theme edge tests: `node tests/theme-edge.test.mjs` (no packages; also runs on every PR in "Preview check").
 - supabase-js pin: `node tests/supabase-js-pin.test.mjs` (needs network; also in CI).
+- Themes: `node tests/themes.test.mjs` (no packages; tells you the new `ASSET_REV` after a theme file change) and
+  `node .github/scripts/themes-check.mjs <url>` (Playwright; every theme × desktop/phone × every view; also in CI).
 - Production smoke test: `bash .github/scripts/smoke-production.sh https://music.mikasa.me` (read-only).
 - Theme middleware: every HTML response has `x-ug-theme` and the CSP/HSTS/X-Frame-Options headers (`curl -s -D - -o /dev/null https://<preview>/ | grep -i "x-ug-theme\|x-frame"`). Without the SQL it says `neon-bento@0;fallback`.
 - Theme engine: `UGTheme.current()` is `neon-bento`; `UGTheme.load("does-not-exist")` falls back without breaking the page; `window.UG.articles.length` matches the articles shown.

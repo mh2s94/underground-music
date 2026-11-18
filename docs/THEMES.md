@@ -8,10 +8,30 @@ Status (2026-11-19, production `main`):
   catalogue, preview, save draft, Apply, Restore, Reset.
 - **Edge resilience:** VERIFIED, merged (PR #50, 2026-11-18): 2 s RPC timeout, last valid theme on failure.
   Production read `neon-bento@5;rpc` / `;cache` from Indonesia, Dallas (DFW) and Stockholm (ARN).
-- **Active theme on production:** `neon-bento`, version 5 (Neon Bento is the only ready theme).
-- Themes 01–10 stay "Tahap berikutnya": they cannot be previewed as a final theme or applied (owner decision
-  2026-11-18). They are follow-up work, not part of the finished project. Rencana lengkap:
-"UNDERGROUND · Rancangan Theme Manager" (dokumen yang disetujui owner pada 2026-11-18).
+- **Active theme on production:** `neon-bento`, version 5.
+- **Tahap 4, themes 01–10:** IMPLEMENTED on branch `themes-01-10` (PR pending owner ACC). All 11 themes are
+  `ready` in the catalogue and can be previewed, applied, restored and reset in the Theme Manager.
+  Rencana lengkap: "UNDERGROUND · Rancangan Theme Manager" (dokumen yang disetujui owner pada 2026-11-18).
+
+## Catalogue (11 themes)
+Screenshots: `docs/themes/<id>.jpg` (desktop home · desktop articles · phone home).
+
+| No. | Id | Identity | Layout | Shell (`shell.js`) adds |
+| --- | --- | --- | --- | --- |
+| 00 | `neon-bento` | Neon pink + UV on near-black, scanlines | Bento dashboard, icon rail | — (default, no files) |
+| 01 | `front-page` | Newsprint paper, black ink, red; Fraunces | Broadsheet: section menu under a masthead, lead story, ruled columns, "The Wire" ticker, drop caps | Masthead with date, edition number, tagline |
+| 02 | `the-pit` | Black, off-white, acid yellow; Archivo Black; no radius, 2 px rules | Brutalist slabs, giant numbered title index for articles | Top bar + full-screen numbered text menu (Escape closes) |
+| 03 | `setlist` | Warm amber on dark brown | One centred column, floating pill navigation on every device, articles as a numbered setlist | "Tonight's setlist" header with date and counts |
+| 04 | `mosh-grid` | Concrete grey, safety orange, cyan; stencil type | Asymmetric collage, tilted flyers with hard shadows, compact corner menu | Phone: "Menu" toggle for the corner box |
+| 05 | `control-room` | Phosphor green + amber, monospace, scanlines | Labelled sidebar, content centre, monitor panel right; player docks into the panel | Monitor panel: clock, on-air status, counters, latest 5 headlines |
+| 06 | `main-stage` | Pure black, stage red, spotlight yellow | Floating text menu, full-screen hero, articles as full-screen story slides with snap, full-screen reader | Story counter "03 / 24", scroll snap on the article list |
+| 07 | `xerox-zine` | Photocopied paper, toner black, pink highlighter, blue pen; typewriter type | Taped-on clippings at angles, halftone photos, binder tabs on the right edge (bottom tabs on phones) | Cut-out "ransom note" masthead with issue number and month |
+| 08 | `index` | White, black, one red; Inter Tight; no radius | Swiss grid, numbered navbar on top, articles as an index table | Column header row of the index table |
+| 09 | `frequency` | Night blue, cyan signal, magenta peak | Player first: radio dock of channels at the bottom, Basement radio first on the home page | Tuning dial: channel frequency, on-air track, "Tune in" (play/pause) |
+| 10 | `scene-atlas` | Navy with contour lines, map-pin yellow, sea teal; Fraunces | Genre map on top of the home page, list + reading panel on the right on wide screens | Interactive genre map + keyboard legend; a pin opens the articles filtered to that genre |
+
+Experimental (badge in the Theme Manager): The Pit, Main Stage, Scene Atlas. Every theme keeps every
+region and feature of the site; only arrangement and style differ.
 
 ## Goal
 The admin can switch the whole look and layout of music.mikasa.me from the admin panel, for every
@@ -67,7 +87,8 @@ Pure functions, no DOM, exposed as `globalThis.UGThemeSchema` (frozen). Loaded b
 imported by the edge middleware in Tahap 2, so browser, edge and database accept the same things.
 
 - `THEMES`: the catalogue of 11 themes (`neon-bento` + the ten concepts). `status: "ready"` themes
-  may be applied; `"planned"` themes are listed but never loaded. Today only `neon-bento` is ready.
+  may be applied; `"planned"` themes are listed but never loaded. Since Tahap 4 all 11 are ready. Each entry
+  carries its own `tokens`; `base(id)` = `DEFAULTS` + those tokens; `ASSET_REV` versions the theme files.
 - `TOKENS`: the token keys the admin may set (`accent`, `accent2`, `bg`, `surface`, `ink`,
   `fontDisplay`, `radius`, `scanlines`, …), each with its type and CSS variable.
 - `FONTS`: the font allow-list (key → font stack + Google Fonts family).
@@ -136,10 +157,10 @@ after Apply, Restore and Reset. Other data centres update within 30 s.
 
 ## 3b. Theme Manager (admin → Settings → "Tema situs")
 - Shows the active theme, version and time; the 11 themes as cards (only ready themes can be chosen;
-  the others say "Tahap berikutnya").
+  a planned theme would say "Tahap berikutnya" — since Tahap 4 there are none).
 - Editor: accent, accent 2, background, surface, text, muted text, display font, body font, radius,
-  scanlines, plus a WCAG contrast check and a live sample. Only values that differ from the defaults are
-  saved.
+  scanlines, plus a WCAG contrast check and a live sample. Choosing a theme card starts the editor from that
+  theme's own colours and fonts (`S.base(id)`); only values that differ from them are saved.
 - **Simpan draft** → `site_theme_configs` (RLS: admin + 2FA).
 - **Preview desktop / Preview HP** → opens `/?ug-preview=<config id>` in a **new tab** (HP: a 390×844
   window). `assets/theme/preview.js` shows the draft only when the session is an admin with 2FA (own
@@ -177,15 +198,28 @@ Events on `document`: `ug:data` (`{type:"articles"|"tracks", count}`), `ug:view`
 Views keep `data-view="<name>"`. A theme must keep every region usable: it may move, restyle or
 re-arrange them, never remove one.
 
-## 6. Making a new theme (from Tahap 4)
-1. Add `assets/themes/<id>/theme.css` with every rule scoped under `html[data-theme="<id>"]`, plus
-   token overrides in `html[data-theme="<id>"] { --ug-…: …; }`.
-2. Optional `assets/themes/<id>/shell.js`: re-arranges regions and renders theme-only components
-   using `window.UG` and `ug:*` events only. No network calls, no Supabase, no `innerHTML` with
-   unescaped data (use `UG.helpers.esc`).
-3. Set the theme to `status: "ready"` in `assets/theme/schema.js` only after it passes the release
-   checklist on desktop (1280 px) and phone (390 px) for every view, plus the fallback tests.
-4. Preview and owner ACC before merge (owner rule).
+## 6. How a theme is built (Tahap 4)
+1. **Tokens** live in the catalogue entry in `assets/theme/schema.js` (`tokens`: colours, fonts, radius,
+   scanlines on top of `DEFAULTS`). The edge writes them into the page (`<style id="ug-theme-tokens">`, selector
+   `:root:root:root`, after the theme file) and the runtime sets them when switching. Admin overrides from the
+   Theme Manager are stored as differences from `S.base(id)` and win over the theme's own tokens. Fonts named in
+   tokens are loaded from Google Fonts automatically.
+2. **`assets/themes/<id>/theme.css`**: layout and style only, every selector starts with
+   `html[data-theme="<id>"]` (tested), no external `url()`, no `@import`. Size budget 20 KB (themes use 8–13 KB,
+   2–3 KB gzipped).
+3. **`assets/themes/<id>/shell.js`** (optional): theme-only parts built from `window.UG` and `ug:*` events.
+   It calls `UGTheme.registerShell("<id>", mount)`; `mount()` adds elements marked `data-ug-shell` and returns a
+   cleanup function. The runtime mounts the shell when the theme becomes active (also when the edge injected it)
+   and, when the theme changes or falls back, calls the cleanup and removes every `[data-ug-shell]` node, so
+   switching never leaves anything behind. No network, storage, Supabase or `eval`; text through
+   `UG.helpers.esc` (tested). Size budget 6 KB (themes use 0.7–3.4 KB). A shell error falls back to Neon Bento.
+   On pages without the app shell (privacy, terms) shells do nothing.
+4. **Cache busting**: theme files are requested as `?v=<theme version>.<ASSET_REV>`. `ASSET_REV` in
+   `schema.js` is a hash of all theme files; `tests/themes.test.mjs` fails with the new value when a file changes.
+5. **Readiness**: `status: "ready"` only after `node tests/themes.test.mjs`, `node tests/theme-edge.test.mjs` and
+   `.github/scripts/themes-check.mjs` pass (desktop 1280 px and phone 390 px, every view, reader, navigation,
+   accessibility basics, switching back without leftovers). Preview and owner ACC before merge (owner rule).
+6. The database accepts the 11 ids in `ug_theme_id_ok()` (`supabase/themes.sql`); a new id needs that list too.
 
 ## 7. Rules
 - Never hard-code a colour, font or radius in component CSS: use a token or an alias.

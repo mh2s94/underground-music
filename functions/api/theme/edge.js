@@ -194,13 +194,19 @@ export function injectTheme(html, cfg) {
   if (!done) return html; // not a full document: leave it alone
 
   // 2. head additions: token overrides (validated values only), fonts, theme files
+  // Order and selector matter: the theme's own file first, then the admin's token overrides with a
+  // selector that outranks html[data-theme="<id>"], so overrides win over theme defaults (as they
+  // do in the browser runtime, where they are inline styles).
   const parts = [];
-  const css = S.cssText(S.sanitizeTokens(cfg.tokens).css);
+  const q = `?v=${version}.${S.ASSET_REV}`;
+  if (meta && meta.css) parts.push(`<link rel="stylesheet" href="/assets/themes/${theme}/theme.css${q}" data-ug-theme-asset>`);
+  // The theme's own tokens (schema) with the admin's overrides on top; both validated again here.
+  const all = S.sanitizeTokens(Object.assign({}, meta && meta.tokens, cfg.tokens));
+  const css = S.cssText(all.css, ":root:root:root");
   if (css) parts.push(`<style id="ug-theme-tokens">${css.replace(/</g, "\\3c ")}</style>`);
-  const fonts = S.fontHref(S.sanitizeTokens(cfg.tokens).tokens);
+  const fonts = S.fontHref(all.tokens);
   if (fonts) parts.push(`<link id="ug-theme-fonts" rel="stylesheet" href="${escAttr(fonts)}">`);
-  if (meta && meta.css) parts.push(`<link rel="stylesheet" href="/assets/themes/${theme}/theme.css?v=${version}" data-ug-theme-asset>`);
-  if (meta && meta.js) parts.push(`<script src="/assets/themes/${theme}/shell.js?v=${version}" defer data-ug-theme-asset></script>`);
+  if (meta && meta.js) parts.push(`<script src="/assets/themes/${theme}/shell.js${q}" defer data-ug-theme-asset></script>`);
   if (parts.length) {
     const block = parts.join("");
     html = /<\/head>/i.test(html) ? html.replace(/<\/head>/i, block + "</head>") : html;

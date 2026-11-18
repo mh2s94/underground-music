@@ -1,6 +1,6 @@
 // /unsubscribe?t=<token> — removes a newsletter subscriber.
 // GET shows a confirmation page (and unsubscribes); POST supports one-click unsubscribe from email apps.
-const page = (title, text) => new Response(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>${title} — UNDERGROUND</title><link rel="icon" href="/assets/favicon.svg"><link rel="stylesheet" href="/assets/bento.css?v=t1"></head>
+const page = (title, text) => new Response(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>${title} — UNDERGROUND</title><link rel="icon" href="/assets/favicon.svg"><link rel="stylesheet" href="/assets/bento.css?v=t2"></head>
 <body style="overflow:auto"><main style="max-width:560px;margin:12vh auto;padding:24px;text-align:center"><h1 style="font:400 64px/.9 var(--display);margin:0 0 16px"><span class="neon-txt">${title}</span></h1><p style="color:var(--muted);font-size:17px;line-height:1.6">${text}</p><p style="margin-top:28px"><a class="btn btn-forest" href="/">Back to UNDERGROUND</a></p></main></body></html>`,
   { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
 
