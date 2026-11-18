@@ -34,4 +34,6 @@ jobs:
           done
           echo "Timed out waiting for Cloudflare Pages"; exit 1
       - name: Verify the deployment
-        run: bash .github/scripts/verify-preview.sh "${{ steps.cf.outputs.url }}"
+        # Baseline: preview of branch theme-engine (same code without the middleware, same preview
+        # environment). Used only to explain differences from production caused by missing preview secrets.
+        run: bash .github/scripts/verify-preview.sh "${{ steps.cf.outputs.url }}" https://music.mikasa.me https://theme-engine.underground-music.pages.dev
