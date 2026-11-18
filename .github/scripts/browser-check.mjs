@@ -11,7 +11,9 @@ for (const [path, vp] of [["/", { width: 1280, height: 900 }], ["/", { width: 39
   const p = await b.newPage({ viewport: vp });
   const errs = [];
   p.on("pageerror", (e) => errs.push("pageerror: " + e.message));
-  p.on("console", (m) => { if (m.type() === "error" && !/cloudflareinsights|favicon/.test(m.text())) errs.push(m.text()); });
+  const failed = [];
+  p.on("requestfailed", (r) => failed.push(r.url() + " (" + (r.failure()?.errorText || "failed") + ")"));
+  p.on("console", (m) => { if (m.type() === "error" && !/^Failed to load resource/.test(m.text())) errs.push(m.text()); });
   const tag = `${path} ${vp.width}px`;
   await p.goto(BASE + path, { waitUntil: "load", timeout: 30000 });
   await p.waitForTimeout(5000);
@@ -23,7 +25,12 @@ for (const [path, vp] of [["/", { width: 1280, height: 900 }], ["/", { width: 39
   } else {
     ok(await p.evaluate(() => !!document.querySelector("input[type=email], input[type=password]")), `${tag}: admin login form shown`);
   }
-  ok(errs.length === 0, `${tag}: no console errors`, errs.join(" | "));
+  ok(errs.length === 0, `${tag}: no script or CSP errors in the console`, errs.join(" | "));
+  // Network failures of our own site, Supabase or the CDN matter; third-party beacons/fonts are only reported.
+  const own = new RegExp("^(" + BASE.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "|https://[a-z0-9]+\\.supabase\\.co|https://cdn\\.jsdelivr\\.net)");
+  const ownFailed = failed.filter((u) => own.test(u)), other = failed.filter((u) => !own.test(u));
+  ok(ownFailed.length === 0, `${tag}: no failed requests to the site, Supabase or the CDN`, ownFailed.join(" | "));
+  if (other.length) console.log(`INFO  ${tag}: third-party requests not loaded: ${other.join(" | ")}`);
   await p.close();
 }
 await b.close();
