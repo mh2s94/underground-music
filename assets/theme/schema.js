@@ -33,6 +33,10 @@
   // type "font":  a key of FONTS
   // type "px":    number of pixels, clamped to [min, max]
   // type "num":   number, clamped to [min, max]
+  // Numbers (px, num) are accepted as a JSON number or a numeric string with at most 6 integer
+  // digits and 2 decimals, then clamped; they are never rounded. Strings are never trimmed.
+  // These exact rules are repeated in supabase/themes.sql (ug_clean_theme_tokens); a parity test
+  // runs both on the same inputs. Change both together.
   var TOKENS = {
     accent:      { type: "color", css: "--ug-accent", rgb: "--ug-accent-rgb", label: "Warna utama" },
     accentHi:    { type: "color", css: "--ug-accent-hi", label: "Warna utama (terang)" },
@@ -83,7 +87,8 @@
   var HEX = /^#([0-9a-fA-F]{6})$/;
 
   function parseHex(v) {
-    var m = HEX.exec(String(v == null ? "" : v).trim());
+    if (typeof v !== "string") return null;
+    var m = HEX.exec(v);
     if (!m) return null;
     var n = parseInt(m[1], 16);
     return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
@@ -91,9 +96,13 @@
   function toHex(rgb) {
     return "#" + rgb.map(function (c) { return ("0" + c.toString(16)).slice(-2); }).join("").toUpperCase();
   }
+  // A JSON number or numeric string: at most 6 integer digits and 2 decimals, nothing else.
+  var NUM = /^-?\d{1,6}(\.\d{1,2})?$/;
   function num(v) {
-    var n = typeof v === "number" ? v : (typeof v === "string" && /^\s*-?\d+(\.\d+)?\s*$/.test(v) ? parseFloat(v) : NaN);
-    return isFinite(n) ? n : null;
+    var str = typeof v === "number" ? (isFinite(v) ? String(v) : "") : (typeof v === "string" ? v : "");
+    if (!NUM.test(str)) return null;
+    var n = parseFloat(str);
+    return n === 0 ? 0 : n;   // no negative zero
   }
   function round(n) { return Math.round(n * 1000) / 1000; }
 
@@ -134,7 +143,8 @@
       } else if (spec.type === "px" || spec.type === "num") {
         var n = num(v);
         if (n === null) { out.rejected.push(key); return; }
-        n = round(Math.min(spec.max, Math.max(spec.min, n)));
+        n = Math.min(spec.max, Math.max(spec.min, n));
+        if (n === 0) n = 0;
         out.tokens[key] = n;
         out.css[spec.css] = spec.type === "px" ? n + "px" : String(n);
       }

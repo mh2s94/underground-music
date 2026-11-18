@@ -83,11 +83,13 @@ Headlines the Telegram bot has sent: `hash` (pk, short SHA-256 of the link), `li
 | `site_theme_configs` | saved configurations/drafts: `theme_id`, `name`, `tokens`, `note`, `created_by`, timestamps | none | none (RLS) | read, insert, update, delete |
 | `site_theme_history` | every Apply/Restore/Reset: `action`, `theme_id`, `tokens`, `version`, `config_id`, `applied_by`, `applied_at`, `note` | none | none | read only |
 
-- Privileges are revoked from `anon` on all three tables; `authenticated` has only SELECT on active/history and S/I/U/D on configs, filtered by RLS (`ug_is_admin()`).
+- Privileges are revoked from `anon` and `service_role` on all three tables and on the history sequence; `authenticated` has only SELECT on active/history and S/I/U/D on configs, filtered by RLS (`ug_is_admin()`). `service_role` can call only `ug_active_theme()`.
+- CHECK constraints `*_tokens_clean` make every stored `tokens` value equal to `ug_clean_theme_tokens(tokens)`, also for writes made by hand in the dashboard; `ug_active_theme()` cleans again on output and returns only `theme`, `tokens`, `version`.
+- Apply uses one atomic upsert on the active row, so parallel applies get consecutive versions, also when the row was deleted.
 - Tokens are cleaned by `ug_clean_theme_tokens()` (trigger on configs, and inside every apply). It mirrors `assets/theme/schema.js`; a parity test checks both give identical output. **Change both together.**
 - `ug_apply_theme(theme_id, tokens, config_id, note)`, `ug_restore_theme(history_id)`, `ug_reset_theme()` are SECURITY DEFINER with `search_path = ''`, check `ug_is_admin()` first, and write the active row + a history row in one transaction (`version` increases by 1 each time; parallel applies never share a version). The internal `ug_theme_write()` is not executable by any client role.
 - Theme ids are checked against the catalogue in `ug_theme_id_ok()` (keep in sync with `THEMES` in `schema.js`). Whether a theme is ready is decided by the code; the site falls back to `neon-bento` for any theme that is not.
-- Tested on PostgreSQL 16 with a Supabase-style role setup (2026-11-18): 49 checks (visitors, non-admin, admin without 2FA, admin with 2FA, history/restore/reset, concurrency, definer hardening) + 25 validator parity cases. Not yet run on the production database.
+- Tested on PostgreSQL 16 with a Supabase-style setup (non-superuser owner, with and without BYPASSRLS; roles `anon`, `authenticated`, `service_role`), 2026-11-18: 49 security/behaviour checks (ownership, privilege matrix, RLS, 2FA, apply/restore/reset, 8 parallel applies with the row present and missing, no leaks from `ug_active_theme`, tamper attempts), validator parity on 273 inputs plus identical token and font lists, and two re-runs on a database with data (no change). Not yet run on the production database.
 
 ## 3. Relationships
 

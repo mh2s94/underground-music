@@ -60,8 +60,11 @@ imported by the edge middleware in Tahap 2, so browser, edge and database accept
 - `TOKENS`: the token keys the admin may set (`accent`, `accent2`, `bg`, `surface`, `ink`,
   `fontDisplay`, `radius`, `scanlines`, …), each with its type and CSS variable.
 - `FONTS`: the font allow-list (key → font stack + Google Fonts family).
-- `sanitizeTokens(obj)` → `{ tokens, css, rejected }`. Unknown keys are dropped. Colours must be
-  `#RRGGBB` and are re-emitted from parsed numbers; fonts must be allow-list keys; numbers are clamped.
+- `sanitizeTokens(obj)` → `{ tokens, css, rejected }`. Unknown keys are dropped. Colours must be a
+  string `#RRGGBB` exactly (no trimming) and are re-emitted upper-case; fonts must be allow-list keys;
+  numbers must be a JSON number or numeric string with at most 6 integer digits and 2 decimals, and
+  are clamped, never rounded. The same rules are in `supabase/themes.sql` (`ug_clean_theme_tokens`);
+  a parity test runs both on 273 inputs. Change both together.
   Values are never copied as written, which is what makes admin tokens safe to inject.
 - `sanitizeConfig({ theme, tokens })`: a malformed id or a theme that is not ready becomes `neon-bento`.
 - `cssText(css)`: a `:root{…}` block from sanitized custom properties (only `--ug-*` names).
