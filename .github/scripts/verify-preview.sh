@@ -53,7 +53,8 @@ for p in "/" "/privacy" "/terms" "/a/__no_such_story__" "/band/__no_such_band__"
   n=page$(echo "$p" | tr -c 'a-z0-9' '_'); get "$PREV$p" "$n"; s=$(status "$n")
   th=$(hval "$n" x-ug-theme)
   [[ -n "$th" ]] && ok "$p status $s, x-ug-theme: $th" || bad "$p status $s, x-ug-theme missing"
-  grep -q '<html[^>]*data-theme="neon-bento"' "$T/$n.b" && ok "$p <html data-theme=\"neon-bento\">" || bad "$p no data-theme on <html>"
+  dt=$(grep -o '<html[^>]*data-theme="[a-z-]*"' "$T/$n.b" | head -1 | sed 's/.*data-theme="\([a-z-]*\)"/\1/')
+  [[ -n "$dt" && "$th" == "$dt@"* ]] && ok "$p <html data-theme=\"$dt\"> matches x-ug-theme" || bad "$p data-theme '$dt' missing or not matching x-ug-theme '$th'"
   [[ "$(hval "$n" content-security-policy)" == "$CSP" ]] && ok "$p CSP identical to _headers" || bad "$p CSP differs from _headers"
   [[ "$(hval "$n" x-frame-options)" == "deny" ]] && has "$n" strict-transport-security && has "$n" x-content-type-options && has "$n" referrer-policy && has "$n" permissions-policy && has "$n" cross-origin-opener-policy \
     && ok "$p X-Frame-Options DENY, HSTS, nosniff, referrer, permissions, COOP" || bad "$p a security header is missing"

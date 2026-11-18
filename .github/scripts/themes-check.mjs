@@ -28,6 +28,9 @@ for (const vp of [{ width: 1280, height: 860, tag: "desktop" }, { width: 390, he
   p.on("console", (m) => { if (m.type() === "error" && !/^Failed to load resource|cloudflareinsights\.com/.test(m.text())) errs.push(m.text()); });
   await p.goto(BASE + "/", { waitUntil: "load" });
   await p.waitForFunction(() => window.UG && window.UGTheme && window.UG.articles.length > 0, null, { timeout: 30000 });
+  // the deployment may serve any active theme: measure the default theme as the baseline
+  await p.evaluate(() => window.UGTheme.load("neon-bento", { version: "check" }));
+  await p.waitForTimeout(300);
   const baseline = await p.evaluate(() => ({
     accent: getComputedStyle(document.documentElement).getPropertyValue("--ug-accent").trim(),
     side: Math.round(document.querySelector(".sidebar").getBoundingClientRect().width),
