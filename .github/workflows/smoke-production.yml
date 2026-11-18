@@ -1,0 +1,40 @@
+# Production smoke test, read-only: public pages, security headers, static files, supabase-js SRI,
+# sitemap/robots, public APIs and two public Supabase reads. No writes, no admin, AI, newsletter,
+# Telegram or upload endpoints.
+# On failure: the run fails (GitHub emails the repository owner about failed scheduled runs) and the
+# run summary lists every failed check. If the optional GitHub secrets TELEGRAM_BOT_TOKEN and
+# TELEGRAM_CHAT_ID exist, the same list is also sent to the owner's Telegram chat.
+name: Production smoke test
+on:
+  schedule:
+    - cron: "23 */6 * * *"   # every 6 hours (09:23, 15:23, 21:23, 03:23 WIT)
+  workflow_dispatch:
+  pull_request:            # also when this check itself is changed, so a new version is tried before merge
+    paths:
+      - .github/workflows/smoke-production.yml
+      - .github/scripts/smoke-production.sh
+permissions:
+  contents: read
+concurrency:
+  group: smoke-production
+  cancel-in-progress: false
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Smoke test music.mikasa.me
+        id: smoke
+        run: bash .github/scripts/smoke-production.sh https://music.mikasa.me 2>&1 | tee smoke.log; exit ${PIPESTATUS[0]}
+      - name: Notify Telegram (only if the optional secrets exist)
+        if: failure()
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHAT_ID }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ -z "$TG_TOKEN" ] || [ -z "$TG_CHAT" ]; then echo "Telegram secrets not set in GitHub; GitHub's failure email is the notification."; exit 0; fi
+          msg="UNDERGROUND smoke test FAILED"$'\n'"$(grep '^FAIL' smoke.log | head -10)"$'\n'"$RUN_URL"
+          curl -sS -m 20 -o /dev/null -w "telegram %{http_code}\n" "https://api.telegram.org/bot$TG_TOKEN/sendMessage" \
+            --data-urlencode "chat_id=$TG_CHAT" --data-urlencode "text=$msg" --data-urlencode "disable_web_page_preview=true"

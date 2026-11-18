@@ -140,6 +140,16 @@ If you do step 3 before step 2, every sign-in fails.
 - Checks: the webhook requires Telegram's `X-Telegram-Bot-Api-Secret-Token` (SHA-256 of the bot token, so it changes when the token is revoked); only `TELEGRAM_CHAT_ID` is obeyed (sender and chat must match); callback keys are validated.
 - Owner should turn on Telegram **Two-Step Verification**. To shut the bot off: revoke the token in @BotFather or delete `TELEGRAM_BOT_TOKEN`.
 
+## Third-party script (supabase-js)
+- The only third-party script with access to sessions is supabase-js from `cdn.jsdelivr.net`. It is pinned to an
+  exact version and file (`@supabase/supabase-js@2.119.0/dist/umd/supabase.min.js`) with Subresource Integrity
+  (`integrity="sha384-…"`, `crossorigin="anonymous"`) in `index.html` and `admin.html`. If the CDN ever served a
+  different file, the browser would block it instead of running it.
+- `tests/supabase-js-pin.test.mjs` (CI, every PR) downloads the file and checks the hash; the production smoke test
+  checks it every 6 hours.
+- To upgrade: pick a version, compute `sha384` of `dist/umd/supabase.min.js` (`openssl dgst -sha384 -binary file |
+  openssl base64 -A`), change both pages together, run the tests, test login and admin on the preview.
+
 ## Theme engine
 - Admin-supplied design tokens are never written into pages as typed: `assets/theme/schema.js` keeps
   only known keys, re-emits colours from parsed `#RRGGBB` numbers, accepts fonts only from an

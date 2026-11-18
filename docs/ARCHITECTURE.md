@@ -133,8 +133,8 @@ The database layer is the one that matters. The other two give good error messag
 | --- | --- | --- | --- | --- |
 | `/a/<slug>` (`functions/a/[slug].js`) | GET | public | Serves `index.html` with the article's title, description, image, NewsArticle (+ Review) JSON-LD injected with HTMLRewriter | IMPLEMENTED, NOT VERIFIED (Google indexing still pending) |
 | `/band/<slug>` (`functions/band/[slug].js`) | GET | public | Same for band pages | IMPLEMENTED, NOT VERIFIED |
-| every page (`functions/_middleware.js`) | GET | public | Reads the active theme (`ug_active_theme`, 30 s edge cache, 2 s timeout, last valid theme on failure), writes `data-theme`, token CSS and fonts into the HTML, sets security headers. Any failure → Neon Bento. Skips `/assets/*` (`_routes.json`), `/api/*`, `admin.html` (headers only) | IMPLEMENTED, preview only (Tahap 3) |
-| `/api/theme/refresh` | POST | admin + aal2 | Clears the cached active theme after Apply / Restore / Reset | IMPLEMENTED, preview only (Tahap 3) |
+| every page (`functions/_middleware.js`) | GET | public | Reads the active theme (`ug_active_theme`, 30 s edge cache, 2 s timeout, last valid theme on failure), writes `data-theme`, token CSS and fonts into the HTML, sets security headers. Any failure → Neon Bento. Skips `/assets/*` (`_routes.json`), `/api/*`, `admin.html` (headers only) | VERIFIED (PR #49, #50) |
+| `/api/theme/refresh` | POST | admin + aal2 | Clears the cached active theme after Apply / Restore / Reset | VERIFIED (PR #49, #50) |
 | `/sitemap.xml` | GET | public | Home, legal pages, published articles, band pages | IMPLEMENTED, NOT VERIFIED |
 | `/unsubscribe?t=` | GET, POST | public | Calls `ug_unsubscribe(token)`; POST supports one-click unsubscribe | IMPLEMENTED, NOT VERIFIED |
 | `/api/news` | GET | public | Scene Radar RSS aggregator, 15 min edge cache | VERIFIED (New Noise blocked by captcha) |
@@ -169,7 +169,12 @@ Consumers:
 - `/api/auto-draft`
 
 ### 3.8 Scheduled jobs
-One workflow: `.github/workflows/auto-draft.yml`, cron `43 21 * * *` (UTC) = 06:43 WIT (UTC+9), plus manual dispatch. It POSTs to `https://music.mikasa.me/api/auto-draft` with the `AUTODRAFT_TOKEN` secret, retrying once after 60 s. Details: [AI-SYSTEM.md](AI-SYSTEM.md#scheduled-ai-drafts-post-apiauto-draft) and [DEPLOYMENT.md](DEPLOYMENT.md#github-actions).
+Three scheduled workflows (all times WIT = UTC+9):
+- `auto-draft.yml`, 06:43: POSTs to `/api/auto-draft` with the `AUTODRAFT_TOKEN` secret, retrying once after 60 s. Details: [AI-SYSTEM.md](AI-SYSTEM.md#scheduled-ai-drafts-post-apiauto-draft).
+- `telegram-digest.yml`, 08:07, 14:07, 20:07: POSTs to `/api/telegram/digest` with the same token.
+- `smoke-production.yml`, every 6 hours: read-only checks of the live site (pages, headers, theme, static files, supabase-js SRI, sitemap, public APIs, public Supabase reads).
+
+Plus `preview-check.yml` on every pull request. Details: [DEPLOYMENT.md](DEPLOYMENT.md#github-actions).
 
 ### 3.9 Newsletter
 - **Sign-up:** RPC `ug_subscribe(email, source)`. It validates the address, guards against floods (30 new sign-ups per minute site-wide), and stores `newsletter_subscribers`, each row with a private `token`.

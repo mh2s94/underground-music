@@ -21,6 +21,8 @@ jobs:
           node-version: 22
       - name: Theme edge tests (middleware, cache, last good, timeouts)
         run: node tests/theme-edge.test.mjs
+      - name: supabase-js pinned version + SRI hash
+        run: node tests/supabase-js-pin.test.mjs
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -49,3 +51,10 @@ jobs:
         # Baseline: preview of branch theme-engine (same code without the middleware, same preview
         # environment). Used only to explain differences from production caused by missing preview secrets.
         run: bash .github/scripts/verify-preview.sh "${{ steps.cf.outputs.url }}" https://music.mikasa.me https://theme-engine.underground-music.pages.dev
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Browser check (supabase-js with SRI loads, app starts)
+        run: |
+          mkdir -p /tmp/bc && cd /tmp/bc && npm init -y >/dev/null && npm i --silent playwright@1 >/dev/null && npx playwright install --with-deps chromium >/dev/null
+          cp "$GITHUB_WORKSPACE/.github/scripts/browser-check.mjs" /tmp/bc/ && node /tmp/bc/browser-check.mjs "${{ steps.cf.outputs.url }}"

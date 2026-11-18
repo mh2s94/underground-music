@@ -1,140 +1,255 @@
 # UNDERGROUND — Independent Extreme Music Magazine
 
-**https://music.mikasa.me**: news, reviews, Basement radio (music library), charts and band profiles for the heavy underground scene (metalcore, deathcore, hardcore, black metal and about 415 related genres). The look is "Neon Basement": dark, neon pink `#FF2E63` + UV `#7B5CFF`, Bebas Neue / Inter / Space Mono.
+**https://music.mikasa.me** is an independent online magazine for the heavy underground scene: metalcore,
+deathcore, hardcore, black and death metal and about 415 related genres. It publishes news, reviews and
+features, runs a music library ("Basement radio") with a persistent player, community and global charts, band
+profiles, a newsletter, and a small community of members who comment, save stories and send demos.
+
+The look is "Neon Basement": dark background, neon pink `#FF2E63` + UV `#7B5CFF`, Bebas Neue / Inter / Space Mono,
+in a bento-grid layout called **Neon Bento**. That is the default and, today, the only ready site theme.
+
+> **New here (human or AI)?** Read this file, then [docs/DEVELOPMENT-GUIDE.md](docs/DEVELOPMENT-GUIDE.md) (the
+> permanent rules), then [docs/PROJECT-STATUS.md](docs/PROJECT-STATUS.md) (what is verified, unverified and
+> pending). Never disable RLS, 2FA, the CSP or HSTS as a workaround, never expose a secret, and document every change.
 
 | | |
 | --- | --- |
-| Repository | `mh2s94/underground-music` (GitHub) |
-| Production branch | `main` (every push deploys) |
-| Hosting | Cloudflare Pages project `underground-music`, no build step, output = repo root |
-| Server code | Cloudflare Pages Functions (`functions/`) |
-| Database / auth | Supabase project `lhhmzfwjznlwkentbakv` (Singapore): Postgres + RLS, Auth with TOTP 2FA |
-| Music files | Cloudflare R2 (binding `MUSIC`), Supabase Storage fallback |
-| AI | Workers AI (binding `AI`) + optional Gemini, Groq, OpenRouter, Mistral, DeepSeek, OpenAI, Anthropic |
-| Email | Resend (newsletter), Cloudflare Email Routing (`hello@mikasa.me`) |
-| Automation | GitHub Actions (daily AI drafts) |
+| Repository | `mh2s94/underground-music` (GitHub), production branch `main` |
+| Hosting | Cloudflare Pages project `underground-music`, custom domain `music.mikasa.me` |
+| Server code | Cloudflare Pages Functions (`functions/`) + one middleware |
+| Database / auth | Supabase (Singapore): PostgreSQL + RLS, Auth with email + TOTP 2FA, Storage |
+| Music files | Cloudflare R2 (binding `MUSIC`), Supabase Storage for small files |
+| Status | In production. Final Audit 2026-11-19: *ready with minor issues* ([details](docs/PROJECT-STATUS.md)) |
 
-> **New here (human or AI)? Read [docs/DEVELOPMENT-GUIDE.md](docs/DEVELOPMENT-GUIDE.md) first.** It has the permanent rules: never disable RLS, 2FA or the CSP as a workaround; never expose secrets; document every change. Then check [docs/PROJECT-STATUS.md](docs/PROJECT-STATUS.md) for what is verified, what is unverified, and what is pending.
+---
+
+## 1. Project overview
+
+**Who it is for.** Readers and bands of the extreme-music underground, written in English, run by one owner/editor
+(Indonesia, WIT). The editor works from the admin panel and from a Telegram bot; AI helps write drafts but
+**never publishes on its own**.
+
+**Main features** (status of each: [PROJECT-STATUS.md](docs/PROJECT-STATUS.md)):
+
+| Area | What it does |
+| --- | --- |
+| Articles | Markdown stories with genre, tags, cover, YouTube embed, review score; own page `/a/<slug>` with SEO meta + JSON-LD |
+| Admin newsroom | AI generator fills every field; Draft / Review / Publish; demo inbox; music upload; Settings |
+| Scene Radar | Headlines from 7 RSS sources (6 working) as a public "Underground wire"; admin Auto-write and batch drafts |
+| AI drafts | 2 drafts every morning (06:43 WIT) from fresh headlines, saved as drafts only |
+| Telegram Radar | Digest of relevant headlines 3× a day (08:07, 14:07, 20:07 WIT) with buttons: write draft, publish draft, discard |
+| Music library | Upload with tag auto-fill and covers, persistent player, Now Playing, lock-screen controls |
+| Charts | Community (members' star ratings) and Global (Deezer) Top 10 bands and tracks, playable 30 s previews |
+| Band profiles | `/band/<slug>`: stories, tracks, ratings, Deezer data, related bands |
+| Community | Accounts with email confirmation, profile, comments, saved stories, demo submissions, self-deletion |
+| Newsletter | Sign-up, admin sends via Resend, one-click unsubscribe |
+| Theme Manager | Admin changes the site look for all visitors without a redeploy: preview in a new tab, Apply, Restore, Reset, history |
+| Footer "Where our readers are" | Share of readers per country from Cloudflare Web Analytics |
+
+Not available: gigs/calendar (removed), themes 01–10 (follow-up work, shown as "Tahap berikutnya"),
+captcha (Turnstile not configured yet).
+
+## 2. Technology stack
+
+| Layer | Technology |
+| --- | --- |
+| Frontend | Static HTML + vanilla JavaScript, no build step, no framework. `index.html` + `assets/bento.js` (public single-page app), `admin.html` (admin panel, inline script), plain CSS |
+| Client library | supabase-js **2.119.0**, from jsDelivr, pinned with Subresource Integrity |
+| Hosting + edge | Cloudflare Pages (static files from the repo root) + Pages Functions (`functions/`, file path = URL) + `functions/_middleware.js` on every page |
+| Database | Supabase PostgreSQL with Row Level Security on every table; SQL functions (`ug_*`) for privileged actions |
+| Auth | Supabase Auth: email + password with confirmation; TOTP 2FA required for admins (`aal2`) |
+| Files | Cloudflare R2 bucket `underground-music` (≤ 100 MB per file, chunked upload, Range streaming); Supabase Storage bucket `music` (≤ 25 MB) |
+| AI | Provider chain in `functions/api/generate.js`, default order `gemini, workersai, groq, openrouter, mistral, deepseek, openai, claude` (`AI_PROVIDER_ORDER`). A provider is used only when its key or binding is set. Workers AI (binding `AI`) is verified in production; which other keys are set is not visible from the repo |
+| External data | Deezer (charts, previews, artists), iTunes (covers, metadata), RSS feeds, YouTube |
+| Email | Resend (newsletter), Cloudflare Email Routing (`hello@mikasa.me`) |
+| Analytics | Cloudflare Web Analytics |
+| Automation | GitHub Actions: daily AI drafts, Telegram digest, production smoke test every 6 h, preview check on every PR |
+
+## 3. Architecture
+
+```
+Browser ──► Cloudflare (music.mikasa.me)
+             ├─ /assets/*, robots.txt, manifest, favicon ─► static files (headers from _headers)
+             ├─ pages (/, /privacy, /a/<slug>, /band/<slug>, …) ─► _middleware.js
+             │     reads active theme (ug_active_theme, 30 s edge cache) ─► injects theme + security headers
+             ├─ /api/* ─► Pages Functions ─► Supabase REST / R2 / AI providers / Deezer / Resend / Telegram
+             └─ /admin ─► admin.html (headers only, never themed)
+Browser ──► Supabase directly (supabase-js, publishable key): reads, sign-in, member writes — all under RLS
+```
+
+**Repository map**
+
+```
+index.html, admin.html, privacy.html, terms.html   Pages (public app, admin panel, legal)
+_headers        Security headers for static files      _routes.json   Which URLs run Functions
+robots.txt, manifest.webmanifest
+assets/         bento.js (public app) · bento.css (design tokens + Neon Bento) · account.css · launch.* (intro motion)
+                ui.* (escaping, toasts) · genres.js (taxonomy) · audiotags.js (ID3/FLAC/MP4 tags) · readers.js
+  theme/        schema.js (theme catalogue + sanitizer, shared with the edge) · runtime.js (UGTheme)
+                preview.js (admin draft preview) · manager.js/.css (Theme Manager)
+functions/      _middleware.js · a/[slug].js · band/[slug].js · sitemap.xml.js · unsubscribe.js
+  api/          generate · track-info · auto-draft · draft-lib · news · charts · preview · cover · band · readers
+                newsletter/send · music/[[path]] · telegram/{digest,webhook,lib} · theme/{edge,refresh}
+                aal.js (2FA check) · genres-data.js (server copy of the taxonomy)
+supabase/       SQL migrations, run in the Supabase SQL editor in the order of docs/DATABASE.md
+tests/          theme-edge.test.mjs (48 tests) · supabase-js-pin.test.mjs (SRI)
+.github/        workflows/ (auto-draft, telegram-digest, smoke-production, preview-check) · scripts/
+docs/           Detailed documentation (table below)
+```
+
+**Main flows** (full diagrams: [ARCHITECTURE.md](docs/ARCHITECTURE.md)):
+
+- **Public site.** `bento.js` loads published articles, tracks and charts from Supabase with the publishable
+  key; RLS decides what is visible. Routes are client-side (`/articles`, `/music`, …); `/a/<slug>` and
+  `/band/<slug>` are rendered by Functions with real meta tags for Google and link previews.
+- **Admin panel.** Sign-in → admin membership (`admin_users`) → 2FA (`aal2`). The panel talks to Supabase
+  directly for CRUD (RLS requires admin + `aal2`) and to admin Functions for AI, music upload, newsletter and
+  theme refresh (each checks the token, `admin_users` and `aal2`).
+- **Articles and AI.** Generator (`/api/generate`) tries providers in order with timeouts; output is saved as a
+  draft by the admin. Scene Radar (`/api/news`) merges RSS feeds; the admin can turn headlines into drafts.
+  Scheduled drafts (`/api/auto-draft`) and the Telegram bot use the server-side Supabase secret key and only
+  ever create, publish or discard **drafts**.
+- **Music.** Upload to R2 (chunked for large files) or Supabase Storage; `/api/music/file/…` streams with Range.
+  Ratings and charts come from SQL functions in `charts.sql`; global charts from Deezer via `/api/charts`.
+- **Community.** Members write comments, saves and demos straight to Supabase; RLS + triggers enforce ownership,
+  published-only and rate limits (5 comments/min, 3 demos/day). `ug_delete_my_account()` deletes the member.
+- **Theme Manager.** Admin saves drafts (`site_theme_configs`), previews them in a new tab, applies them
+  (`ug_apply_theme`) → `/api/theme/refresh` clears the edge cache → every visitor sees it within 60 s. Restore
+  and Reset write new versions to the history. If the database cannot be read, the edge serves the last valid
+  theme, or Neon Bento ([THEMES.md](docs/THEMES.md)).
+
+## 4. Security foundation
+
+Details: [SECURITY.md](docs/SECURITY.md).
+
+- **Three layers for admin power**: the panel (UI gate), every admin Function (`Authorization` token →
+  `admin_users` → `aal2`), and the database (RLS policies and `ug_is_admin()` = listed in `admin_users`
+  **and** JWT `aal = aal2`). The database layer is the one that matters.
+- **Admin membership** is a row in `admin_users`, added by hand in the SQL editor. Admins must enrol TOTP 2FA.
+- **RLS** is on for every table; members can only write their own rows; drafts are admin-only. Privileged
+  actions run in `SECURITY DEFINER` functions with a fixed `search_path`.
+- **Automation endpoints** use a shared token (`/api/auto-draft`, `/api/telegram/digest`, constant-time compare)
+  or Telegram's secret header plus the owner's chat id (`/api/telegram/webhook`).
+- **Security headers**: CSP, HSTS, `X-Frame-Options: DENY`, nosniff, referrer and permissions policy, COOP.
+  Static files get them from `_headers`; HTML pages from the middleware (`SECURITY_HEADERS` in
+  `functions/api/theme/edge.js`). **Change both together**; tests compare them.
+- **supabase-js** is pinned with an SRI hash; a changed CDN file is blocked by the browser.
+- **Secrets** live only in Cloudflare Pages (Production) and GitHub Actions secrets, never in the repo or browser.
+  The Supabase URL and publishable key in the frontend are public by design.
+
+## 5. Database foundation
+
+Details, columns, functions and verification queries: [DATABASE.md](docs/DATABASE.md).
+
+| Table | Purpose | Defined in |
+| --- | --- | --- |
+| `articles` | Stories (draft / review / published), review score | **dashboard, not in repo** + `extras.sql` (kind, score) |
+| `categories` | Genre categories for articles | **dashboard, not in repo** |
+| `admin_users` | Admin membership | **dashboard, not in repo** |
+| `profiles` | Member profile (auto-created on sign-up) | `community.sql` |
+| `comments`, `saved_articles`, `demo_submissions` | Community | `community.sql` |
+| `tracks` | Music library | `music.sql`, `music-v2.sql` |
+| `track_ratings` | Members' star ratings | `charts.sql` |
+| `newsletter_subscribers` | Newsletter list + unsubscribe token | `extras.sql` |
+| `gigs` | Unused (feature removed) | `extras.sql` |
+| `telegram_radar` | Telegram bot state (server key only) | `telegram.sql` |
+| `site_theme_active`, `site_theme_configs`, `site_theme_history` | Theme Manager | `themes.sql` |
+
+Important relations: `profiles.id` → `auth.users` (cascade); comments, saves and demos → `profiles` and `articles`
+(cascade); `track_ratings` → `tracks` + `profiles`. Bands are matched by name, there is no `bands` table.
+
+**Migrations** (all idempotent), in this order: *(0) base tables from the dashboard* → `community.sql` →
+`music.sql` → `music-v2.sql` → `charts.sql` → `extras.sql` → `security.sql` → `security-check.sql` →
+`telegram.sql` → `themes.sql`. All of them are applied in production.
+
+**Rebuilding the database from the repo is not yet possible**, because step 0 is missing. Files 1–9 apply
+cleanly (and re-run cleanly) on PostgreSQL 16 once those three tables exist. The read-only export query in
+[DATABASE.md §7](docs/DATABASE.md#7-verifying-the-database) produces their exact definition; it will be saved as
+`supabase/base.sql`.
+
+## 6. Deployment and operations
+
+Details: [DEPLOYMENT.md](docs/DEPLOYMENT.md) (every environment variable), [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md).
+
+- **Production**: every push to `main` deploys (Cloudflare Pages Git integration, no build command, output
+  directory = repository root, `_routes.json` keeps static files off Functions). Work goes through a branch and a
+  pull request; the owner approves merges.
+- **Previews**: every branch gets `https://<branch>.underground-music.pages.dev`. Previews lack production secrets
+  (admin APIs answer "Server is not configured"), but read the production database with the public key.
+- **Environment variables** (names only, values never in the repo): `SUPABASE_URL`, `SUPABASE_ANON_KEY`,
+  `SUPABASE_SERVICE_ROLE_KEY`, `AUTODRAFT_TOKEN`, `RESEND_API_KEY`, `NEWSLETTER_FROM`, AI provider keys,
+  `CF_ACCOUNT_ID`, `CF_ANALYTICS_TOKEN`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`; bindings `AI` and `MUSIC`.
+- **GitHub Actions**:
+
+  | Workflow | When | What |
+  | --- | --- | --- |
+  | `auto-draft.yml` | 06:43 WIT daily | 2 AI drafts from fresh headlines |
+  | `telegram-digest.yml` | 08:07, 14:07, 20:07 WIT | Telegram digest of relevant headlines |
+  | `smoke-production.yml` | every 6 h | Read-only checks of the live site; fails loudly with the reason |
+  | `preview-check.yml` | every pull request | Unit tests, then 68 checks + a real-browser check on the preview deployment |
+
+- **After a deploy**: the "Cloudflare Pages" check on the commit must be green; then
+  `bash .github/scripts/smoke-production.sh` (or run the "Production smoke test" workflow). Quick header check:
+  `curl -s -D - -o /dev/null https://music.mikasa.me/ | grep -i "x-ug-theme\|x-frame-options"`.
+
+## 7. Development guide
+
+1. **Read in this order**: this README → [DEVELOPMENT-GUIDE.md](docs/DEVELOPMENT-GUIDE.md) →
+   [PROJECT-STATUS.md](docs/PROJECT-STATUS.md) → [ARCHITECTURE.md](docs/ARCHITECTURE.md) →
+   [SECURITY.md](docs/SECURITY.md) → [DATABASE.md](docs/DATABASE.md) → the topic doc you need.
+2. **Run locally**: no install step. Serve the repo root (`python3 -m http.server`) for the static site;
+   Functions are plain ES modules (`node --input-type=module -e "import('file://…/functions/api/x.js')"`).
+3. **Tests**:
+   - `node tests/theme-edge.test.mjs`: middleware, cache, theme fallback (no packages)
+   - `node tests/supabase-js-pin.test.mjs`: pinned supabase-js and SRI hash (needs network)
+   - `bash .github/scripts/smoke-production.sh <url>`: read-only checks of any deployment
+   - Pull requests run all of these plus checks on the preview deployment automatically.
+4. **Change safely**: branch → PR → green checks → owner approval → squash merge → check production. Bump the
+   `?v=` query of changed CSS/JS files. Keep `_headers` and `SECURITY_HEADERS` identical. SQL changes are new
+   idempotent files or edits reviewed by the owner before they are run; never edit production data by hand.
+5. **Never**: disable or loosen RLS, 2FA, CSP, HSTS or `X-Frame-Options`; put a secret in code, logs or chat; use
+   the service key in the browser; let AI publish without the editor; re-introduce the old `ug_is_admin()` body
+   without the `aal2` check.
+
+## 8. Project status and maintenance
+
+- **Verified in production**: public site and all views, security headers, admin 2FA gate, AI generator and
+  daily drafts, Scene Radar, Telegram digest, global charts, readers footer, Theme Manager (Apply, Restore,
+  Reset) and edge resilience.
+- **Implemented, not yet verified live**: member flows (accounts, comments, saves, demos, newsletter sign-up,
+  unsubscribe, self-deletion), music upload, Scene Radar batch, Telegram buttons. The SQL rules behind them pass
+  automated access tests.
+- **Pending (owner)**: rotate `AUTODRAFT_TOKEN`, export the base schema for `supabase/base.sql`, Turnstile site
+  key, a Cloudflare rate-limit rule for `/api/*`.
+- **Known limits**: themes 01–10 not built; repo files (docs, SQL) are publicly downloadable because the output
+  directory is the repo root (no secrets in them); one Scene Radar source (New Noise) is blocked by a captcha.
+
+**Recent milestones**
+
+| Date | Change |
+| --- | --- |
+| 2026-11-19 | Final Audit; supabase-js pinned with SRI; production smoke test; documentation brought up to date |
+| 2026-11-18 | PR #50 theme edge resilience (2 s timeout, last valid theme) |
+| 2026-11-18 | PR #49 Theme Manager + edge middleware; `themes.sql` applied |
+| 2026-11-18 | PR #48 theme engine foundation; Telegram Radar; hero video |
+| 2026-11-17 | Admin 2FA everywhere; readers footer; RLS INSERT RETURNING incident fixed |
+
+**Staying stable**: keep the smoke test green, keep [PROJECT-STATUS.md](docs/PROJECT-STATUS.md) current with every
+change, and use the [release checklist](docs/DEVELOPMENT-GUIDE.md#testing-checklist-for-releases).
 
 ## Documentation
 
 | Document | Contents |
 | --- | --- |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System diagram, frontend, routing, every API route, data flows (auth, admin, AI, music, Scene Radar, jobs, newsletter, charts, band pages) |
-| [docs/DATABASE.md](docs/DATABASE.md) | Tables, columns, relations, functions, triggers, RLS + MFA model, SQL order, the 2026-11-17 RLS incident, verification queries |
-| [docs/SECURITY.md](docs/SECURITY.md) | Accounts, admin membership, 2FA, admin page protection, headers/CSP/HSTS, Turnstile, rate limits, secrets |
-| [docs/AI-SYSTEM.md](docs/AI-SYSTEM.md) | Providers, models, hedged fallback, timeouts, Auto-write, batch drafts, scheduled drafts, music metadata, adding a provider |
-| [docs/MUSIC-SYSTEM.md](docs/MUSIC-SYSTEM.md) | Upload limits, R2 vs Supabase, chunked upload, streaming, tags, player, charts and ratings |
-| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Pages settings, bindings, **all environment variables**, DNS and email, redeploy, GitHub Actions |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System diagram, frontend, routing, every API route, data flows |
+| [docs/DATABASE.md](docs/DATABASE.md) | Tables, columns, relations, functions, RLS + MFA model, SQL order, verification and export queries |
+| [docs/SECURITY.md](docs/SECURITY.md) | Accounts, admin membership, 2FA, headers/CSP/HSTS, supabase-js SRI, Turnstile, rate limits, secrets |
+| [docs/AI-SYSTEM.md](docs/AI-SYSTEM.md) | Providers, models, fallback, timeouts, Auto-write, batch and scheduled drafts |
+| [docs/MUSIC-SYSTEM.md](docs/MUSIC-SYSTEM.md) | Upload limits, R2 vs Supabase, streaming, tags, player, charts and ratings |
+| [docs/THEMES.md](docs/THEMES.md) | Theme engine, edge middleware, Theme Manager, how to build a theme |
+| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Pages settings, bindings, environment variables, DNS and email, GitHub Actions |
 | [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | Real problems and how to diagnose them safely |
-| [docs/THEMES.md](docs/THEMES.md) | Theme engine: design tokens, schema, runtime, `window.UG` contract, regions, how to build a theme |
 | [docs/DEVELOPMENT-GUIDE.md](docs/DEVELOPMENT-GUIDE.md) | Rules, owner preferences, workflow, conventions, release checklist |
-| [docs/PROJECT-STATUS.md](docs/PROJECT-STATUS.md) | Feature and security status, owner to-dos, known issues, tests done, next checks |
+| [docs/PROJECT-STATUS.md](docs/PROJECT-STATUS.md) | Feature and security status, owner to-dos, known issues, audits and tests |
 
-## Repository map
-
-```
-index.html            Public site shell: all views (home, articles, music, charts, about, account, band),
-                      player markup, search overlay, footer/newsletter, JSON-LD, old-domain redirect.
-admin.html            Admin panel (one file, inline script): 2FA gate, AI generator, article form,
-                      Scene Radar (single + batch drafts), article list + "Publish all", demo inbox,
-                      Music upload/auto-fill/covers, Settings (Security check, clean-up, newsletter).
-privacy.html, terms.html   Legal pages (UU PDP rights, Resend, analytics, self-deletion).
-_headers              Security headers for static files: CSP, HSTS, X-Frame-Options, etc.
-robots.txt            Disallows /admin.html and /api/, links the sitemap.
-tests/                Node tests (theme-edge.test.mjs: middleware, cache, last good theme).
-_routes.json          Which URLs run Functions (all except /assets/*, robots.txt, manifest, favicon).
-manifest.webmanifest  PWA manifest (icons in assets/).
-
-assets/
-  bento.js            The whole public app: config, routing, data loading, rendering, accounts,
-                      comments, saves, demos, player, charts, ratings, search, newsletter, band pages,
-                      Turnstile hook. Uses supabase-js from cdn.jsdelivr.net.
-  bento.css           Design tokens --ug-* (top of file) + main layout + default theme "Neon Bento".
-  account.css         Account page (Amp Head, rack slide).
-  theme/schema.js     Theme catalogue, token allow-list and sanitizer (browser + edge).
-  theme/runtime.js    window.UGTheme: active theme, token injection, theme loader with fallback.
-  theme/preview.js    Admin-only draft preview (?ug-preview=<id>, new tab).
-  theme/manager.js/.css  Admin Theme Manager (Settings → Tema situs).
-  launch.js/.css      Launch motion "09 Mosh Pit" (first open + short version on view change).
-  ui.js / ui.css      window.UI: esc() HTML-escaping, toast() notifications.
-  genres.js           window.UG_GENRES: 30 groups / ~415 genres (must match functions/api/genres-data.js).
-  audiotags.js        window.readAudioTags(file): ID3, FLAC and MP4 tags + embedded cover, in the browser.
-  favicon.svg, *.png  Icons and the default share image (og.png).
-
-functions/            Cloudflare Pages Functions (file path = URL route)
-  _middleware.js      Every page: active theme from Supabase (30 s edge cache, fallback Neon Bento) + security headers.
-  api/theme/edge.js   Theme helpers for the middleware (RPC read, cache, HTML injection, SECURITY_HEADERS).
-  api/theme/refresh.js  POST: clear the cached theme after Apply (admin + 2FA).
-  a/[slug].js         /a/<slug>: index.html with the article's meta tags + JSON-LD (SEO, link previews).
-  band/[slug].js      /band/<slug>: same for band profiles.
-  sitemap.xml.js      /sitemap.xml
-  unsubscribe.js      /unsubscribe?t=<token> (GET page, POST one-click)
-  api/news.js         Scene Radar: RSS aggregator (7 sources), 15 min cache.
-  api/generate.js     AI article generator (admin + 2FA); exports buildProviders/writeArticle.
-  api/auto-draft.js   Daily AI drafts (token from GitHub Actions; uses the Supabase secret key).
-  api/track-info.js   Music metadata: iTunes/Deezer lookup + AI clean-up (admin + 2FA).
-  api/music/[[path]].js  R2 upload (single + multipart), streaming with Range, delete, purge.
-  api/charts.js       Global charts from Deezer (by group/genre), 6 h cache.
-  api/preview.js      Redirect to a fresh Deezer 30 s preview.
-  api/cover.js        Artwork lookup (iTunes/Deezer), 7 day cache.
-  api/band.js         Deezer artist data for band pages, 24 h cache.
-  api/newsletter/send.js  Newsletter via Resend (admin + 2FA).
-  api/aal.js          isAal2(): 2FA check shared by admin routes.
-  api/genres-data.js  Server copy of the genre taxonomy (PROMPT_LIST, canonicalGenre).
-
-supabase/             SQL to run in the Supabase SQL Editor (idempotent; order in docs/DATABASE.md)
-  community.sql  music.sql  music-v2.sql  charts.sql  extras.sql  security.sql  security-check.sql
-
-.github/workflows/auto-draft.yml   Daily 21:43 UTC (06:43 WIT) POST /api/auto-draft.
-docs/                 This documentation.
-```
-
-The base tables `articles`, `categories` and `admin_users` were created in the Supabase dashboard and are **not** in `supabase/`. See [docs/DATABASE.md](docs/DATABASE.md).
-
-## Features
-
-| Feature | Summary | Details |
-| --- | --- | --- |
-| Articles | Markdown articles with genre, tags, cover, YouTube embed, review score and verdict; pages at `/a/<slug>` | [ARCHITECTURE §2](docs/ARCHITECTURE.md#2-frontend) |
-| Admin newsroom | AI generator fills every field; Draft / Review / Publish; publish time can follow the source | [AI-SYSTEM](docs/AI-SYSTEM.md) |
-| Scene Radar | Headlines from 6 working RSS sources; public "Underground wire"; admin Auto-write, batch of up to 5 drafts, Publish all | [ARCHITECTURE §3.7](docs/ARCHITECTURE.md#37-scene-radar) |
-| AI drafts | Daily 2 drafts at 06:43 WIT; never auto-published | [AI-SYSTEM](docs/AI-SYSTEM.md#scheduled-ai-drafts-post-apiauto-draft) |
-| Community accounts | Email sign-up with confirmation, profile with favourite genres, password reset, self-deletion | [SECURITY](docs/SECURITY.md#visitor-accounts) |
-| Comments / saved articles | On published articles; 5 comments per minute per member | [DATABASE](docs/DATABASE.md#2-tables) |
-| Demo submissions | Members send links (3 per day); admin Demo inbox with status | [DATABASE](docs/DATABASE.md#demo_submissions-communitysql) |
-| Music library (Basement radio) | Upload with tag auto-fill and covers; persistent player; Now Playing; lock-screen controls | [MUSIC-SYSTEM](docs/MUSIC-SYSTEM.md) |
-| Charts | Community (star ratings, Bayesian) and Global (Deezer) Top 10 bands and hits, by genre group or sub-genre, playable previews | [MUSIC-SYSTEM](docs/MUSIC-SYSTEM.md#charts-and-ratings) |
-| Band profiles | `/band/<slug>`: stories, tracks, review average, members' rating, Deezer fans, top tracks, related bands | [ARCHITECTURE §3.11](docs/ARCHITECTURE.md#311-band-profiles) |
-| Newsletter | Sign-up anywhere; admin composes from stories and sends via Resend; one-click unsubscribe | [ARCHITECTURE §3.9](docs/ARCHITECTURE.md#39-newsletter) |
-| Search and genre filters | `/` or Ctrl+K: stories, songs, genres; genre pills; `?q=` links | [ARCHITECTURE §2](docs/ARCHITECTURE.md#2-frontend) |
-| Gigs / calendar | **Removed** at the owner's request (unused `gigs` table remains) | [ARCHITECTURE §3.12](docs/ARCHITECTURE.md#312-gigs) |
-| Security | RLS everywhere, admin 2FA (TOTP, `aal2`) in panel + API + DB, CSP/HSTS, Security check | [SECURITY](docs/SECURITY.md) |
-
-Verification status of each feature: [docs/PROJECT-STATUS.md](docs/PROJECT-STATUS.md).
-
-## Setting up from scratch (summary)
-Full details are in the linked documents. The order matters.
-
-1. **Supabase project.**
-   - Create the base tables `articles`, `categories`, `admin_users` with RLS (see [DATABASE.md](docs/DATABASE.md#2-tables) for the columns the code needs).
-   - Run `community.sql` → `music.sql` → `music-v2.sql` → `charts.sql` → `extras.sql`.
-   - Auth: Email provider with Confirm email on. Site URL `https://music.mikasa.me`, Redirect URL `https://music.mikasa.me/**`. MFA TOTP enabled.
-2. **Cloudflare Pages.**
-   - Connect the repo: no build command, output `.`.
-   - Add `SUPABASE_URL` and `SUPABASE_ANON_KEY`, the Workers AI binding `AI`, and optionally the R2 binding `MUSIC` and provider keys ([DEPLOYMENT.md](docs/DEPLOYMENT.md#environment-variables)).
-   - Add the custom domain `music.mikasa.me`.
-3. **Admin.**
-   - Sign up on the site, then `insert into admin_users (user_id) values ('<uuid>')`.
-   - Open **Account → Admin panel** and enrol 2FA.
-   - Then run `security.sql` and `security-check.sql`.
-   - Then make sure admins can read drafts: add the "Admins can read all articles" SELECT policy ([DATABASE.md §6](docs/DATABASE.md#6-incident-insert-returning-blocked-by-rls-2026-11-17)).
-4. **Optional.**
-   - Resend (`RESEND_API_KEY`, `NEWSLETTER_FROM`).
-   - Daily drafts (`AUTODRAFT_TOKEN` in Cloudflare **and** GitHub, plus the Supabase secret key in Cloudflare).
-   - Turnstile, a rate-limiting rule, DMARC.
-5. **Verify.** Run the release checklist in [DEVELOPMENT-GUIDE.md](docs/DEVELOPMENT-GUIDE.md#testing-checklist-for-releases).
-
-## Owner contact and preferences
-- Contact: `hello@mikasa.me`.
-- The owner communicates in Indonesian and prefers seeing options or previews before design changes. See [DEVELOPMENT-GUIDE.md](docs/DEVELOPMENT-GUIDE.md#owner-preferences-from-the-project-history).
+Contact: `hello@mikasa.me`. The owner works in Indonesian and approves design changes from previews.

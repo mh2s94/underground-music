@@ -40,7 +40,7 @@ These rules are permanent. They apply to every AI assistant and developer who wo
 3. If you changed CSS or JS, **bump the `?v=` query** of that file in `index.html` (or `admin.html`). Without it, phones keep the old file.
 4. Test locally:
    - Serve the repo root (`python3 -m http.server`).
-   - Supabase and the APIs can be stubbed in Playwright. Previous sessions stubbed `cdn.jsdelivr.net/npm/@supabase/supabase-js@2` with a fake `window.supabase` and stubbed `/api/news`.
+   - Supabase and the APIs can be stubbed in Playwright by routing `cdn.jsdelivr.net/npm/@supabase/**` to a fake `window.supabase`. The pages load supabase-js with an SRI hash, so the browser blocks any stub: remove the `integrity="…"` attribute in the served copy for local tests only (never in the repo). The real file is tested in CI.
    - Check the console for errors and CSP violations at 412 px and 1280 px.
    - Functions: `node --input-type=module -e "import('file://…/functions/api/x.js')"` catches syntax and import errors.
 5. Commit with a clear message, open a PR, squash-merge, and wait about 75 s. Check:
@@ -85,5 +85,7 @@ These rules are permanent. They apply to every AI assistant and developer who wo
 - Admin: 2FA screen → panel, Generate, Save draft, Publish, Scene Radar batch, Music upload, Settings → Security check (lines 4 and 5 ok).
 - Browser console: no errors, no CSP violations.
 - Theme edge tests: `node tests/theme-edge.test.mjs` (no packages; also runs on every PR in "Preview check").
+- supabase-js pin: `node tests/supabase-js-pin.test.mjs` (needs network; also in CI).
+- Production smoke test: `bash .github/scripts/smoke-production.sh https://music.mikasa.me` (read-only).
 - Theme middleware: every HTML response has `x-ug-theme` and the CSP/HSTS/X-Frame-Options headers (`curl -s -D - -o /dev/null https://<preview>/ | grep -i "x-ug-theme\|x-frame"`). Without the SQL it says `neon-bento@0;fallback`.
 - Theme engine: `UGTheme.current()` is `neon-bento`; `UGTheme.load("does-not-exist")` falls back without breaking the page; `window.UG.articles.length` matches the articles shown.

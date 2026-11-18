@@ -54,11 +54,11 @@ Set in Cloudflare → Workers & Pages → underground-music → **Settings → V
 | `NEWSLETTER_REPLY_TO` | reply-to (default `hello@mikasa.me`) | no | plain | `newsletter/send` | unknown |
 | `AI_PROVIDER_ORDER` | provider order (default `gemini,workersai,groq,openrouter,mistral,deepseek,openai,claude`) | no | plain | `generate`, `track-info` | unknown |
 | `GEMINI_API_KEY`, `GROQ_API_KEY`, `OPENROUTER_API_KEY`, `MISTRAL_API_KEY`, `DEEPSEEK_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` | AI provider keys; at least one provider (or the `AI` binding) is needed | at least one | **secret** | `generate`, `track-info` | unknown each |
-| `CF_ACCOUNT_ID` | Cloudflare account ID for the footer "Where our readers are" box | no (box hidden without it) | plain | `readers` | PENDING (owner to add) |
-| `CF_ANALYTICS_TOKEN` | Cloudflare API token, permission **Account Analytics: Read** only | no (box hidden without it) | **secret** | `readers` | PENDING (owner to add) |
+| `CF_ACCOUNT_ID` | Cloudflare account ID for the footer "Where our readers are" box | no (box hidden without it) | plain | `readers` | yes (readers box live 2026-11-17) |
+| `CF_ANALYTICS_TOKEN` | Cloudflare API token, permission **Account Analytics: Read** only | no (box hidden without it) | **secret** | `readers` | yes (readers box live 2026-11-17) |
 | `CF_WA_HOST` | Hostname counted by `/api/readers` (default `music.mikasa.me`) | no | plain | `readers` | optional |
-| `TELEGRAM_BOT_TOKEN` | Editor's Telegram bot (from @BotFather); the webhook secret is derived from it | no (bot off without it) | **secret** | `telegram/*`, `auto-draft` | PENDING (owner to add) |
-| `TELEGRAM_CHAT_ID` | The only chat the bot obeys (the bot replies with it after `/start`) | no | plain | `telegram/*`, `auto-draft` | PENDING (owner to add) |
+| `TELEGRAM_BOT_TOKEN` | Editor's Telegram bot (from @BotFather); the webhook secret is derived from it | no (bot off without it) | **secret** | `telegram/*`, `auto-draft` | yes (digest live 2026-11-18) |
+| `TELEGRAM_CHAT_ID` | The only chat the bot obeys (the bot replies with it after `/start`) | no | plain | `telegram/*`, `auto-draft` | yes (digest live 2026-11-18) |
 | `GEMINI_MODEL`, `WORKERSAI_MODEL`, `GROQ_MODEL`, `OPENROUTER_MODEL`, `MISTRAL_MODEL`, `DEEPSEEK_MODEL`, `OPENAI_MODEL`, `CLAUDE_MODEL` | model overrides | no | plain | `generate`, `track-info` | unknown |
 | `YOUTUBE_API_KEY` | YouTube Data API v3 for video lookup (else page parsing) | no | **secret** | `generate` | unknown |
 
@@ -67,7 +67,7 @@ Set in Cloudflare → Workers & Pages → underground-music → **Settings → V
 - `SUPABASE_URL`, the Supabase **publishable** key, `SUBMIT_EMAIL` and `TURNSTILE_SITE_KEY` in `assets/bento.js`
 - the URL and publishable key in `admin.html`
 
-**GitHub Actions secret:** `AUTODRAFT_TOKEN`, with the same value as in Cloudflare.
+**GitHub Actions secrets:** `AUTODRAFT_TOKEN`, with the same value as in Cloudflare. Optional: `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` (same values as in Cloudflare) so the production smoke test can also report failures to Telegram.
 
 ## DNS and email (zone `mikasa.me` on Cloudflare)
 
@@ -86,6 +86,23 @@ Cloudflare Web Analytics is enabled by the owner (automatic beacon). The CSP all
 | Workflow | File | Trigger | Needs |
 | --- | --- | --- | --- |
 | Daily AI drafts | `.github/workflows/auto-draft.yml` | cron `43 21 * * *` (21:43 UTC = 06:43 WIT) + manual **Run workflow** | secret `AUTODRAFT_TOKEN` |
+| Telegram radar digest | `.github/workflows/telegram-digest.yml` | 08:07, 14:07, 20:07 WIT + manual | secret `AUTODRAFT_TOKEN` |
+| Production smoke test | `.github/workflows/smoke-production.yml` → `.github/scripts/smoke-production.sh` | every 6 h (`23 */6 * * *` UTC) + manual + PRs that change it | nothing. Optional GitHub secrets `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` also send failures to Telegram |
+| Preview check | `.github/workflows/preview-check.yml` | every pull request | nothing |
+
+- **Production smoke test** is read-only: GET/HEAD only, to public pages, static files, the supabase-js CDN file,
+  `robots.txt`, `sitemap.xml`, `/api/news`, `/api/charts`, `/api/readers` and two public Supabase reads
+  (`ug_active_theme`, one published article id). It never calls admin, AI, newsletter, Telegram or upload endpoints.
+  - **FAIL** (run turns red): a page or API is down, a security header is missing or differs from `_headers`, the
+    middleware has no valid theme (`;fallback`), the supabase-js hash no longer matches, the sitemap is empty, or
+    Supabase cannot be read. GitHub emails the repository owner about failed scheduled runs; the run summary lists
+    each failed check.
+  - **WARN** (run stays green): theme served from the last valid copy (`;stale`), a Scene Radar source failing,
+    the readers box off, slow home page (> 5 s), or a static file that differs from `main` (deploy in progress).
+- **Preview check** (pull requests): job `unit` runs `tests/theme-edge.test.mjs` and
+  `tests/supabase-js-pin.test.mjs`; job `verify` waits for the Cloudflare preview of the commit, runs
+  `.github/scripts/verify-preview.sh` (68 checks) and `.github/scripts/browser-check.mjs` (real Chromium:
+  supabase-js loads with its SRI hash, articles load, admin login shows).
 
 - **Debugging:** Actions → Daily AI drafts → the run → step "Ask the site to write today's drafts". The log prints the JSON answer and the HTTP code:
   - `401`: token mismatch between GitHub and Cloudflare

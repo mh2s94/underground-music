@@ -1,10 +1,16 @@
 # Themes (Theme Engine)
 
-Status (2026-11-18):
-- **Tahap 1, fondasi:** IMPLEMENTED, merged (PR #48).
-- **Tahap 2, `supabase/themes.sql`:** written and tested locally; **NOT APPLIED** to Supabase (the owner runs it after review).
-- **Tahap 3, edge middleware + Theme Manager:** IMPLEMENTED on branch `theme-manager`, preview only, awaiting owner ACC.
-- Themes 01–10 come in Tahap 4+. Rencana lengkap:
+Status (2026-11-19, production `main`):
+- **Tahap 1, fondasi:** VERIFIED, merged (PR #48).
+- **Tahap 2, `supabase/themes.sql`:** VERIFIED. Applied to production by the owner on 2026-11-18 and verified
+  (owner test: drafts saved in Supabase, Security Check passed). Do not re-run without a technical reason.
+- **Tahap 3, edge middleware + Theme Manager:** VERIFIED, merged (PR #49, 2026-11-18). Owner tested on production:
+  catalogue, preview, save draft, Apply, Restore, Reset.
+- **Edge resilience:** VERIFIED, merged (PR #50, 2026-11-18): 2 s RPC timeout, last valid theme on failure.
+  Production read `neon-bento@5;rpc` / `;cache` from Indonesia, Dallas (DFW) and Stockholm (ARN).
+- **Active theme on production:** `neon-bento`, version 5 (Neon Bento is the only ready theme).
+- Themes 01–10 stay "Tahap berikutnya": they cannot be previewed as a final theme or applied (owner decision
+  2026-11-18). They are follow-up work, not part of the finished project. Rencana lengkap:
 "UNDERGROUND · Rancangan Theme Manager" (dokumen yang disetujui owner pada 2026-11-18).
 
 ## Goal
@@ -22,11 +28,11 @@ the same in every theme.
 | Browser runtime | `assets/theme/runtime.js` (`window.UGTheme`) | IMPLEMENTED |
 | Data/action contract | `window.UG` + `ug:*` events in `assets/bento.js` | IMPLEMENTED |
 | Layout regions | `data-ug-region` attributes in `index.html` | IMPLEMENTED |
-| Database tables + RPCs | `supabase/themes.sql` | IMPLEMENTED, NOT APPLIED (owner runs it) |
-| Edge loader | `functions/_middleware.js`, `functions/api/theme/edge.js`, `_routes.json` | IMPLEMENTED (preview) |
-| Cache refresh after Apply | `functions/api/theme/refresh.js` (`POST /api/theme/refresh`) | IMPLEMENTED (preview) |
-| Admin preview in a new tab | `assets/theme/preview.js` (loaded by the runtime for `?ug-preview=<id>`) | IMPLEMENTED (preview) |
-| Theme Manager | `admin.html` → Settings → Tema situs (`assets/theme/manager.js`, `manager.css`) | IMPLEMENTED (preview) |
+| Database tables + RPCs | `supabase/themes.sql` | VERIFIED (applied 2026-11-18) |
+| Edge loader + last valid theme | `functions/_middleware.js`, `functions/api/theme/edge.js`, `_routes.json` | VERIFIED (PR #49, #50) |
+| Cache refresh after Apply | `functions/api/theme/refresh.js` (`POST /api/theme/refresh`) | VERIFIED (PR #49) |
+| Admin preview in a new tab | `assets/theme/preview.js` (loaded by the runtime for `?ug-preview=<id>`) | VERIFIED (owner test) |
+| Theme Manager | `admin.html` → Settings → Tema situs (`assets/theme/manager.js`, `manager.css`) | VERIFIED (owner test: Apply, Restore, Reset) |
 | Theme layouts | `assets/themes/<id>/theme.css`, `shell.js` | PENDING (Tahap 4+) |
 
 ## 1. Design tokens (top of `assets/bento.css`)
@@ -120,8 +126,8 @@ Runs on every page request (not on `/assets/*`, see `_routes.json`).
    (1 cache read, 1 RPC, 1–2 cache writes); failure 3–4. Free plan limit: 50 per request.
 7. Not themed (headers only): `admin.html`, HEAD requests, redirects, server errors. 404 pages are themed.
 
-Without the SQL (for example on a preview deployment before the owner runs `themes.sql`) the RPC fails
-and every page shows Neon Bento: this is the expected fallback.
+If the RPC cannot be read (Supabase down, wrong `SUPABASE_URL`), pages show the last valid theme, or Neon Bento
+when that location never read one. Preview deployments read the same production database (public key only).
 
 ### `POST /api/theme/refresh`
 Admin + 2FA (`aal2`) only (401 without login, 403 for a member or an admin without 2FA). Clears the
