@@ -57,6 +57,8 @@ These rules are permanent. They apply to every AI assistant and developer who wo
 | Public UI or behaviour | `assets/bento.js`, `assets/bento.css` (+ `account.css`, `launch.css`), `index.html` |
 | Colours, fonts, radius | design tokens at the top of `assets/bento.css` (never hard-code them in component CSS) |
 | Theme catalogue, token rules | `assets/theme/schema.js` (shared by browser and edge) |
+| Active theme at the edge, security headers on HTML | `functions/_middleware.js` + `functions/api/theme/edge.js` (headers must match `_headers`) |
+| Theme Manager (admin) | `assets/theme/manager.js`, `manager.css`, section `#themeManager` in `admin.html` |
 | A theme layout | `assets/themes/<id>/theme.css` + `shell.js`, scoped to `html[data-theme="<id>"]`; data only through `window.UG` (see THEMES.md) |
 | Admin UI | `admin.html` (inline script) |
 | Server logic, secrets, external APIs | `functions/api/*.js` |
@@ -82,4 +84,5 @@ These rules are permanent. They apply to every AI assistant and developer who wo
 - Home, Articles, an article page `/a/<slug>`, Music (play, seek), Charts (community and global, preview plays), Band page, Search, Account (sign up, sign in, reset), newsletter sign-up, at 412 px and desktop.
 - Admin: 2FA screen → panel, Generate, Save draft, Publish, Scene Radar batch, Music upload, Settings → Security check (lines 4 and 5 ok).
 - Browser console: no errors, no CSP violations.
+- Theme middleware: every HTML response has `x-ug-theme` and the CSP/HSTS/X-Frame-Options headers (`curl -s -D - -o /dev/null https://<preview>/ | grep -i "x-ug-theme\|x-frame"`). Without the SQL it says `neon-bento@0;fallback`.
 - Theme engine: `UGTheme.current()` is `neon-bento`; `UGTheme.load("does-not-exist")` falls back without breaking the page; `window.UG.articles.length` matches the articles shown.

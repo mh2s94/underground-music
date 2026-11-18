@@ -21,6 +21,7 @@ Every file is idempotent ("safe to re-run"): `create … if not exists`, `create
 | 6 | `supabase/security.sql` | Admin powers need 2FA: `ug_is_admin()` requires `aal2`, `ug_mfa_ok()`, restrictive policies on `articles` and `categories` | 1–5, **and the admin must have set up 2FA first** |
 | 7 | `supabase/security-check.sql` | `ug_security_check()` diagnostic (read-only, test inserts rolled back) | 6 |
 | 8 | `supabase/telegram.sql` | `telegram_radar` for the Telegram bot (service key only) | — |
+| 9 | `supabase/themes.sql` | Theme Manager: `site_theme_active`, `site_theme_configs`, `site_theme_history`, `ug_clean_theme_tokens`, `ug_theme_id_ok`, `ug_active_theme`, `ug_apply_theme`, `ug_restore_theme`, `ug_reset_theme` | 6 (`ug_is_admin()` with 2FA). **PENDING: owner reviews the file, then runs it** |
 
 Owner-reported state on 2026-11-17: files 6 and 7 applied; 2FA working; "Admins can read all articles" added. The application status of files 1–5 is inferred from working features, not from a schema dump.
 
@@ -74,6 +75,21 @@ Public read, 25 MB per file (`26214400`), audio and image MIME types only, admin
 
 ### `telegram_radar` (`supabase/telegram.sql`)
 Headlines the Telegram bot has sent: `hash` (pk, short SHA-256 of the link), `link`, `title`, `item` jsonb (headline, source, summary, date, image, band, genres), `status` (`sent` / `writing` / `drafted` / `skipped`), `article_id`, `sent_at`, `updated_at`. RLS on with **no policies** and grants revoked from `anon`/`authenticated`: only the server's service key uses it. Status: PENDING (owner must run the SQL).
+
+### Theme Manager (`supabase/themes.sql`, PENDING)
+| Table | Contents | Visitors | Signed-in non-admin | Admin with 2FA |
+| --- | --- | --- | --- | --- |
+| `site_theme_active` | one row (`id = 1`): `theme_id`, `tokens`, `version`, `config_id`, `applied_by`, `applied_at` | no table access; read `{theme, tokens, version}` through `ug_active_theme()` | nothing | read; write only through the functions |
+| `site_theme_configs` | saved configurations/drafts: `theme_id`, `name`, `tokens`, `note`, `created_by`, timestamps | none | none (RLS) | read, insert, update, delete |
+| `site_theme_history` | every Apply/Restore/Reset: `action`, `theme_id`, `tokens`, `version`, `config_id`, `applied_by`, `applied_at`, `note` | none | none | read only |
+
+- Privileges are revoked from `anon` and `service_role` on all three tables and on the history sequence; `authenticated` has only SELECT on active/history and S/I/U/D on configs, filtered by RLS (`ug_is_admin()`). `service_role` can call only `ug_active_theme()`.
+- CHECK constraints `*_tokens_clean` make every stored `tokens` value equal to `ug_clean_theme_tokens(tokens)`, also for writes made by hand in the dashboard; `ug_active_theme()` cleans again on output and returns only `theme`, `tokens`, `version`.
+- Apply uses one atomic upsert on the active row, so parallel applies get consecutive versions, also when the row was deleted.
+- Tokens are cleaned by `ug_clean_theme_tokens()` (trigger on configs, and inside every apply). It mirrors `assets/theme/schema.js`; a parity test checks both give identical output. **Change both together.**
+- `ug_apply_theme(theme_id, tokens, config_id, note)`, `ug_restore_theme(history_id)`, `ug_reset_theme()` are SECURITY DEFINER with `search_path = ''`, check `ug_is_admin()` first, and write the active row + a history row in one transaction (`version` increases by 1 each time; parallel applies never share a version). The internal `ug_theme_write()` is not executable by any client role.
+- Theme ids are checked against the catalogue in `ug_theme_id_ok()` (keep in sync with `THEMES` in `schema.js`). Whether a theme is ready is decided by the code; the site falls back to `neon-bento` for any theme that is not.
+- Tested on PostgreSQL 16 with a Supabase-style setup (non-superuser owner, with and without BYPASSRLS; roles `anon`, `authenticated`, `service_role`), 2026-11-18: 49 security/behaviour checks (ownership, privilege matrix, RLS, 2FA, apply/restore/reset, 8 parallel applies with the row present and missing, no leaks from `ug_active_theme`, tamper attempts), validator parity on 273 inputs plus identical token and font lists, and two re-runs on a database with data (no change). Not yet run on the production database.
 
 ## 3. Relationships
 

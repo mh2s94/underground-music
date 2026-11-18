@@ -145,9 +145,19 @@ Digests and deals are filtered by `NOT_NEWS` in `auto-draft.js`. Adjust the rege
 - **Diagnosis:** GitHub check run "Cloudflare Pages" fails → Cloudflare → Deployments → View details.
 - **Common causes:** a JavaScript syntax error in `functions/`, an import path typo (`../aal.js` vs `./aal.js`), or the Functions bundle size limit.
 - **Fix:** test-import changed functions locally with `node --input-type=module -e "import('file:///…/functions/api/x.js')"`, fix, push, then confirm the check run.
-- **Site loads but something is blank after a header change:** open the browser console and look for "Content Security Policy" errors. Add the missing host to `_headers`. Never remove the CSP.
+- **Site loads but something is blank after a header change:** open the browser console and look for "Content Security Policy" errors. Add the missing host to `_headers` **and** `SECURITY_HEADERS` in `functions/api/theme/edge.js` (HTML pages get their headers from the middleware). Never remove the CSP.
 
 ---
 
 ## Preview URL behaves differently
 Preview deployments (`<branch>.underground-music.pages.dev`) may lack production secrets and bindings. "Server is not configured" there is expected. Test real flows on `music.mikasa.me`.
+
+## Theme does not change after Apply
+- Check the header: `curl -s -D - -o /dev/null https://music.mikasa.me/ | grep -i x-ug-theme`.
+  - `neon-bento@0;fallback` → the middleware cannot read `ug_active_theme` (SQL not run, Supabase down, or
+    wrong `SUPABASE_URL`). The site correctly falls back to Neon Bento.
+  - Old version number → wait up to 30 s (edge cache in other data centres), then reload.
+- Theme Manager shows "Database tema belum disiapkan" → run `supabase/themes.sql` in the Supabase SQL editor.
+- Apply refused with "not allowed" → log in again and pass 2FA (aal2 is required).
+- A broken theme → admin → Settings → Tema situs → **Reset ke default** (Neon Bento), or Restore an older version.
+
