@@ -133,7 +133,7 @@ The database layer is the one that matters. The other two give good error messag
 | --- | --- | --- | --- | --- |
 | `/a/<slug>` (`functions/a/[slug].js`) | GET | public | Serves `index.html` with the article's title, description, image, NewsArticle (+ Review) JSON-LD injected with HTMLRewriter | IMPLEMENTED, NOT VERIFIED (Google indexing still pending) |
 | `/band/<slug>` (`functions/band/[slug].js`) | GET | public | Same for band pages | IMPLEMENTED, NOT VERIFIED |
-| every page (`functions/_middleware.js`) | GET | public | Reads the active theme (`ug_active_theme`, 30 s edge cache, 800 ms timeout), writes `data-theme`, token CSS and fonts into the HTML, sets security headers. Any failure → Neon Bento. Skips `/assets/*` (`_routes.json`), `/api/*`, `admin.html` (headers only) | IMPLEMENTED, preview only (Tahap 3) |
+| every page (`functions/_middleware.js`) | GET | public | Reads the active theme (`ug_active_theme`, 30 s edge cache, 2 s timeout, last valid theme on failure), writes `data-theme`, token CSS and fonts into the HTML, sets security headers. Any failure → Neon Bento. Skips `/assets/*` (`_routes.json`), `/api/*`, `admin.html` (headers only) | IMPLEMENTED, preview only (Tahap 3) |
 | `/api/theme/refresh` | POST | admin + aal2 | Clears the cached active theme after Apply / Restore / Reset | IMPLEMENTED, preview only (Tahap 3) |
 | `/sitemap.xml` | GET | public | Home, legal pages, published articles, band pages | IMPLEMENTED, NOT VERIFIED |
 | `/unsubscribe?t=` | GET, POST | public | Calls `ug_unsubscribe(token)`; POST supports one-click unsubscribe | IMPLEMENTED, NOT VERIFIED |

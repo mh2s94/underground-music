@@ -9,6 +9,18 @@ permissions:
   contents: read
   checks: read
 jobs:
+  unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Theme edge tests (middleware, cache, last good, timeouts)
+        run: node tests/theme-edge.test.mjs
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 15

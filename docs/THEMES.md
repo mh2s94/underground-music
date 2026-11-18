@@ -95,8 +95,10 @@ Loaded in `<head>` after `schema.js` and before the stylesheets.
 Runs on every page request (not on `/assets/*`, see `_routes.json`).
 
 1. Asks Supabase `POST /rest/v1/rpc/ug_active_theme` with the public key (never the service-role key).
-   Timeout 800 ms. The answer is checked again with `UGThemeSchema.sanitizeConfig`: only a theme with
-   `status: "ready"`, clean tokens and an integer `version` is accepted.
+   Timeout **2000 ms** (edge locations far from Singapore, for example in the US, need 0.3–0.9 s).
+   The answer is checked strictly (`validConfig`): a known theme id, a non-negative integer `version`,
+   and tokens of which the sanitizer rejects none. Anything else counts as a failed read. A known theme
+   that is not ready yet is shown as `neon-bento`.
 2. Caches the answer in the Cloudflare cache (`caches.default`, key `/__ug/theme-active`) for **30 s**
    (failures 15 s). Every visitor sees a new theme within ≤ 60 s, and right away in the data centre
    that served the admin (see `/api/theme/refresh`).
@@ -106,10 +108,17 @@ Runs on every page request (not on `/assets/*`, see `_routes.json`).
 4. Response headers: the full security header set from `_headers` (Pages does not apply `_headers`
    to Functions responses, so the middleware sets the same values; a test keeps them identical),
    `cache-control: public, max-age=0, must-revalidate`, and `x-ug-theme: <id>@<version>;<source>`
-   (`source` = `rpc`, `cache`, `fallback`, `cache-fallback`).
-5. **Any error, timeout, bad JSON or unknown theme → `neon-bento`** with no tokens. The page is never
-   blocked: the original HTML is returned.
-6. Not themed (headers only): `admin.html`, HEAD requests, redirects, server errors. 404 pages are themed.
+   (`source` = `rpc`, `cache`, `stale`, `cache-stale`, `fallback`, `cache-fallback`).
+5. **Last good theme.** Every valid answer is also kept as "last good": in memory and in the edge cache
+   (`/__ug/theme-last-good`, 7 days, per host). It is validated again whenever it is read back.
+   On any error, timeout, bad JSON or invalid data the middleware serves the last good theme
+   (`source` `stale` / `cache-stale`). Only when no valid theme was ever read at that location does it
+   serve `neon-bento` with no tokens (`fallback` / `cache-fallback`). Invalid data is never served and
+   never becomes last good. A failed read is remembered for 15 s, then the database is asked again.
+   The page is never blocked: the original HTML is returned.
+6. Subrequests per page (Cache API calls count like `fetch()`): cache hit 1; cache miss 3–4
+   (1 cache read, 1 RPC, 1–2 cache writes); failure 3–4. Free plan limit: 50 per request.
+7. Not themed (headers only): `admin.html`, HEAD requests, redirects, server errors. 404 pages are themed.
 
 Without the SQL (for example on a preview deployment before the owner runs `themes.sql`) the RPC fails
 and every page shows Neon Bento: this is the expected fallback.

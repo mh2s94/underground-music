@@ -154,8 +154,10 @@ Preview deployments (`<branch>.underground-music.pages.dev`) may lack production
 
 ## Theme does not change after Apply
 - Check the header: `curl -s -D - -o /dev/null https://music.mikasa.me/ | grep -i x-ug-theme`.
-  - `neon-bento@0;fallback` → the middleware cannot read `ug_active_theme` (SQL not run, Supabase down, or
-    wrong `SUPABASE_URL`). The site correctly falls back to Neon Bento.
+  - `…;stale` or `…;cache-stale` → the database could not be read just now (slow, down, bad answer); the
+    last valid theme is shown. It recovers by itself within 15 s of the database answering again.
+  - `neon-bento@0;fallback` → the middleware has never read a valid theme at this location (SQL not run,
+    Supabase down, or wrong `SUPABASE_URL`). The site correctly falls back to Neon Bento.
   - Old version number → wait up to 30 s (edge cache in other data centres), then reload.
 - Theme Manager shows "Database tema belum disiapkan" → run `supabase/themes.sql` in the Supabase SQL editor.
 - Apply refused with "not allowed" → log in again and pass 2FA (aal2 is required).

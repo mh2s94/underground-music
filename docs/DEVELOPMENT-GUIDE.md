@@ -84,5 +84,6 @@ These rules are permanent. They apply to every AI assistant and developer who wo
 - Home, Articles, an article page `/a/<slug>`, Music (play, seek), Charts (community and global, preview plays), Band page, Search, Account (sign up, sign in, reset), newsletter sign-up, at 412 px and desktop.
 - Admin: 2FA screen → panel, Generate, Save draft, Publish, Scene Radar batch, Music upload, Settings → Security check (lines 4 and 5 ok).
 - Browser console: no errors, no CSP violations.
+- Theme edge tests: `node tests/theme-edge.test.mjs` (no packages; also runs on every PR in "Preview check").
 - Theme middleware: every HTML response has `x-ug-theme` and the CSP/HSTS/X-Frame-Options headers (`curl -s -D - -o /dev/null https://<preview>/ | grep -i "x-ug-theme\|x-frame"`). Without the SQL it says `neon-bento@0;fallback`.
 - Theme engine: `UGTheme.current()` is `neon-bento`; `UGTheme.load("does-not-exist")` falls back without breaking the page; `window.UG.articles.length` matches the articles shown.
