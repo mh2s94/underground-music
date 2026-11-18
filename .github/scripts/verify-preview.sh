@@ -21,6 +21,15 @@ sha()    { sha256sum "$1" | cut -c1-64; }
 CSP=$(grep -m1 "Content-Security-Policy:" _headers | sed 's/^ *Content-Security-Policy: *//' | tr 'A-Z' 'a-z')
 
 echo "Preview: $PREV"; echo "Commit:  $(git rev-parse --short HEAD)"; echo
+# A fresh deployment can answer with Cloudflare's own 404 page for a short while. Wait until it is
+# stable: 5 consecutive good answers from a static file, a page and a Function (max ~3 min).
+good=0
+for i in $(seq 1 60); do
+  a=$(curl -s -m 10 -o /dev/null -w "%{http_code}" "$PREV/robots.txt"); b=$(curl -s -m 10 -o /dev/null -w "%{http_code}" "$PREV/terms"); c=$(curl -s -m 10 -o /dev/null -w "%{http_code}" "$PREV/api/news")
+  if [[ "$a$b$c" == 200200200 ]]; then good=$((good+1)); [[ $good -ge 5 ]] && break; else good=0; fi
+  sleep 3
+done
+echo "Deployment stable after $i checks"; sleep 10; echo
 
 echo "== 1. Build output = repository root, static files untouched, _routes.json exclusions"
 for f in assets/bento.css assets/theme/schema.js assets/theme/runtime.js assets/favicon.svg robots.txt manifest.webmanifest; do
