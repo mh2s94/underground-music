@@ -61,7 +61,7 @@ get "$PREV/admin" admin; get "$PREV/admin.html" admin_r
 has admin x-ug-theme || has admin_r x-ug-theme && bad "admin page was themed" || ok "admin page not themed"
 [[ "$(hval admin x-frame-options)" == "deny" && "$(hval admin content-security-policy)" == "$CSP" ]] && ok "admin page DENY + CSP identical to _headers" || bad "admin page headers differ"
 # Cloudflare Web Analytics (automatic setup) inserts its beacon <script> into HTML at the edge; ignore that one tag.
-strip_beacon() { sed -E 's#<script defer src=.https://static\.cloudflareinsights\.com/beacon\.min\.js[^>]*></script>##g' "$1"; }
+strip_beacon() { sed -E -e 's#<script defer src=.https://static\.cloudflareinsights\.com/beacon\.min\.js[^>]*></script>##g' -e 's#<!-- Cloudflare Pages Analytics -->##g' "$1"; }
 if cmp -s "$T/admin.b" admin.html; then ok "admin page body byte-identical to repo admin.html"
 elif diff -q <(strip_beacon "$T/admin.b") <(strip_beacon admin.html) >/dev/null; then ok "admin page body identical to repo admin.html apart from Cloudflare's analytics beacon tag"
 else bad "admin page body changed:"; diff <(strip_beacon admin.html) <(strip_beacon "$T/admin.b") | head -20; fi
@@ -93,6 +93,16 @@ cmpep /api/auto-draft -X POST
 cmpep /assets/__missing__.css
 get "$PREV/api/theme/refresh" r1; get "$PREV/api/theme/refresh" r2 -X POST
 [[ "$(status r1)" == 405 && "$(status r2)" == 401 ]] && ok "/api/theme/refresh GET 405, POST without login 401" || bad "/api/theme/refresh GET $(status r1) POST $(status r2)"
+
+echo; echo "== 4. Cloudflare Web Analytics injection (must not double)"
+for p in / /admin /privacy /a/__no_such_story__; do
+  n=wa$(echo "$p" | tr -c 'a-z' '_'); get "$PREV$p" "$n"; get "$PROD$p" "${n}_p"
+  pb=$(grep -o 'beacon.min.js' "$T/$n.b" | wc -l); pc=$(grep -o 'Cloudflare Pages Analytics' "$T/$n.b" | wc -l)
+  qb=$(grep -o 'beacon.min.js' "$T/${n}_p.b" | wc -l); qc=$(grep -o 'Cloudflare Pages Analytics' "$T/${n}_p.b" | wc -l)
+  info "$p analytics: preview beacon=$pb markers=$pc | production beacon=$qb markers=$qc"
+  [[ $pb -le 1 && $qb -le 1 ]] && ok "$p at most one analytics beacon" || bad "$p analytics beacon injected more than once"
+done
+if [[ -n "$BASE" ]]; then get "$BASE/admin" wa_base; info "baseline preview /admin: beacon=$(grep -o 'beacon.min.js' "$T/wa_base.b" | wc -l) markers=$(grep -o 'Cloudflare Pages Analytics' "$T/wa_base.b" | wc -l)"; fi
 
 echo; echo "RESULT: $pass passed, $fail failed"
 [[ $fail -eq 0 ]]
