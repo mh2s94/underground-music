@@ -5,7 +5,7 @@
 #lm { position: fixed; inset: 0; z-index: 650; pointer-events: none; overflow: hidden; }
 #lm .lm-logo { position: absolute; inset: 0; display: grid; place-items: center; align-content: center; gap: 16px; }
 #lm .lm-logo svg { width: 84px; height: 84px; filter: drop-shadow(0 0 10px var(--neon)) drop-shadow(0 0 28px var(--neon)); }
-#lm .lm-word { font: 400 clamp(20px, 6.4vw, 30px)/1 var(--display); letter-spacing: .38em; padding-left: .38em; color: #E4DCFF; text-shadow: var(--uv-glow); }
+#lm .lm-word { font: 400 clamp(20px, 6.4vw, 30px)/1 var(--display); letter-spacing: .38em; padding-left: .38em; color: var(--ug-accent-2-tint); text-shadow: var(--uv-glow); }
 
 /* Shared item timing: --lm-base waits for the overlay on first open. */
 body[data-lm] .view.entered .bento-item { animation-delay: calc(var(--lm-base, 0ms) + var(--i, 0) * var(--lm-step, 50ms)); }

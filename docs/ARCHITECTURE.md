@@ -72,9 +72,12 @@ flowchart LR
 | Newsletter | Footer and article forms call RPC `ug_subscribe`. |
 | Motion | `assets/launch.js` + `launch.css`: launch motion "09 Mosh Pit" on first open (short version on view changes). Off with `prefers-reduced-motion`. |
 | Motion polish (2026-11-17, PR #42) | Entrance animations (`rise`, Mosh Pit `lm09l/r`) animate the separate `translate`/`rotate` properties, so `.card.lift:hover { transform }` works. Hover effects live under `@media (hover: hover)` (no stuck hover on phones). Hero title entrance `titleIn`. Mouse-following neon spotlight on `.card.lift` (background layer driven by `--mx/--my/--spot`, hover devices only; listener in `bento.js`). Equalizers animate `scaleY`. `--spring` easing for small controls. **Rule: never animate `transform` in entrance keyframes on cards again.** |
+| Theme contract | `window.UG` (frozen read-only copies of articles, tracks, user name, player state, plus actions `go`, `openArticle`, `playTrack`, `togglePlay`, `next`, `prev`, `openSearch`, `closeSearch`) and events `ug:data`, `ug:view`, `ug:user`, `ug:player`, `ug:ready`. See [THEMES.md](THEMES.md#4-theme-contract-windowug-assetsbentojs). |
 | Shared UI | `assets/ui.js` exposes `window.UI` (`esc`, `toast`). `assets/genres.js` exposes `window.UG_GENRES`. |
 
-CSS: `assets/bento.css` (main theme "Neon Basement"), `assets/account.css` (Amp Head account page, rack-slide auth form), `assets/launch.css`, `assets/ui.css` (toasts etc.).
+Theme engine (Tahap 1, 2026-11-18): design tokens `--ug-*` at the top of `assets/bento.css`, theme schema and sanitizer in `assets/theme/schema.js`, browser runtime `window.UGTheme` in `assets/theme/runtime.js`, the theme contract `window.UG` + `ug:*` events in `bento.js`, and `data-ug-region` markers in `index.html`. Full description: [THEMES.md](THEMES.md).
+
+CSS: `assets/bento.css` (main layout and default theme "Neon Bento", colours from the tokens), `assets/account.css` (Amp Head account page, rack-slide auth form), `assets/launch.css`, `assets/ui.css` (toasts etc.).
 
 Cache busting: asset links carry `?v=` (for example `bento.js?v=ac1`). **Bump the `?v=` value in `index.html` whenever you change a CSS or JS file**, or phones keep the old file.
 

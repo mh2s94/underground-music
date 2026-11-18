@@ -35,6 +35,8 @@
   const { esc, toast } = window.UI;
   const $ = (id) => document.getElementById(id);
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  // Theme contract events (docs/THEMES.md): ug:data, ug:view, ug:user, ug:player, ug:ready.
+  const emit = (name, detail) => { try { document.dispatchEvent(new CustomEvent("ug:" + name, { detail })); } catch (e) { /* listener error must not break the site */ } };
 
   let articles = [];
   let genre = "All";
@@ -320,6 +322,7 @@
     tracks = error ? [] : (data || []).filter((t) => /^https:\/\//i.test(t.audio_url || ""));
     renderMusicPills(); renderTrackList(); renderHomeTracks();
     hydrateCovers($("trackList")); hydrateCovers($("homeTracks"));
+    emit("data", { type: "tracks", count: tracks.length });
   }
 
   function renderMusicPills() {
@@ -408,6 +411,7 @@
     document.body.classList.toggle("is-playing", playing);
     $("plPlay").setAttribute("aria-label", playing ? "Pause" : "Play");
     $("plPlay").classList.toggle("paused", !playing);
+    emit("player", { trackId: t ? t.id : null, playing });
     $("npPlay").setAttribute("aria-label", playing ? "Pause" : "Play");
     $("npState").textContent = playing ? "Playing" : (t ? "Paused" : "Stopped");
   }
@@ -576,7 +580,7 @@
     movePill();
     if (name === "account" && changed) renderAccount();
     if (name === "charts" && changed) loadCharts();
-    if (changed) { $("main").scrollTop = 0; enter($("view-" + name)); }
+    if (changed) { $("main").scrollTop = 0; enter($("view-" + name)); emit("view", { view: name }); }
   }
   // Views live in the hash (#/music); articles have real paths (/a/<slug>) that Google and link previews can read.
   function go(target) { // target: "/music" or "/a/slug"
@@ -759,6 +763,7 @@
     updateNav(); updateSaveBtn();
     if (view === "account" && !$("view-account").hidden) { renderAccount(); enter($("view-account")); }
     if (currentArticle && !$("reader").hidden) renderComments(currentArticle);
+    emit("user", { signedIn: !!user });
   }
 
   function afterSignIn() {
@@ -1265,6 +1270,7 @@
     if (error && ACOLS !== ACOLS_BASE) { ACOLS = ACOLS_BASE; return load(); } // database not updated yet
     if (error) toast("error", "Could not load stories", "Check your connection and refresh the page.");
     articles = (data || []).filter((a) => a.published_at);
+    emit("data", { type: "articles", count: articles.length });
   }
   function hideSplash() {
     const s = $("splash"); if (!s || s.classList.contains("out")) return;
@@ -1759,6 +1765,39 @@
     }, { passive: true });
   }
 
+  // ---- Theme contract (window.UG) -----------------------------------------
+  // The one door through which theme layouts (assets/themes/<id>/shell.js) read data and trigger
+  // actions. Read-only copies only: a theme can show and arrange things, never change the data or
+  // reach Supabase, sessions or admin functions. Keep this stable; see docs/THEMES.md.
+  const copy = (o) => (o && typeof o === "object" ? Object.freeze({ ...o }) : o);
+  const pick = (a) => copy({
+    id: a.id, slug: a.slug, key: keyOf(a), title: a.title, excerpt: a.excerpt, genre: a.genre, kind: a.kind || null,
+    score: a.score ?? null, band: a.band_name || "", album: a.album_name || "", cover: coverOf(a) || "",
+    publishedAt: a.published_at, url: "/a/" + keyOf(a), bandUrl: a.band_name ? "/band/" + encodeURIComponent(bandSlug(a.band_name)) : ""
+  });
+  const pickTrack = (t) => copy({
+    id: t.id, title: t.title, artist: t.artist, genre: t.genre || "", album: t.album || "", cover: t.cover_url || "", durationSec: t.duration_sec || 0
+  });
+  window.UG = Object.freeze({
+    contract: 1,
+    get view() { return view; },
+    get articles() { return Object.freeze(articles.map(pick)); },
+    get tracks() { return Object.freeze(tracks.map(pickTrack)); },
+    get user() { return copy({ signedIn: !!user, name: user ? myName() : "" }); },
+    get player() { const t = current(); return copy({ track: t ? pickTrack(t) : null, playing: !!t && !audio.paused }); },
+    helpers: Object.freeze({ timeAgo, readTime, fmtDate, esc }),
+    actions: Object.freeze({
+      go: (target) => { if (typeof target === "string" && /^\/(?!\/)[\w\-/%.]*$/.test(target)) go(target); },
+      openArticle: (key) => { if (typeof key === "string" && key) go("/a/" + encodeURIComponent(decodeURIComponent(key))); },
+      playTrack: (id) => { const list = filteredTracks(); const i = list.findIndex((t) => String(t.id) === String(id)); if (i >= 0) playFrom(list, i); },
+      togglePlay: () => togglePlay(),
+      next: () => step(1),
+      prev: () => step(-1),
+      openSearch: () => openSearch(),
+      closeSearch: () => closeSearch()
+    })
+  });
+
   heroFloor($("heroFloor"));
   recTimer();
   wave($("aboutWave"), 600, 180, 6);
@@ -1773,5 +1812,6 @@
     loadTracks(); loadPeek();
     hideSplash();
     route();
+    emit("ready", { articles: articles.length });
   });
 })();

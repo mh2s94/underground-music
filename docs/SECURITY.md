@@ -136,5 +136,15 @@ If you do step 3 before step 2, every sign-in fails.
 - Checks: the webhook requires Telegram's `X-Telegram-Bot-Api-Secret-Token` (SHA-256 of the bot token, so it changes when the token is revoked); only `TELEGRAM_CHAT_ID` is obeyed (sender and chat must match); callback keys are validated.
 - Owner should turn on Telegram **Two-Step Verification**. To shut the bot off: revoke the token in @BotFather or delete `TELEGRAM_BOT_TOKEN`.
 
+## Theme engine
+- Admin-supplied design tokens are never written into pages as typed: `assets/theme/schema.js` keeps
+  only known keys, re-emits colours from parsed `#RRGGBB` numbers, accepts fonts only from an
+  allow-list and clamps numbers. Tested against CSS/script injection and prototype-pollution input.
+- Theme layouts get data only through `window.UG`: frozen copies without emails or user ids, and a
+  fixed list of navigation/player actions. No Supabase client, session or admin function is exposed.
+- Unknown, not-ready or failing themes fall back to `neon-bento`; the default CSS is always loaded.
+- Owner decision (2026-11-18): theme preview opens in a new tab; `X-Frame-Options: DENY` and the CSP
+  stay unchanged.
+
 ## Known exposure (decision needed)
 The Pages output directory is the repository root, so **every file in the repo is publicly downloadable**: `README.md`, `docs/*`, `supabase/*.sql`. They contain no secrets, but they reveal the schema and architecture. The fix is to move the site into a `public/` folder and set it as the output directory. That changes deployment, so it needs the owner's approval. Tracked in [PROJECT-STATUS.md](PROJECT-STATUS.md).
