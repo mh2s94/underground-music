@@ -103,3 +103,11 @@ Cloudflare Web Analytics is enabled by the owner (automatic beacon). The CSP all
 
 
 **Dashboard check 2026-11-17 (owner screenshot):** variables present: `ANTHROPIC_API_KEY`, `AUTODRAFT_NOTIFY`, `AUTODRAFT_TOKEN`, `GEMINI_API_KEY`, `GROQ_API_KEY`, `NEWSLETTER_FROM`, `RESEND_API_KEY`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_R…` (service key), `SUPABASE_URL`. Bindings: R2 `MUSIC` → `underground-music`, Workers AI `AI`. Build output directory `.`, root directory empty.
+
+## Theme middleware (Tahap 3)
+- `_routes.json` (in the repo) tells Pages which URLs run Functions: everything except `/assets/*`,
+  `robots.txt`, `manifest.webmanifest`, `favicon.ico`. No dashboard setting is needed.
+- `functions/_middleware.js` uses `SUPABASE_URL` / `SUPABASE_ANON_KEY` when set and otherwise the public
+  project URL and publishable key built into `functions/api/theme/edge.js`, so preview deployments work
+  without secrets. It never uses the service-role key.
+- Check after a deploy: `curl -s -D - -o /dev/null https://music.mikasa.me/ | grep -i "x-ug-theme\|x-frame-options\|content-security"`.

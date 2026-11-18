@@ -19,6 +19,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap">
 <link rel="stylesheet" href="/assets/ui.css">
+<link rel="stylesheet" href="/assets/theme/manager.css?v=t3">
 <style>
 .page { padding: 32px 0 80px; }
 .page-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 28px; }
@@ -421,6 +422,46 @@
 
     <!-- ======================= SETTINGS ======================= -->
     <div class="tab-panel" id="panel-settings" role="tabpanel" aria-labelledby="tab-settings" data-panel="settings" hidden>
+      <section class="panel card-pad tm" id="themeManager" aria-labelledby="tmTitle" style="margin-bottom:20px">
+        <div class="card-head"><h2 id="tmTitle">Appearance · Theme Manager</h2></div>
+        <p class="muted" style="margin:0">Pilih dan atur tampilan music.mikasa.me untuk semua pengunjung. Preview hanya terlihat oleh kamu; Apply berlaku global dalam maksimal 60 detik, tanpa deploy. Setiap perubahan tersimpan di Riwayat dan bisa di-Restore.</p>
+        <div class="alert warning" id="tmSetup" hidden><span style="color:var(--warning)">!</span><div><strong>Database tema belum dipasang</strong><span class="muted">Jalankan <span class="mono">supabase/themes.sql</span> di Supabase → SQL Editor, lalu muat ulang. Sampai saat itu semua pengunjung memakai Neon Bento (bawaan) dan tombol simpan/terapkan dinonaktifkan.</span></div></div>
+        <div class="tm-status" id="tmStatus" aria-live="polite"></div>
+        <h3>1. Pilih tema</h3>
+        <div class="tm-grid" id="tmGrid"></div>
+        <h3>2. Atur tampilan · <span id="tmTheme"></span> · <span class="muted" id="tmEditing" style="font-weight:400"></span></h3>
+        <div class="tm-editor">
+          <div class="tm-fields">
+            <div class="wide tm-fields" id="tmColours" style="padding:0"></div>
+            <div class="wide tm-fields" id="tmFonts" style="padding:0"></div>
+            <label class="field"><span>Radius sudut</span><span class="tm-range"><input type="range" id="tmRadius" min="0" max="32" step="1"><output id="tmRadiusOut"></output></span></label>
+            <label class="field"><span>Scanline VHS</span><span class="tm-range"><input type="range" id="tmScan" min="0" max="1" step="0.05"><output id="tmScanOut"></output></span></label>
+            <label class="field"><span>Nama draf</span><input class="input" id="tmName" maxlength="80" placeholder="Misal: Neon hijau November"></label>
+            <label class="field"><span>Catatan <span class="hint">(opsional)</span></span><input class="input" id="tmNote" maxlength="200" placeholder="Untuk riwayat"></label>
+            <div class="wide tm-actions"><button class="btn btn-sm btn-ghost" type="button" id="tmDefaults">Isi nilai bawaan</button><button class="btn btn-sm btn-ghost" type="button" id="tmFromActive">Mulai dari tema aktif</button></div>
+          </div>
+          <div style="display:grid;gap:10px">
+            <div class="tm-sample" id="tmSample" aria-label="Contoh tampilan"></div>
+            <div class="tm-contrast" id="tmContrast"></div>
+          </div>
+        </div>
+        <h3>3. Simpan, preview, terapkan</h3>
+        <div class="tm-actions">
+          <button class="btn" type="button" id="tmSave">Simpan draf</button>
+          <button class="btn" type="button" id="tmPrevDesk">Preview desktop (tab baru)</button>
+          <button class="btn" type="button" id="tmPrevHp">Preview HP</button>
+          <button class="btn btn-primary" type="button" id="tmApply">Apply Theme</button>
+        </div>
+        <h3>Draf tersimpan</h3>
+        <ul class="tm-list" id="tmConfigs"></ul>
+        <h3>Riwayat perubahan</h3>
+        <ul class="tm-list" id="tmHistory"></ul>
+        <div class="tm-actions"><button class="btn btn-danger" type="button" id="tmReset">Reset ke Neon Bento (bawaan)</button></div>
+        <dialog class="tm-dialog" id="tmDialog" aria-labelledby="tmDlgTitle"><form method="dialog">
+          <h3 id="tmDlgTitle"></h3><p id="tmDlgBody"></p>
+          <div class="tm-actions"><button class="btn btn-ghost" value="cancel">Batal</button><button class="btn btn-primary" id="tmDlgOk" value="ok">Lanjutkan</button></div>
+        </form></dialog>
+      </section>
       <section class="panel card-pad" aria-labelledby="secTitle" style="margin-bottom:20px">
         <div class="card-head"><h2 id="secTitle">Security check</h2><button class="btn btn-sm btn-primary" type="button" id="secRun">Run check</button></div>
         <p class="muted" style="margin:0">Checks two-step verification in this browser, the session token, and what the database sees. Two test drafts are written and always rolled back: nothing is saved.</p>
@@ -489,9 +530,12 @@
 <script src="/assets/ui.js"></script>
 <script src="/assets/audiotags.js"></script>
 <script src="/assets/genres.js"></script>
+<script src="/assets/theme/schema.js?v=t3"></script>
 <script>
 const sb = window.supabase.createClient("https://lhhmzfwjznlwkentbakv.supabase.co", "sb_publishable_MQDqmSmPb3qiSODbBOSKmA_U7aBEFtN");
 const { toast, shake, esc } = window.UI;
+// Theme Manager (assets/theme/manager.js) uses the same client and helpers.
+window.UGAdmin = Object.freeze({ sb, toast, esc });
 const $ = (id) => document.getElementById(id);
 const YT_RE = /https:\/\/(?:www\.|m\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]{11})\S*/;
 let editing = null;      // { id, published_at } when editing an existing article
@@ -1153,8 +1197,8 @@ function showTab(name, push) {
   if (!loadedTabs.has(name)) {
     loadedTabs.add(name);
     if (name === "music") { detectStorage(); loadTracks(); }
-    if (name === "settings") { loadCounts(); loadSubscribers(); loadNlPicks(); }
-  } else if (name === "settings") { loadCounts(); loadSubscribers(); loadNlPicks(); }
+    if (name === "settings") { loadCounts(); loadSubscribers(); loadNlPicks(); window.UGThemeManager?.load(); }
+  } else if (name === "settings") { loadCounts(); loadSubscribers(); loadNlPicks(); window.UGThemeManager?.load(); }
 }
 document.querySelectorAll(".tab").forEach((t) => t.addEventListener("click", () => showTab(t.dataset.tab, true)));
 document.querySelector(".tabs-bar").addEventListener("keydown", (e) => {
@@ -1724,5 +1768,6 @@ $("cfGo").onclick = async () => {
 sb.auth.onAuthStateChange((evt) => { if (evt === "SIGNED_OUT") showLogin(); });
 session().catch(() => showLogin());
 </script>
+<script src="/assets/theme/manager.js?v=t3"></script>
 </body>
 </html>

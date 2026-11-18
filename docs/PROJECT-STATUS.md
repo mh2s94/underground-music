@@ -41,7 +41,9 @@ Last audit: **2026-11-17**, against `main`. Update this file with every change.
 | Launch motion "09 Mosh Pit" | IMPLEMENTED | chosen by owner on a live preview |
 | Privacy, Terms pages | IMPLEMENTED | |
 | Cloudflare Web Analytics | VERIFIED | enabled by owner |
-| Theme engine Tahap 1 (tokens, schema/sanitizer, `UGTheme` runtime with fallback, `window.UG` contract, regions) | IMPLEMENTED, preview only | branch `theme-foundation`; no visual change (pixel diff max 2/255); awaiting owner ACC. Tahap 2–6 PENDING (docs/THEMES.md) |
+| Theme engine Tahap 1 (tokens, schema/sanitizer, `UGTheme` runtime with fallback, `window.UG` contract, regions) | IMPLEMENTED, merged (PR #48) | no visual change |
+| Theme Tahap 2: `supabase/themes.sql` (tables, RLS, `ug_active_theme`, `ug_apply_theme`, `ug_restore_theme`, `ug_reset_theme`, history) | IMPLEMENTED, NOT APPLIED | tested on local PostgreSQL 16 (49 SQL tests, parity 273 inputs, concurrency, re-run); owner runs it in Supabase after review |
+| Theme Tahap 3: edge middleware, `/api/theme/refresh`, Theme Manager (preview in new tab, apply, restore, reset, history) | IMPLEMENTED, preview only | branch `theme-manager`; 67 end-to-end tests desktop + HP against a local emulator with the real SQL; awaiting owner ACC. Production stays on Neon Bento until the SQL is run. Themes 01–10: PENDING (Tahap 4+) |
 | Hero drummer video (C · beside buttons, neon tint, full 5 s loop; `assets/media/hero-drummer.mp4` 294 KB, Kling AI clip supplied by owner, watermark kept) | IMPLEMENTED | owner ACC 2026-11-18; loads only on screen, never for reduced motion / Save-Data |
 | Telegram bot: radar digest 3x a day, write/publish/discard drafts from Telegram | Digest VERIFIED live 2026-11-18 (owner screenshot); draft/publish buttons NOT VERIFIED live | SQL, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` set by owner |
 | Footer "Where our readers are" (style B strip, `/api/readers`) | VERIFIED | live on music.mikasa.me (owner screenshot 2026-11-17) |

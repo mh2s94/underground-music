@@ -42,6 +42,7 @@ admin.html            Admin panel (one file, inline script): 2FA gate, AI genera
 privacy.html, terms.html   Legal pages (UU PDP rights, Resend, analytics, self-deletion).
 _headers              Security headers for static files: CSP, HSTS, X-Frame-Options, etc.
 robots.txt            Disallows /admin.html and /api/, links the sitemap.
+_routes.json          Which URLs run Functions (all except /assets/*, robots.txt, manifest, favicon).
 manifest.webmanifest  PWA manifest (icons in assets/).
 
 assets/
@@ -52,6 +53,8 @@ assets/
   account.css         Account page (Amp Head, rack slide).
   theme/schema.js     Theme catalogue, token allow-list and sanitizer (browser + edge).
   theme/runtime.js    window.UGTheme: active theme, token injection, theme loader with fallback.
+  theme/preview.js    Admin-only draft preview (?ug-preview=<id>, new tab).
+  theme/manager.js/.css  Admin Theme Manager (Settings → Tema situs).
   launch.js/.css      Launch motion "09 Mosh Pit" (first open + short version on view change).
   ui.js / ui.css      window.UI: esc() HTML-escaping, toast() notifications.
   genres.js           window.UG_GENRES: 30 groups / ~415 genres (must match functions/api/genres-data.js).
@@ -59,6 +62,9 @@ assets/
   favicon.svg, *.png  Icons and the default share image (og.png).
 
 functions/            Cloudflare Pages Functions (file path = URL route)
+  _middleware.js      Every page: active theme from Supabase (30 s edge cache, fallback Neon Bento) + security headers.
+  api/theme/edge.js   Theme helpers for the middleware (RPC read, cache, HTML injection, SECURITY_HEADERS).
+  api/theme/refresh.js  POST: clear the cached theme after Apply (admin + 2FA).
   a/[slug].js         /a/<slug>: index.html with the article's meta tags + JSON-LD (SEO, link previews).
   band/[slug].js      /band/<slug>: same for band profiles.
   sitemap.xml.js      /sitemap.xml

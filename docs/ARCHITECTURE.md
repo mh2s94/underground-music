@@ -133,6 +133,8 @@ The database layer is the one that matters. The other two give good error messag
 | --- | --- | --- | --- | --- |
 | `/a/<slug>` (`functions/a/[slug].js`) | GET | public | Serves `index.html` with the article's title, description, image, NewsArticle (+ Review) JSON-LD injected with HTMLRewriter | IMPLEMENTED, NOT VERIFIED (Google indexing still pending) |
 | `/band/<slug>` (`functions/band/[slug].js`) | GET | public | Same for band pages | IMPLEMENTED, NOT VERIFIED |
+| every page (`functions/_middleware.js`) | GET | public | Reads the active theme (`ug_active_theme`, 30 s edge cache, 800 ms timeout), writes `data-theme`, token CSS and fonts into the HTML, sets security headers. Any failure → Neon Bento. Skips `/assets/*` (`_routes.json`), `/api/*`, `admin.html` (headers only) | IMPLEMENTED, preview only (Tahap 3) |
+| `/api/theme/refresh` | POST | admin + aal2 | Clears the cached active theme after Apply / Restore / Reset | IMPLEMENTED, preview only (Tahap 3) |
 | `/sitemap.xml` | GET | public | Home, legal pages, published articles, band pages | IMPLEMENTED, NOT VERIFIED |
 | `/unsubscribe?t=` | GET, POST | public | Calls `ug_unsubscribe(token)`; POST supports one-click unsubscribe | IMPLEMENTED, NOT VERIFIED |
 | `/api/news` | GET | public | Scene Radar RSS aggregator, 15 min edge cache | VERIFIED (New Noise blocked by captcha) |
@@ -149,7 +151,7 @@ The database layer is the one that matters. The other two give good error messag
 | `/api/newsletter/send` | POST | admin + aal2 | Sends newsletter via Resend | VERIFIED (test email, before 2FA) |
 | `/api/auto-draft` | POST | `AUTODRAFT_TOKEN` | Daily AI drafts | VERIFIED (run 43867308189) |
 
-`functions/api/genres-data.js` and `functions/api/aal.js` export helpers only (no handler).
+`functions/api/genres-data.js`, `functions/api/aal.js` and `functions/api/theme/edge.js` export helpers only (no handler).
 
 ### 3.5 AI article generation
 See [AI-SYSTEM.md](AI-SYSTEM.md).

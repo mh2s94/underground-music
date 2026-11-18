@@ -1,7 +1,10 @@
 # Themes (Theme Engine)
 
-Status: **Tahap 1, fondasi: IMPLEMENTED** (branch `theme-foundation`, 2026-11-18).
-Mesin tema, Theme Manager di admin, dan tema 01–10 menyusul pada tahap berikutnya. Rencana lengkap:
+Status (2026-11-18):
+- **Tahap 1, fondasi:** IMPLEMENTED, merged (PR #48).
+- **Tahap 2, `supabase/themes.sql`:** written and tested locally; **NOT APPLIED** to Supabase (the owner runs it after review).
+- **Tahap 3, edge middleware + Theme Manager:** IMPLEMENTED on branch `theme-manager`, preview only, awaiting owner ACC.
+- Themes 01–10 come in Tahap 4+. Rencana lengkap:
 "UNDERGROUND · Rancangan Theme Manager" (dokumen yang disetujui owner pada 2026-11-18).
 
 ## Goal
@@ -19,9 +22,11 @@ the same in every theme.
 | Browser runtime | `assets/theme/runtime.js` (`window.UGTheme`) | IMPLEMENTED |
 | Data/action contract | `window.UG` + `ug:*` events in `assets/bento.js` | IMPLEMENTED |
 | Layout regions | `data-ug-region` attributes in `index.html` | IMPLEMENTED |
-| Database tables + `ug_apply_theme` | `supabase/themes.sql` | PENDING (Tahap 2, owner reviews the SQL first) |
-| Edge loader | `functions/_middleware.js`, `/api/theme/refresh` | PENDING (Tahap 2) |
-| Theme Manager | `admin.html` → Settings → Appearance | PENDING (Tahap 3) |
+| Database tables + RPCs | `supabase/themes.sql` | IMPLEMENTED, NOT APPLIED (owner runs it) |
+| Edge loader | `functions/_middleware.js`, `functions/api/theme/edge.js`, `_routes.json` | IMPLEMENTED (preview) |
+| Cache refresh after Apply | `functions/api/theme/refresh.js` (`POST /api/theme/refresh`) | IMPLEMENTED (preview) |
+| Admin preview in a new tab | `assets/theme/preview.js` (loaded by the runtime for `?ug-preview=<id>`) | IMPLEMENTED (preview) |
+| Theme Manager | `admin.html` → Settings → Tema situs (`assets/theme/manager.js`, `manager.css`) | IMPLEMENTED (preview) |
 | Theme layouts | `assets/themes/<id>/theme.css`, `shell.js` | PENDING (Tahap 4+) |
 
 ## 1. Design tokens (top of `assets/bento.css`)
@@ -85,6 +90,52 @@ Loaded in `<head>` after `schema.js` and before the stylesheets.
   `data-ug-theme-asset`) and falls back.
 - `UGTheme.setTokens(obj)` / `clearTokens()`: apply validated tokens on `<html>` (preview).
 - `UGTheme.current()`, `version()`, `lastFallback()`, `themes()`.
+
+## 3a. Edge loader (`functions/_middleware.js`)
+Runs on every page request (not on `/assets/*`, see `_routes.json`).
+
+1. Asks Supabase `POST /rest/v1/rpc/ug_active_theme` with the public key (never the service-role key).
+   Timeout 800 ms. The answer is checked again with `UGThemeSchema.sanitizeConfig`: only a theme with
+   `status: "ready"`, clean tokens and an integer `version` is accepted.
+2. Caches the answer in the Cloudflare cache (`caches.default`, key `/__ug/theme-active`) for **30 s**
+   (failures 15 s). Every visitor sees a new theme within ≤ 60 s, and right away in the data centre
+   that served the admin (see `/api/theme/refresh`).
+3. Writes into the HTML: `<html data-theme="<id>" data-theme-version="<v>">`, a
+   `<style id="ug-theme-tokens">` with the tokens, the Google Fonts link (`#ug-theme-fonts`) when a
+   font token is set, and the theme's own CSS/JS files once a theme has them.
+4. Response headers: the full security header set from `_headers` (Pages does not apply `_headers`
+   to Functions responses, so the middleware sets the same values; a test keeps them identical),
+   `cache-control: public, max-age=0, must-revalidate`, and `x-ug-theme: <id>@<version>;<source>`
+   (`source` = `rpc`, `cache`, `fallback`, `cache-fallback`).
+5. **Any error, timeout, bad JSON or unknown theme → `neon-bento`** with no tokens. The page is never
+   blocked: the original HTML is returned.
+6. Not themed (headers only): `admin.html`, HEAD requests, redirects, server errors. 404 pages are themed.
+
+Without the SQL (for example on a preview deployment before the owner runs `themes.sql`) the RPC fails
+and every page shows Neon Bento: this is the expected fallback.
+
+### `POST /api/theme/refresh`
+Admin + 2FA (`aal2`) only (401 without login, 403 for a member or an admin without 2FA). Clears the
+cached theme in the current Cloudflare data centre and reads it again. The Theme Manager calls it
+after Apply, Restore and Reset. Other data centres update within 30 s.
+
+## 3b. Theme Manager (admin → Settings → "Tema situs")
+- Shows the active theme, version and time; the 11 themes as cards (only ready themes can be chosen;
+  the others say "Tahap berikutnya").
+- Editor: accent, accent 2, background, surface, text, muted text, display font, body font, radius,
+  scanlines, plus a WCAG contrast check and a live sample. Only values that differ from the defaults are
+  saved.
+- **Simpan draft** → `site_theme_configs` (RLS: admin + 2FA).
+- **Preview desktop / Preview HP** → opens `/?ug-preview=<config id>` in a **new tab** (HP: a 390×844
+  window). `assets/theme/preview.js` shows the draft only when the session is an admin with 2FA (own
+  `admin_users` row readable); for anyone else the link shows the normal public theme. No iframe,
+  `X-Frame-Options: DENY` and the CSP are unchanged. A banner says the draft is not applied yet;
+  "Keluar preview" returns to the public theme.
+- **Terapkan** (confirm dialog) → `ug_apply_theme`, then `/api/theme/refresh`.
+- **Riwayat** → **Pulihkan** calls `ug_restore_theme(history id)`; **Reset ke default** calls
+  `ug_reset_theme` (Neon Bento, no tokens). Every action is a new version and a history row.
+- If the SQL has not been run yet, the panel shows a setup notice and stays read-only; the public site
+  keeps Neon Bento.
 
 ## 4. Theme contract (`window.UG`, `assets/bento.js`)
 The only way a theme layout reads data or triggers actions. Everything is a frozen copy: a theme can

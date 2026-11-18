@@ -84,6 +84,18 @@
   ];
   var READY = THEMES.filter(function (t) { return t.status === "ready"; }).map(function (t) { return t.id; });
 
+  // Default token values of "neon-bento" (the values at the top of assets/bento.css). The Theme
+  // Manager starts from these; a test checks they match bento.css.
+  var DEFAULTS = {
+    accent: "#FF2E63", accentHi: "#FF5C86", accentTint: "#FFE3EC", onAccent: "#07060B",
+    accent2: "#7B5CFF", accent2Hi: "#A48FFF", accent2Tint: "#E4DCFF",
+    void: "#050409", bg: "#07060B", shell: "#0A0912", surface: "#0E0C16", surface2: "#15121F", surface3: "#1B1729",
+    line: "#221C36", line2: "#2E2648", ink: "#F2EEFF", inkSoft: "#D6D0EC", muted: "#A9A3C2", faint: "#7D769E",
+    ok: "#3DF5A7", warn: "#FFC23D",
+    fontDisplay: "bebas-neue", fontBody: "inter", fontMono: "space-mono",
+    radius: 16, scanlines: 1
+  };
+
   var HEX = /^#([0-9a-fA-F]{6})$/;
 
   function parseHex(v) {
@@ -182,7 +194,7 @@
 
   // Nothing in the schema may be changed at runtime by other scripts.
   function deepFreeze(o) { Object.keys(o).forEach(function (k) { if (o[k] && typeof o[k] === "object") deepFreeze(o[k]); }); return Object.freeze(o); }
-  [THEMES, READY, FONTS, TOKENS].forEach(deepFreeze);
+  [THEMES, READY, FONTS, TOKENS, DEFAULTS].forEach(deepFreeze);
 
   g.UGThemeSchema = Object.freeze({
     DEFAULT_THEME: DEFAULT_THEME,
@@ -191,6 +203,7 @@
     READY: READY,
     FONTS: FONTS,
     TOKENS: TOKENS,
+    DEFAULTS: DEFAULTS,
     parseHex: parseHex,
     contrast: contrast,
     sanitizeTokens: sanitizeTokens,

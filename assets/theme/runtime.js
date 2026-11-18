@@ -132,6 +132,25 @@
     state.version = root.getAttribute("data-theme-version") || "0";
   })();
 
+  // Admin preview (Tahap 3): ?ug-preview=<saved config id> loads assets/theme/preview.js, which shows
+  // the draft in this tab only and only for an admin with two-step verification (the draft is
+  // readable through RLS by such admins only). Visitors and the public theme are never affected.
+  (function previewHook() {
+    var UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    var id = null;
+    try {
+      id = new URLSearchParams(location.search).get("ug-preview");
+      if (id && UUID.test(id)) sessionStorage.setItem("ug-preview", id);
+      else id = sessionStorage.getItem("ug-preview");
+    } catch (e) { id = null; }
+    if (!id || !UUID.test(id)) return;
+    var s = document.createElement("script");
+    s.src = "/assets/theme/preview.js?v=t3";
+    s.defer = true;
+    s.setAttribute("data-ug-preview", id);
+    document.head.appendChild(s);
+  })();
+
   window.UGTheme = Object.freeze({
     schema: S,
     current: function () { return state.theme; },

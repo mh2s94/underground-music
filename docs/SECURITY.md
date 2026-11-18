@@ -13,7 +13,7 @@ Audited 2026-11-17. Labels: **VERIFIED** (checked live, by the owner or by CI), 
 | Admin 2FA in the database | `supabase/security.sql` | VERIFIED (owner applied; Security check shows aal2) |
 | "Admins can read all articles" select policy | Supabase dashboard only | VERIFIED live, **PENDING** in repo |
 | `admin.html` hidden from non-admins | `admin.html` | IMPLEMENTED, NOT VERIFIED (mock-tested: guest, member, admin) |
-| Security headers incl. CSP + HSTS | `_headers` | IMPLEMENTED, NOT VERIFIED live (CSP mock-tested locally, no violations) |
+| Security headers incl. CSP + HSTS | `_headers` (static) + `functions/api/theme/edge.js` (HTML pages) | IMPLEMENTED, NOT VERIFIED live (CSP mock-tested locally, no violations) |
 | Cloudflare Turnstile captcha | `assets/bento.js` + Supabase | PENDING (site key empty, so it is off) |
 | Rate limiting at Cloudflare | Cloudflare dashboard | PENDING (owner action) |
 | Rotate `AUTODRAFT_TOKEN` (old value appeared in a chat) | Cloudflare + GitHub | PENDING (owner action) |
@@ -74,8 +74,12 @@ Admins open the panel from their profile ("Admin panel" button), after signing i
 - **Lost phone:** an admin without their authenticator cannot open the panel. Recovery (owner, in the Supabase dashboard): Authentication → Users → the user → remove the MFA factor. Then open `admin.html`, which shows a new QR code.
 - **Adding another admin:** insert into `admin_users`. They enrol on their first visit to the panel.
 
-## Security headers (`_headers`)
-These apply to static responses from Pages:
+## Security headers (`_headers` + `functions/_middleware.js`)
+`_headers` applies to static files. Cloudflare Pages does **not** apply `_headers` to responses made by
+Functions, and since the theme middleware (Tahap 3) every HTML page goes through a Function. So
+`functions/api/theme/edge.js` (`SECURITY_HEADERS`) sets exactly the same headers on every HTML response,
+including `admin.html` (which is never themed). **When you change a header, change it in both places**;
+the edge tests compare them.
 
 | Header | Value / meaning |
 | --- | --- |
@@ -100,7 +104,7 @@ These apply to static responses from Pages:
 | frames | YouTube (nocookie and normal), Spotify, SoundCloud, Turnstile |
 | other | `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`, `upgrade-insecure-requests` |
 
-**When you add an external service, add its host to the right directive in `_headers`**, or the browser blocks it silently (look for "Content Security Policy" in the browser console).
+**When you add an external service, add its host to the right directive in `_headers` and in `SECURITY_HEADERS` (`functions/api/theme/edge.js`)**, or the browser blocks it silently (look for "Content Security Policy" in the browser console).
 
 Responses produced by functions (`/a/<slug>`, `/band/<slug>`, `/api/*`) may not carry these headers. This is IMPLEMENTED, NOT VERIFIED: check with the browser's network tab.
 
@@ -148,3 +152,14 @@ If you do step 3 before step 2, every sign-in fails.
 
 ## Known exposure (decision needed)
 The Pages output directory is the repository root, so **every file in the repo is publicly downloadable**: `README.md`, `docs/*`, `supabase/*.sql`. They contain no secrets, but they reveal the schema and architecture. The fix is to move the site into a `public/` folder and set it as the output directory. That changes deployment, so it needs the owner's approval. Tracked in [PROJECT-STATUS.md](PROJECT-STATUS.md).
+
+## Theme system (Tahap 3)
+- Visitors only read the active theme (`ug_active_theme()` returns theme, tokens and version, nothing else).
+- Writing (drafts, apply, restore, reset, history) needs `ug_is_admin()` = admin row **and** `aal2`, enforced
+  by RLS and inside the SECURITY DEFINER functions (`supabase/themes.sql`). `service_role` and `anon` have no
+  write rights on the theme tables.
+- `/api/theme/refresh` checks login, `admin_users` and `aal2` like the other admin routes; it only clears a cache.
+- Tokens are validated three times: in the database (CHECK + cleaning), at the edge (`sanitizeConfig`), and in
+  the browser runtime. Token CSS is written with `<` escaped, so a token cannot close the `<style>` tag.
+- Preview opens in a new tab; no iframe, `X-Frame-Options: DENY` and the CSP are unchanged.
+
