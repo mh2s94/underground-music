@@ -44,11 +44,12 @@
   }
   function themeName(id) { var t = S.THEMES.find(function (x) { return x.id === id; }); return t ? t.no + " · " + t.name : id; }
   function fmt(ts) { try { return new Date(ts).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" }); } catch (e) { return ts || ""; } }
-  function full(tokens) { var v = {}; Object.keys(S.DEFAULTS).forEach(function (k) { v[k] = S.DEFAULTS[k]; }); var c = S.sanitizeTokens(tokens || {}).tokens; Object.keys(c).forEach(function (k) { v[k] = c[k]; }); return v; }
-  // Only what differs from the defaults is stored.
+  // Every theme has its own token set (S.base: defaults + the theme's tokens); edits are made on top
+  // of it and only what differs from it is stored.
+  function full(tokens, themeId) { var v = S.base(themeId || S.DEFAULT_THEME); var c = S.sanitizeTokens(tokens || {}).tokens; Object.keys(c).forEach(function (k) { v[k] = c[k]; }); return v; }
   function diffTokens() {
-    var out = {}, all = Object.assign({}, st.extra, st.values);
-    Object.keys(all).forEach(function (k) { if (S.DEFAULTS[k] !== all[k]) out[k] = all[k]; });
+    var out = {}, all = Object.assign({}, st.extra, st.values), b = S.base(st.themeId);
+    Object.keys(all).forEach(function (k) { if (b[k] !== all[k]) out[k] = all[k]; });
     return S.sanitizeTokens(out).tokens;
   }
 
@@ -98,7 +99,7 @@
 
   function startFrom(themeId, tokens, configId, name, note) {
     st.themeId = S.READY.indexOf(themeId) > -1 ? themeId : S.DEFAULT_THEME;
-    var f = full(tokens);
+    var f = full(tokens, st.themeId);
     st.values = {}; st.extra = {};
     Object.keys(f).forEach(function (k) {
       if (COLOURS.some(function (c) { return c[0] === k; }) || FONT_KEYS.some(function (c) { return c[0] === k; }) || k === "radius" || k === "scanlines") st.values[k] = f[k];
@@ -115,7 +116,7 @@
 
   function renderStatus() {
     var a = st.active || { theme: S.DEFAULT_THEME, tokens: {}, version: 0 };
-    var f = full(a.tokens);
+    var f = full(a.tokens, a.theme);
     $("tmStatus").innerHTML =
       '<span class="sw" aria-hidden="true"><i style="background:' + f.accent + '"></i><i style="background:' + f.accent2 + '"></i><i style="background:' + f.bg + '"></i><i style="background:' + f.surface + '"></i></span>' +
       "<div><span class=\"tm-live\">Aktif untuk semua pengunjung</span><b>" + esc(themeName(a.theme)) + "</b><small>" +
@@ -167,12 +168,12 @@
 
   function renderSample() {
     var v = st.values, s = $("tmSample");
-    var font = function (k) { return (S.FONTS[v[k]] || S.FONTS[S.DEFAULTS[k]]).stack; };
+    var font = function (k) { return (S.FONTS[v[k]] || S.FONTS[S.base(st.themeId)[k]]).stack; };
     s.style.background = v.bg; s.style.color = v.ink; s.style.borderRadius = v.radius + "px";
     s.innerHTML = '<span class="k" style="color:' + v.accent + '">● Latest drop</span>' +
       '<span class="t" style="font-family:' + esc(font("fontDisplay")) + ";color:" + v.ink + '">BENEATH THE <span style="color:' + v.accent2 + '">NOISE.</span></span>' +
       '<span style="font-family:' + esc(font("fontBody")) + ";color:" + v.muted + ';font-size:13.5px">Reviews, features and new releases from the heavier corners of the scene.</span>' +
-      '<span class="row"><span class="pill" style="background:' + v.accent + ";color:" + S.DEFAULTS.onAccent + ";border-radius:" + Math.min(v.radius, 14) + 'px">Read latest →</span>' +
+      '<span class="row"><span class="pill" style="background:' + v.accent + ";color:" + (v.onAccent || S.DEFAULTS.onAccent) + ";border-radius:" + Math.min(v.radius, 14) + 'px">Read latest →</span>' +
       '<span class="pill" style="border:1.5px solid ' + v.accent2 + ";color:" + v.ink + ";border-radius:" + Math.min(v.radius, 14) + 'px">Explore genres</span></span>' +
       '<span class="card" style="background:' + v.surface + ";border-radius:" + v.radius + "px;color:" + v.ink + ";font-family:" + esc(font("fontBody")) + '">Kartu artikel · <span style="color:' + v.muted + '">2 jam lalu</span></span>';
   }
@@ -282,7 +283,11 @@
     $("tmGrid").addEventListener("click", function (e) {
       var b = e.target.closest(".tm-card"); if (!b) return;
       if (b.getAttribute("aria-disabled") === "true") { toast("info", b.querySelector(".nm").textContent, "Tema ini dibangun pada tahap berikutnya dan belum bisa diterapkan."); return; }
-      st.themeId = b.dataset.theme; render();
+      if (b.dataset.theme !== st.themeId) {
+        startFrom(b.dataset.theme, {}, null, "", "");      // each theme starts from its own colours and fonts
+        toast("info", b.querySelector(".nm").textContent, "Editor memakai warna dan font bawaan tema ini.");
+      }
+      render();
     });
     COLOURS.forEach(function (c) {
       $("tmc-" + c[0]).addEventListener("input", function (e) { st.values[c[0]] = e.target.value.toUpperCase(); $("tmt-" + c[0]).value = st.values[c[0]]; contrast(); renderSample(); });

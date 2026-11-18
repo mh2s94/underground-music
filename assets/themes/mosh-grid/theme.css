@@ -1,0 +1,117 @@
+/* 04 · Mosh Grid — asymmetric collage.
+   Concrete grey, safety orange, cyan. Cards are flyers pasted at slight angles with hard offset
+   shadows; the home and article grids break into an uneven collage. The navigation folds into a
+   compact corner box (shell.js toggles it on phones). */
+
+html[data-theme="mosh-grid"] .app { inset: 0; border: 0; border-radius: 0; box-shadow: none; background: var(--bg); }
+html[data-theme="mosh-grid"] .main { background:
+  radial-gradient(rgb(var(--ug-ink-rgb) / .05) 1px, transparent 1.4px) 0 0 / 18px 18px, var(--bg); }
+
+/* corner menu: a small boxed grid of icons, top-left */
+html[data-theme="mosh-grid"] .sidebar { position: fixed; left: 14px; top: 14px; z-index: 60; width: auto; height: auto; padding: 8px; gap: 8px; border: 2px solid var(--ink); border-radius: 0; background: var(--neon); box-shadow: 6px 6px 0 var(--ink); }
+html[data-theme="mosh-grid"] .sidebar .emblem { display: none; }
+html[data-theme="mosh-grid"] .sidebar-foot { margin-top: 0; }
+html[data-theme="mosh-grid"] .sidebar-foot a { color: var(--on-neon); }
+html[data-theme="mosh-grid"] .nav { display: grid; grid-template-columns: repeat(2, 44px); gap: 4px; }
+html[data-theme="mosh-grid"] .nav-pill { display: none; }
+html[data-theme="mosh-grid"] .nav-btn { width: 44px; height: 44px; border-radius: 0; color: var(--on-neon); }
+html[data-theme="mosh-grid"] .nav-btn:hover { background: rgb(var(--ug-void-rgb) / .15); color: var(--on-neon); }
+html[data-theme="mosh-grid"] .nav-btn[aria-current="page"] { background: var(--ink); color: var(--bg); }
+html[data-theme="mosh-grid"] .nav-tip { left: 52px; border-radius: 0; background: var(--ink); color: var(--bg); border: 0; }
+html[data-theme="mosh-grid"] .mg-toggle { display: none; }
+
+/* flyers */
+html[data-theme="mosh-grid"] .view { max-width: 1400px; padding: 26px 26px 26px 150px; }
+html[data-theme="mosh-grid"] .card { border-radius: var(--r-card); border: 2px solid var(--ink); box-shadow: 7px 7px 0 rgb(var(--ug-void-rgb) / .9); }
+html[data-theme="mosh-grid"] .card.lift:hover { transform: rotate(0deg) translate(-2px, -2px) !important; border-color: var(--neon); box-shadow: 10px 10px 0 var(--neon); }
+html[data-theme="mosh-grid"] .card-title h2, html[data-theme="mosh-grid"] .card-title h3 { font: 800 30px/.95 var(--display); letter-spacing: .01em; }
+html[data-theme="mosh-grid"] .neon-txt { color: var(--neon); text-shadow: none; animation: none; }
+html[data-theme="mosh-grid"] .uv-txt { color: var(--uv); text-shadow: none; }
+html[data-theme="mosh-grid"] .btn, html[data-theme="mosh-grid"] .pill, html[data-theme="mosh-grid"] .tag { border-radius: 0; }
+html[data-theme="mosh-grid"] .btn { border: 2px solid var(--ink); box-shadow: 4px 4px 0 var(--ink); }
+html[data-theme="mosh-grid"] .btn:hover { transform: translate(-2px, -2px); }
+html[data-theme="mosh-grid"] .pill[aria-pressed="true"] { box-shadow: 3px 3px 0 var(--ink); }
+
+/* home collage: one 6-column grid, cards placed unevenly and tilted */
+html[data-theme="mosh-grid"] .home { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); grid-auto-flow: dense; gap: 22px; }
+html[data-theme="mosh-grid"] .home > .col, html[data-theme="mosh-grid"] .home .row-2 { display: contents; }
+html[data-theme="mosh-grid"] .home .ticker { grid-column: 1 / -1; transform: rotate(-1deg); background: var(--uv); border: 2px solid var(--ink); }
+html[data-theme="mosh-grid"] .home .ticker span { color: var(--ug-void); font-weight: 800; }
+html[data-theme="mosh-grid"] .home .ticker span::after { background: var(--ug-void); box-shadow: none; border-radius: 0; }
+html[data-theme="mosh-grid"] .home .hero { grid-column: span 4; grid-row: span 2; transform: rotate(-.6deg); }
+html[data-theme="mosh-grid"] .home > .col:last-child > .card:nth-child(1) { grid-column: span 2; transform: rotate(1.4deg); }
+html[data-theme="mosh-grid"] .home > .col:last-child > .card:nth-child(2) { grid-column: span 2; transform: rotate(-1.2deg); background: var(--neon); color: var(--on-neon); }
+html[data-theme="mosh-grid"] .home > .col:last-child > .card:nth-child(2) .hint, html[data-theme="mosh-grid"] .home > .col:last-child > .card:nth-child(2) .link { color: var(--on-neon); }
+html[data-theme="mosh-grid"] .home > .col:first-child > .card:nth-child(3) { grid-column: span 4; transform: rotate(.5deg); }
+html[data-theme="mosh-grid"] .home .row-2 > .card:first-child { grid-column: span 2; transform: rotate(-1.6deg); }
+html[data-theme="mosh-grid"] .home .row-2 > .card:last-child { grid-column: span 3; transform: rotate(1deg); background: var(--uv); color: var(--ug-void); }
+html[data-theme="mosh-grid"] .home .row-2 > .card:last-child p { color: var(--ug-void); }
+html[data-theme="mosh-grid"] .home > .col:last-child > .card:nth-child(3) { grid-column: span 3; transform: rotate(-.8deg); }
+html[data-theme="mosh-grid"] .home > .col:last-child > .card:nth-child(4) { grid-column: span 3; transform: rotate(.9deg); }
+html[data-theme="mosh-grid"] .hero { background: var(--surface-2, var(--card-2)); min-height: 420px; }
+html[data-theme="mosh-grid"] .hero h1 { font: 800 clamp(64px, 9vw, 140px)/.82 var(--display); text-transform: uppercase; }
+html[data-theme="mosh-grid"] .hero p { text-shadow: none; }
+html[data-theme="mosh-grid"] .hero .floor { opacity: .25; }
+html[data-theme="mosh-grid"] .hero-vid { border-radius: 0; border: 2px solid var(--ink); transform: rotate(3deg); box-shadow: 6px 6px 0 var(--neon); }
+html[data-theme="mosh-grid"] .hero-vid::before { background: linear-gradient(160deg, rgb(var(--ug-accent-rgb) / .55), rgb(var(--ug-accent-2-rgb) / .45)); }
+html[data-theme="mosh-grid"] .demo .ring-deco { border-color: var(--ug-void); }
+html[data-theme="mosh-grid"] .home .btn-forest { background: var(--ug-void); color: var(--ink); }
+
+/* articles: uneven collage */
+html[data-theme="mosh-grid"] .grid4 { grid-template-columns: repeat(6, minmax(0, 1fr)); grid-auto-flow: dense; gap: 22px; }
+html[data-theme="mosh-grid"] .grid4 > .acard { grid-column: span 2; }
+html[data-theme="mosh-grid"] .grid4 > .acard:nth-child(5n+1) { grid-column: span 4; grid-row: span 2; transform: rotate(-.8deg); }
+html[data-theme="mosh-grid"] .grid4 > .acard:nth-child(5n+1) h3 { font: 800 clamp(30px, 3.4vw, 52px)/.95 var(--display); text-transform: uppercase; }
+html[data-theme="mosh-grid"] .grid4 > .acard:nth-child(5n+1) .art-wrap { aspect-ratio: 16 / 9; }
+html[data-theme="mosh-grid"] .grid4 > .acard:nth-child(5n+2) { transform: rotate(1.6deg); }
+html[data-theme="mosh-grid"] .grid4 > .acard:nth-child(5n+3) { transform: rotate(-1.4deg); background: var(--neon); color: var(--on-neon); }
+html[data-theme="mosh-grid"] .grid4 > .acard:nth-child(5n+3) p, html[data-theme="mosh-grid"] .grid4 > .acard:nth-child(5n+3) .meta { color: var(--on-neon); }
+html[data-theme="mosh-grid"] .grid4 > .acard:nth-child(5n+4) { grid-column: span 3; transform: rotate(.7deg); }
+html[data-theme="mosh-grid"] .grid4 > .acard:nth-child(5n) { grid-column: span 3; transform: rotate(-.5deg); }
+html[data-theme="mosh-grid"] .acard .art-wrap { border-bottom: 2px solid var(--ink); }
+html[data-theme="mosh-grid"] .acard .art-wrap img.cover { filter: contrast(1.2) saturate(1.2); }
+html[data-theme="mosh-grid"] .acard h3 { font-weight: 800; }
+html[data-theme="mosh-grid"] .lib-head h1, html[data-theme="mosh-grid"] .music-hero h1, html[data-theme="mosh-grid"] .charts-hero h1 { font-weight: 800; }
+html[data-theme="mosh-grid"] .lib-head h1 em { color: var(--neon); text-shadow: none; }
+html[data-theme="mosh-grid"] .music-hero, html[data-theme="mosh-grid"] .charts-hero { transform: rotate(-.4deg); }
+
+/* reader */
+html[data-theme="mosh-grid"] .reader-sheet { border-radius: 0; border: 2px solid var(--ink); box-shadow: 12px 12px 0 var(--neon); }
+html[data-theme="mosh-grid"] .reader h1 { font-weight: 800; text-transform: uppercase; }
+html[data-theme="mosh-grid"] .ft { margin-left: 0; }
+html[data-theme="mosh-grid"] .ft-inner, html[data-theme="mosh-grid"] .ft-bar { padding-left: 150px; }
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-theme="mosh-grid"] .card, html[data-theme="mosh-grid"] .ticker, html[data-theme="mosh-grid"] .hero-vid { transform: none !important; }
+}
+@media (max-width: 1100px) {
+  html[data-theme="mosh-grid"] .home, html[data-theme="mosh-grid"] .grid4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  html[data-theme="mosh-grid"] .home > .col > .card, html[data-theme="mosh-grid"] .home .row-2 > .card, html[data-theme="mosh-grid"] .home .hero,
+  html[data-theme="mosh-grid"] .grid4 > .acard, html[data-theme="mosh-grid"] .grid4 > .acard:nth-child(n) { grid-column: span 1 !important; grid-row: auto !important; }
+  html[data-theme="mosh-grid"] .home .hero, html[data-theme="mosh-grid"] .home .ticker, html[data-theme="mosh-grid"] .grid4 > .acard:nth-child(5n+1) { grid-column: 1 / -1 !important; }
+}
+@media (max-width: 760px) {
+  html[data-theme="mosh-grid"] .view { padding: 70px 14px 18px; }
+  html[data-theme="mosh-grid"] .ft-inner, html[data-theme="mosh-grid"] .ft-bar { padding-left: 14px; }
+  html[data-theme="mosh-grid"] .app { flex-direction: column; }
+  html[data-theme="mosh-grid"] .sidebar { left: auto; right: 12px; top: 12px; bottom: auto; width: auto; height: auto; flex-direction: column; padding: 6px; border-top: 2px solid var(--ink); }
+  html[data-theme="mosh-grid"] .mg-toggle { display: grid; place-items: center; width: 44px; height: 44px; border: 0; background: none; color: var(--on-neon); font: 800 13px/1 var(--mono); letter-spacing: .08em; cursor: pointer; }
+  html[data-theme="mosh-grid"] .sidebar:not(.mg-open) .nav { display: none; }
+  html[data-theme="mosh-grid"] .nav { grid-template-columns: repeat(2, 44px); flex-direction: column; gap: 4px; }
+  html[data-theme="mosh-grid"] .nav-about { display: grid !important; }
+  html[data-theme="mosh-grid"] .home, html[data-theme="mosh-grid"] .grid4 { grid-template-columns: 1fr; }
+  html[data-theme="mosh-grid"] .home > .col > .card, html[data-theme="mosh-grid"] .home .row-2 > .card, html[data-theme="mosh-grid"] .home .hero, html[data-theme="mosh-grid"] .grid4 > .acard:nth-child(n) { grid-column: 1 / -1 !important; }
+  html[data-theme="mosh-grid"] .card { box-shadow: 5px 5px 0 rgb(var(--ug-void-rgb) / .9); }
+  html[data-theme="mosh-grid"] .player { bottom: 12px; }
+}
+
+/* About on phones: the profile title wraps instead of running off the screen */
+@media (max-width: 520px) {
+  html[data-theme="mosh-grid"] .profile-id { min-width: 0; flex-wrap: wrap; }
+  html[data-theme="mosh-grid"] .profile-id h1 { font-size: 30px; overflow-wrap: anywhere; }
+}
+
+/* legal pages (privacy, terms) use fixed colours for their text: follow the theme instead */
+html[data-theme="mosh-grid"] .legal h2 { color: var(--ink); }
+html[data-theme="mosh-grid"] .legal p, html[data-theme="mosh-grid"] .legal li { color: var(--ug-ink-soft); }
+html[data-theme="mosh-grid"] body:has(> main.legal) { background: var(--bg); }

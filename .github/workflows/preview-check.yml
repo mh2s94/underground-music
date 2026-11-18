@@ -23,6 +23,8 @@ jobs:
         run: node tests/theme-edge.test.mjs
       - name: supabase-js pinned version + SRI hash
         run: node tests/supabase-js-pin.test.mjs
+      - name: Theme catalogue and theme files (scoping, tokens, contrast, budget, ASSET_REV)
+        run: node tests/themes.test.mjs
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -58,3 +60,5 @@ jobs:
         run: |
           mkdir -p /tmp/bc && cd /tmp/bc && npm init -y >/dev/null && npm i --silent playwright@1 >/dev/null && npx playwright install --with-deps chromium >/dev/null
           cp "$GITHUB_WORKSPACE/.github/scripts/browser-check.mjs" /tmp/bc/ && node /tmp/bc/browser-check.mjs "${{ steps.cf.outputs.url }}"
+      - name: Every theme in a real browser (switched in the page only, nothing saved)
+        run: cp "$GITHUB_WORKSPACE/.github/scripts/themes-check.mjs" /tmp/bc/ && node /tmp/bc/themes-check.mjs "${{ steps.cf.outputs.url }}"

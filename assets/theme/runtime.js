@@ -29,8 +29,46 @@
     return null;
   }
 
+  // Theme shells (assets/themes/<id>/shell.js) register a mount function here. A shell adds
+  // theme-only parts (masthead, menus, map) built from window.UG only; everything it adds carries
+  // data-ug-shell and is removed, together with its listeners (the cleanup it returns), as soon as
+  // the theme changes, so switching themes never leaves anything behind.
+  var shells = {};
+  var mounted = null;        // { id, cleanup }
+  function unmountShell() {
+    if (mounted) {
+      try { if (typeof mounted.cleanup === "function") mounted.cleanup(); } catch (e) { /* ignore */ }
+      mounted = null;
+    }
+    var left = document.querySelectorAll("[data-ug-shell]");
+    for (var i = 0; i < left.length; i++) left[i].parentNode.removeChild(left[i]);
+    root.removeAttribute("data-ug-shell-mounted");
+  }
+  function mountShell(id) {
+    if (mounted && mounted.id === id) return;
+    unmountShell();
+    var fn = shells[id];
+    if (!fn || root.getAttribute("data-theme") !== id) return;
+    var run = function () {
+      if (root.getAttribute("data-theme") !== id || (mounted && mounted.id === id)) return;
+      if (!document.querySelector(".app")) return;          // legal pages etc.: tokens and CSS only
+      try {
+        mounted = { id: id, cleanup: fn() };
+        root.setAttribute("data-ug-shell-mounted", id);
+      } catch (e) { mounted = { id: id, cleanup: null }; fallback("shell-error"); }
+    };
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", run, { once: true });
+    else run();
+  }
+  function registerShell(id, fn) {
+    if (!S.THEME_ID.test(String(id)) || typeof fn !== "function") return;
+    shells[id] = fn;
+    if (root.getAttribute("data-theme") === id) mountShell(id);
+  }
+
   // Remove every trace of a non-default theme: files, attribute, injected tokens.
   function clearTheme() {
+    unmountShell();
     var nodes = document.querySelectorAll("[data-ug-theme-asset]");
     for (var i = 0; i < nodes.length; i++) nodes[i].parentNode.removeChild(nodes[i]);
     clearTokens();
@@ -49,6 +87,8 @@
   function clearTokens() {
     applied.forEach(function (k) { root.style.removeProperty(k); });
     applied = [];
+    var edge = document.getElementById("ug-theme-tokens");       // written into the HTML by the edge
+    if (edge) edge.parentNode.removeChild(edge);
     var f = document.getElementById("ug-theme-fonts");
     if (f) f.parentNode.removeChild(f);
   }
@@ -88,7 +128,7 @@
     clearTheme();
     root.removeAttribute("data-theme-fallback");
     state.fallback = "";
-    if (opts.tokens) setTokens(opts.tokens);
+    if (opts.tokens || (m.tokens && Object.keys(m.tokens).length)) setTokens(Object.assign({}, m.tokens, opts.tokens));
     if (!m.css && !m.js) {           // the default theme needs no files
       root.setAttribute("data-theme", m.id);
       state.theme = m.id; state.version = version;
@@ -97,15 +137,17 @@
     }
 
     var base = "/assets/themes/" + m.id + "/";
+    var q = "?v=" + version + "." + S.ASSET_REV;
     var jobs = [];
-    if (m.css) jobs.push(addAsset("link", { rel: "stylesheet", href: base + "theme.css?v=" + version }));
-    if (m.js) jobs.push(addAsset("script", { src: base + "shell.js?v=" + version }));
+    if (m.css) jobs.push(addAsset("link", { rel: "stylesheet", href: base + "theme.css" + q }));
+    if (m.js) jobs.push(addAsset("script", { src: base + "shell.js" + q }));
     var timer;
     var timeout = new Promise(function (_, reject) { timer = setTimeout(function () { reject(new Error("timeout")); }, LOAD_TIMEOUT_MS); });
     return Promise.race([Promise.all(jobs), timeout]).then(function () {
       clearTimeout(timer);
       root.setAttribute("data-theme", m.id);
       state.theme = m.id; state.version = version;
+      if (m.js) mountShell(m.id);
       emit("theme", { theme: m.id, version: version });
       return m.id;
     }, function (err) {
@@ -158,6 +200,7 @@
     lastFallback: function () { return state.fallback; },
     themes: function () { return S.THEMES; },
     load: load,
+    registerShell: registerShell,
     setTokens: setTokens,
     clearTokens: clearTokens,
     fallback: fallback

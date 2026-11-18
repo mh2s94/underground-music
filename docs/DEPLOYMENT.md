@@ -101,8 +101,9 @@ Cloudflare Web Analytics is enabled by the owner (automatic beacon). The CSP all
     the readers box off, slow home page (> 5 s), or a static file that differs from `main` (deploy in progress).
 - **Preview check** (pull requests): job `unit` runs `tests/theme-edge.test.mjs` and
   `tests/supabase-js-pin.test.mjs`; job `verify` waits for the Cloudflare preview of the commit, runs
-  `.github/scripts/verify-preview.sh` (68 checks) and `.github/scripts/browser-check.mjs` (real Chromium:
-  supabase-js loads with its SRI hash, articles load, admin login shows).
+  `.github/scripts/verify-preview.sh` (68 checks), `.github/scripts/browser-check.mjs` (real Chromium:
+  supabase-js loads with its SRI hash, articles load, admin login shows) and `.github/scripts/themes-check.mjs`
+  (every theme switched in the page only, nothing saved). Job `unit` also runs `tests/themes.test.mjs`.
 
 - **Debugging:** Actions → Daily AI drafts → the run → step "Ask the site to write today's drafts". The log prints the JSON answer and the HTTP code:
   - `401`: token mismatch between GitHub and Cloudflare

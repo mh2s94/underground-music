@@ -154,6 +154,9 @@ If you do step 3 before step 2, every sign-in fails.
 - Admin-supplied design tokens are never written into pages as typed: `assets/theme/schema.js` keeps
   only known keys, re-emits colours from parsed `#RRGGBB` numbers, accepts fonts only from an
   allow-list and clamps numbers. Tested against CSS/script injection and prototype-pollution input.
+- Theme shells (`assets/themes/<id>/shell.js`) are checked by `tests/themes.test.mjs`: no network, storage,
+  Supabase, `eval` or dynamic import; everything they add is marked and removed on theme change. Theme CSS is
+  scoped to its own `html[data-theme]` and may not load external resources.
 - Theme layouts get data only through `window.UG`: frozen copies without emails or user ids, and a
   fixed list of navigation/player actions. No Supabase client, session or admin function is exposed.
 - Unknown, not-ready or failing themes fall back to `neon-bento`; the default CSS is always loaded.

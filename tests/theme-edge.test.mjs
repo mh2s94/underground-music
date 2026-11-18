@@ -54,7 +54,7 @@ await t("tokens injected as validated CSS before </head>", async () => {
   const { body } = await mw("/");
   const st = body.match(/<style id="ug-theme-tokens">([^<]*)<\/style>/)[1];
   for (const part of ["--ug-accent:#00FF88", "--ug-accent-rgb:0 255 136", '--ug-font-display:"Fraunces", Georgia, serif', "--ug-radius:8px"]) assert.ok(st.includes(part), part + " in " + st);
-  assert.ok(st.startsWith(":root{") && st.endsWith("}"));
+  assert.ok(st.startsWith(":root:root:root{") && st.endsWith("}"), "overrides outrank html[data-theme] rules");
   assert.ok(body.includes('id="ug-theme-fonts"') && body.includes("fonts.googleapis.com/css2?family=Fraunces"));
   assert.ok(body.indexOf("ug-theme-tokens") < body.indexOf("</head>") && body.indexOf("ug-theme-tokens") > body.indexOf("bento.css"));
 });
@@ -66,8 +66,8 @@ await t("malicious RPC data is neutralised", async () => {
   assert.ok(!body.includes("ug-theme-tokens"));
   assert.strictEqual(res.headers.get("x-ug-theme"), "neon-bento@0;fallback");
 });
-await t("planned (not ready) theme → neon-bento", async () => {
-  reset(); rpc = { status: 200, body: { theme: "front-page", tokens: {}, version: 3 }, calls: 0 };
+await t("theme id outside the catalogue → neon-bento, no theme files", async () => {
+  reset(); rpc = { status: 200, body: { theme: "zz-theme", tokens: {}, version: 3 }, calls: 0 };
   const { body } = await mw("/"); assert.match(body, /data-theme="neon-bento"/); assert.ok(!body.includes("/assets/themes/"));
 });
 for (const [name, setup] of [["RPC 404 (migration not applied)", () => ({ status: 404, body: { code: "PGRST202" } })], ["RPC 500", () => ({ status: 500, body: "x" })],
@@ -238,10 +238,14 @@ await t("Apply/Restore/Reset flow: refresh replaces last good; purge keeps it fo
   await E.purgeActiveTheme("https://music.mikasa.me/"); rpc = { status: 500, body: "x", calls: 0 };
   const { body, res } = await mw("/"); assert.strictEqual(res.headers.get("x-ug-theme"), "neon-bento@8;stale"); assert.ok(!body.includes("ug-theme-tokens"));
 });
-await t("not-ready theme in the database is valid data, shown as neon-bento and kept as last good", async () => {
+await t("a non-default theme is kept as last good and still served, with its files, when the RPC fails", async () => {
   reset(); rpc = { status: 200, body: { theme: "front-page", tokens: {}, version: 4 }, calls: 0 };
-  assert.strictEqual(await hdr(), "neon-bento@4;rpc");
+  assert.strictEqual(await hdr(), "front-page@4;rpc");
   assert.ok(globalThis.caches.default.m.get("https://music.mikasa.me/__ug/theme-last-good"));
+  expire("/__ug/theme-active"); rpc = { status: 500, body: "x", calls: 0 };
+  const { body, res } = await mw("/");
+  assert.strictEqual(res.headers.get("x-ug-theme"), "front-page@4;stale");
+  assert.ok(body.includes("/assets/themes/front-page/theme.css") && body.includes("--ug-bg:#F3EFE6"));
 });
 await t("subrequests per page: cache hit = 1 cache read; miss = 1 read + 1 RPC + 1–2 writes; failure + last good = 1 read + 1 RPC + 1 write (+1 read after restart)", async () => {
   reset(); const c = () => globalThis.caches.default.ops; rpc = { status: 200, body: GOOD, calls: 0 };
@@ -250,6 +254,37 @@ await t("subrequests per page: cache hit = 1 cache read; miss = 1 read + 1 RPC +
   expire("/__ug/theme-active"); await mw("/"); assert.deepStrictEqual([c().match, rpc.calls, c().put], [3, 2, 3], "miss, unchanged theme: no last-good write");
   expire("/__ug/theme-active"); rpc.status = 500; rpc.body = "x"; await mw("/"); assert.deepStrictEqual([c().match, rpc.calls, c().put], [4, 3, 4], "failure, last good from memory");
   E._resetMemoryForTests(); expire("/__ug/theme-active"); await mw("/"); assert.deepStrictEqual([c().match, rpc.calls, c().put], [6, 4, 5], "failure after restart: +1 read for last good");
+});
+
+// ---------------------------------------------------------------- themes 01–10 at the edge
+await t("ready theme: edge links theme.css + shell.js with ?v=<version>.<ASSET_REV>, base tokens injected", async () => {
+  reset(); rpc = { status: 200, body: { theme: "front-page", tokens: {}, version: 12 }, calls: 0 };
+  const { body, res } = await mw("/");
+  const q = "?v=12." + globalThis.UGThemeSchema.ASSET_REV;
+  assert.match(body, /data-theme="front-page" data-theme-version="12"/);
+  assert.ok(body.includes('href="/assets/themes/front-page/theme.css' + q + '" data-ug-theme-asset'), "theme.css link");
+  assert.ok(body.includes('src="/assets/themes/front-page/shell.js' + q + '" defer data-ug-theme-asset'), "shell.js script");
+  const st = body.match(/<style id="ug-theme-tokens">([^<]*)<\/style>/)[1];
+  assert.ok(st.includes("--ug-bg:#F3EFE6") && st.includes("--ug-accent:#B80F2A"), "theme base tokens");
+  assert.ok(body.indexOf("theme.css") < body.indexOf("ug-theme-tokens"), "tokens after the theme file");
+  assert.ok(body.includes("fonts.googleapis.com/css2?family=Fraunces"), "theme font loaded");
+  assert.strictEqual(res.headers.get("x-ug-theme"), "front-page@12;rpc");
+});
+await t("admin overrides win over the theme's own tokens", async () => {
+  reset(); rpc = { status: 200, body: { theme: "index", tokens: { accent: "#123456" }, version: 3 }, calls: 0 };
+  const st = (await mw("/")).body.match(/<style id="ug-theme-tokens">([^<]*)<\/style>/)[1];
+  assert.ok(st.includes("--ug-accent:#123456") && !st.includes("--ug-accent:#D7000F"));
+  assert.ok(st.includes("--ug-bg:#FFFFFF"), "other theme tokens stay");
+});
+await t("every ready theme renders at the edge with its files and a valid token block", async () => {
+  for (const th of globalThis.UGThemeSchema.THEMES) {
+    reset(); rpc = { status: 200, body: { theme: th.id, tokens: {}, version: 1 }, calls: 0 };
+    const { body, res } = await mw("/");
+    assert.strictEqual(res.headers.get("x-ug-theme"), th.id + "@1;rpc", th.id);
+    assert.strictEqual(body.includes("/assets/themes/" + th.id + "/theme.css"), th.css, th.id + " css");
+    assert.strictEqual(body.includes("/assets/themes/" + th.id + "/shell.js"), th.js, th.id + " js");
+    assert.strictEqual(body.includes('id="ug-theme-tokens"'), Object.keys(th.tokens).length > 0, th.id + " tokens");
+  }
 });
 console.log(`\n${n} edge/middleware tests passed`);
 globalThis.fetch = realFetch;

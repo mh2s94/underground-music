@@ -6,7 +6,9 @@ features, runs a music library ("Basement radio") with a persistent player, comm
 profiles, a newsletter, and a small community of members who comment, save stories and send demos.
 
 The look is "Neon Basement": dark background, neon pink `#FF2E63` + UV `#7B5CFF`, Bebas Neue / Inter / Space Mono,
-in a bento-grid layout called **Neon Bento**. That is the default and, today, the only ready site theme.
+in a bento-grid layout called **Neon Bento**. That is the default theme; ten more site themes (Front Page,
+The Pit, Setlist, Mosh Grid, Control Room 2.0, Main Stage, Xerox Zine, Index, Frequency, Scene Atlas) can be
+applied from the admin Theme Manager ([THEMES.md](docs/THEMES.md#catalogue-11-themes)).
 
 > **New here (human or AI)?** Read this file, then [docs/DEVELOPMENT-GUIDE.md](docs/DEVELOPMENT-GUIDE.md) (the
 > permanent rules), then [docs/PROJECT-STATUS.md](docs/PROJECT-STATUS.md) (what is verified, unverified and
@@ -43,10 +45,10 @@ in a bento-grid layout called **Neon Bento**. That is the default and, today, th
 | Band profiles | `/band/<slug>`: stories, tracks, ratings, Deezer data, related bands |
 | Community | Accounts with email confirmation, profile, comments, saved stories, demo submissions, self-deletion |
 | Newsletter | Sign-up, admin sends via Resend, one-click unsubscribe |
-| Theme Manager | Admin changes the site look for all visitors without a redeploy: preview in a new tab, Apply, Restore, Reset, history |
+| Theme Manager | Admin switches between 11 complete site themes (layout + style) and adjusts colours/fonts for all visitors without a redeploy: preview in a new tab, Apply, Restore, Reset, history |
 | Footer "Where our readers are" | Share of readers per country from Cloudflare Web Analytics |
 
-Not available: gigs/calendar (removed), themes 01–10 (follow-up work, shown as "Tahap berikutnya"),
+Not available: gigs/calendar (removed),
 captcha (Turnstile not configured yet).
 
 ## 2. Technology stack
@@ -87,12 +89,13 @@ assets/         bento.js (public app) · bento.css (design tokens + Neon Bento) 
                 ui.* (escaping, toasts) · genres.js (taxonomy) · audiotags.js (ID3/FLAC/MP4 tags) · readers.js
   theme/        schema.js (theme catalogue + sanitizer, shared with the edge) · runtime.js (UGTheme)
                 preview.js (admin draft preview) · manager.js/.css (Theme Manager)
+  themes/<id>/  theme.css + shell.js of the ten themes 01–10 (Neon Bento needs no files)
 functions/      _middleware.js · a/[slug].js · band/[slug].js · sitemap.xml.js · unsubscribe.js
   api/          generate · track-info · auto-draft · draft-lib · news · charts · preview · cover · band · readers
                 newsletter/send · music/[[path]] · telegram/{digest,webhook,lib} · theme/{edge,refresh}
                 aal.js (2FA check) · genres-data.js (server copy of the taxonomy)
 supabase/       SQL migrations, run in the Supabase SQL editor in the order of docs/DATABASE.md
-tests/          theme-edge.test.mjs (48 tests) · supabase-js-pin.test.mjs (SRI)
+tests/          theme-edge.test.mjs (edge) · themes.test.mjs (catalogue + theme files) · supabase-js-pin.test.mjs (SRI)
 .github/        workflows/ (auto-draft, telegram-digest, smoke-production, preview-check) · scripts/
 docs/           Detailed documentation (table below)
 ```
@@ -201,7 +204,9 @@ Details: [DEPLOYMENT.md](docs/DEPLOYMENT.md) (every environment variable), [TROU
    Functions are plain ES modules (`node --input-type=module -e "import('file://…/functions/api/x.js')"`).
 3. **Tests**:
    - `node tests/theme-edge.test.mjs`: middleware, cache, theme fallback (no packages)
+   - `node tests/themes.test.mjs`: theme catalogue, scoping, tokens and contrast, size budget, `ASSET_REV`
    - `node tests/supabase-js-pin.test.mjs`: pinned supabase-js and SRI hash (needs network)
+   - `node .github/scripts/themes-check.mjs <url>`: every theme in a real browser (needs Playwright)
    - `bash .github/scripts/smoke-production.sh <url>`: read-only checks of any deployment
    - Pull requests run all of these plus checks on the preview deployment automatically.
 4. **Change safely**: branch → PR → green checks → owner approval → squash merge → check production. Bump the
@@ -221,13 +226,14 @@ Details: [DEPLOYMENT.md](docs/DEPLOYMENT.md) (every environment variable), [TROU
   automated access tests.
 - **Pending (owner)**: rotate `AUTODRAFT_TOKEN`, export the base schema for `supabase/base.sql`, Turnstile site
   key, a Cloudflare rate-limit rule for `/api/*`.
-- **Known limits**: themes 01–10 not built; repo files (docs, SQL) are publicly downloadable because the output
+- **Known limits**: repo files (docs, SQL) are publicly downloadable because the output
   directory is the repo root (no secrets in them); one Scene Radar source (New Noise) is blocked by a captcha.
 
 **Recent milestones**
 
 | Date | Change |
 | --- | --- |
+| 2026-11-19 | Themes 01–10 built and ready in the Theme Manager (PR pending owner ACC) |
 | 2026-11-19 | Final Audit; supabase-js pinned with SRI; production smoke test; documentation brought up to date |
 | 2026-11-18 | PR #50 theme edge resilience (2 s timeout, last valid theme) |
 | 2026-11-18 | PR #49 Theme Manager + edge middleware; `themes.sql` applied |

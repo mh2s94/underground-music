@@ -1,0 +1,84 @@
+/* 09 · Frequency — player-first.
+   Night-blue, cyan signal, magenta peak. The navigation becomes a radio dock at the bottom: every
+   view is a channel with a frequency, and the dock shows what is on air (shell.js) with a "Tune in"
+   button that starts the library. Basement radio moves to the top of the home page. */
+
+html[data-theme="frequency"] .app { inset: 0; border: 0; border-radius: 0; box-shadow: none; flex-direction: column-reverse; background: var(--bg); }
+html[data-theme="frequency"] .main { background:
+  radial-gradient(800px 400px at 50% 110%, rgb(var(--ug-accent-rgb) / .12), transparent 70%),
+  repeating-linear-gradient(0deg, rgb(var(--ug-accent-rgb) / .03) 0 1px, transparent 1px 28px), var(--bg); }
+
+/* radio dock */
+html[data-theme="frequency"] .sidebar { width: 100%; height: auto; flex-direction: row; align-items: stretch; justify-content: center; gap: 18px; padding: 10px 22px; background: var(--void); border-right: 0; border-top: 1px solid var(--line-2); box-shadow: 0 -18px 40px -20px rgb(var(--ug-accent-rgb) / .35); }
+html[data-theme="frequency"] .sidebar .emblem { display: none; }
+html[data-theme="frequency"] .sidebar-foot { margin: 0; display: flex; align-items: center; }
+html[data-theme="frequency"] .nav { flex-direction: row; gap: 6px; counter-reset: ch; }
+html[data-theme="frequency"] .nav-pill { display: none; }
+html[data-theme="frequency"] .nav-btn { counter-increment: ch; width: 84px; height: 62px; border-radius: var(--r-card); border: 1px solid var(--line-2); background: var(--card); color: var(--muted); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; }
+html[data-theme="frequency"] .nav-btn::before { content: "CH " counter(ch, decimal-leading-zero); font: 700 9px/1 var(--mono); letter-spacing: .14em; color: var(--faint); }
+html[data-theme="frequency"] .nav-btn > svg, html[data-theme="frequency"] .nav-btn #accountIcon { display: none; }
+html[data-theme="frequency"] .nav-tip { position: static; opacity: 1; transform: none; background: none; border: 0; padding: 0; color: inherit; font: 700 12px/1 var(--display); letter-spacing: .02em; text-transform: none; }
+html[data-theme="frequency"] .nav-btn:hover { color: var(--ink); border-color: var(--neon); }
+html[data-theme="frequency"] .nav-btn[aria-current="page"] { color: var(--on-neon); background: var(--neon); border-color: var(--neon); box-shadow: 0 0 24px -4px rgb(var(--ug-accent-rgb) / .8); }
+html[data-theme="frequency"] .nav-btn[aria-current="page"]::before { color: var(--on-neon); }
+html[data-theme="frequency"] .nav-about { display: flex !important; }
+
+/* dial (shell.js) */
+html[data-theme="frequency"] .fq-dial { flex: 0 1 360px; min-width: 0; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 8px 12px; border: 1px solid var(--line-2); border-radius: var(--r-card); background: var(--card); }
+html[data-theme="frequency"] .fq-mhz { font: 700 26px/1 var(--mono); color: var(--neon); letter-spacing: -.02em; white-space: nowrap; }
+html[data-theme="frequency"] .fq-mhz small { font-size: 11px; color: var(--faint); margin-left: 4px; }
+html[data-theme="frequency"] .fq-now { min-width: 0; font: 600 12.5px/1.3 var(--font); color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+html[data-theme="frequency"] .fq-now small { display: block; font: 400 10px/1.4 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--faint); }
+html[data-theme="frequency"] .fq-tune { min-height: 40px; padding: 0 14px; border: 0; border-radius: 999px; background: var(--uv); color: #12030E; font: 700 12px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; cursor: pointer; }
+html[data-theme="frequency"] .fq-tune:disabled { opacity: .45; cursor: default; }
+html[data-theme="frequency"] .fq-scale { position: relative; height: 8px; margin-top: 6px; grid-column: 1 / -1; background: repeating-linear-gradient(90deg, var(--line-2) 0 1px, transparent 1px 10px); }
+html[data-theme="frequency"] .fq-scale i { position: absolute; top: -4px; width: 2px; height: 16px; background: var(--uv); box-shadow: 0 0 8px var(--uv); transition: left .5s var(--ease-out); }
+
+/* player sits right above the dock */
+html[data-theme="frequency"] .player { bottom: 96px; width: min(720px, calc(100% - 24px)); }
+html[data-theme="frequency"] .isl { background: var(--card); box-shadow: 0 0 0 1px var(--neon), 0 0 30px -8px rgb(var(--ug-accent-rgb) / .6); }
+
+/* content: radio first */
+html[data-theme="frequency"] .view { max-width: 1280px; }
+html[data-theme="frequency"] .card { border-color: var(--line-2); }
+html[data-theme="frequency"] .card.lift:hover { border-color: var(--neon); box-shadow: 0 0 0 1px var(--neon), 0 0 30px -10px rgb(var(--ug-accent-rgb) / .7); }
+html[data-theme="frequency"] .card-title h2, html[data-theme="frequency"] .card-title h3 { font: 700 18px/1.1 var(--display); letter-spacing: -.01em; text-transform: none; }
+html[data-theme="frequency"] .neon-txt { color: var(--neon); text-shadow: 0 0 18px rgb(var(--ug-accent-rgb) / .7); animation: none; }
+html[data-theme="frequency"] .uv-txt { color: var(--uv); text-shadow: 0 0 18px rgb(var(--ug-accent-2-rgb) / .6); }
+html[data-theme="frequency"] .home { grid-template-columns: minmax(320px, 1fr) minmax(0, 1.5fr); }
+html[data-theme="frequency"] .home > .col:last-child { order: -1; }
+html[data-theme="frequency"] .home > .col:last-child > .card:first-child { border-color: var(--neon); background: linear-gradient(180deg, rgb(var(--ug-accent-rgb) / .08), var(--card)); }
+html[data-theme="frequency"] .home > .col:last-child > .card:first-child h2::before { content: "\25CF  "; color: var(--uv); }
+html[data-theme="frequency"] .hero { min-height: 300px; }
+html[data-theme="frequency"] .hero h1 { font: 800 clamp(52px, 7vw, 104px)/.9 var(--display); letter-spacing: -.04em; }
+html[data-theme="frequency"] .hero .floor { opacity: .3; }
+html[data-theme="frequency"] .hero-vid { border-color: var(--neon); }
+html[data-theme="frequency"] .hero-vid::before { background: linear-gradient(160deg, rgb(var(--ug-accent-rgb) / .5), rgb(var(--ug-accent-2-rgb) / .45)); }
+html[data-theme="frequency"] .ticker span { font: 700 14px/1 var(--mono); letter-spacing: .14em; color: var(--neon); }
+html[data-theme="frequency"] .lib-head h1, html[data-theme="frequency"] .music-hero h1, html[data-theme="frequency"] .charts-hero h1 { font-weight: 800; letter-spacing: -.04em; text-transform: none; }
+html[data-theme="frequency"] .music-hero { border-color: var(--neon); }
+html[data-theme="frequency"] .reader-bar { background: rgb(var(--ug-void-rgb) / .94); }
+html[data-theme="frequency"] .main { padding-bottom: 20px; }
+
+@media (max-width: 1150px) { html[data-theme="frequency"] .home { grid-template-columns: 1fr; } }
+@media (max-width: 900px) { html[data-theme="frequency"] .fq-dial { display: none; } }
+@media (max-width: 760px) {
+  html[data-theme="frequency"] .sidebar { height: auto; padding: 6px 6px calc(6px + env(safe-area-inset-bottom)); gap: 0; }
+  html[data-theme="frequency"] .nav { width: 100%; justify-content: space-between; gap: 4px; }
+  html[data-theme="frequency"] .nav-btn { flex: 1; width: auto; height: 54px; padding: 0 2px; }
+  html[data-theme="frequency"] .nav-tip { display: block; font-size: 10.5px; }
+  html[data-theme="frequency"] .nav-btn::before { font-size: 8px; letter-spacing: .06em; }
+  html[data-theme="frequency"] .nav-about { display: none !important; }
+  html[data-theme="frequency"] .player { bottom: 78px; }
+}
+
+/* About on phones: the profile title wraps instead of running off the screen */
+@media (max-width: 520px) {
+  html[data-theme="frequency"] .profile-id { min-width: 0; flex-wrap: wrap; }
+  html[data-theme="frequency"] .profile-id h1 { font-size: 30px; overflow-wrap: anywhere; }
+}
+
+/* legal pages (privacy, terms) use fixed colours for their text: follow the theme instead */
+html[data-theme="frequency"] .legal h2 { color: var(--ink); }
+html[data-theme="frequency"] .legal p, html[data-theme="frequency"] .legal li { color: var(--ug-ink-soft); }
+html[data-theme="frequency"] body:has(> main.legal) { background: var(--bg); }

@@ -66,22 +66,57 @@
     scanlines:   { type: "num", css: "--ug-scanlines", min: 0, max: 1, label: "Scanline (0 = mati)" }
   };
 
-  // Theme catalogue. status "ready" = its files exist and it may be applied; "planned" = shown
-  // in the Theme Manager as coming later, never loaded. Layout code for a ready theme lives in
-  // assets/themes/<id>/ (theme.css, optional shell.js); the default theme needs no extra files.
+  // Theme catalogue. status "ready" = its files exist, it passed the release checks and it may be
+  // applied; "planned" = shown in the Theme Manager as coming later, never loaded. Layout code for a
+  // theme lives in assets/themes/<id>/ (theme.css scoped to html[data-theme="<id>"], optional
+  // shell.js registered through UGTheme.registerShell). "tokens" are the theme's own design-token
+  // values on top of DEFAULTS: the edge and the runtime apply them, and admin overrides from the
+  // Theme Manager are stored as differences from them. The default theme needs no files.
   var THEMES = [
-    { id: "neon-bento",    no: "00", name: "Neon Bento",        status: "ready",   css: false, js: false, desc: "Default. Bento dashboard, rail ikon, neon pink + UV." },
-    { id: "front-page",    no: "01", name: "Front Page",        status: "planned", css: true,  js: true,  desc: "Editorial broadsheet: masthead, menu seksi, lead story, The Wire." },
-    { id: "the-pit",       no: "02", name: "The Pit",           status: "planned", css: true,  js: true,  desc: "Brutalist: menu teks layar penuh, indeks judul raksasa.", experimental: true },
-    { id: "setlist",       no: "03", name: "Setlist",           status: "planned", css: true,  js: true,  desc: "Satu kolom dengan pil navigasi mengambang." },
-    { id: "mosh-grid",     no: "04", name: "Mosh Grid",         status: "planned", css: true,  js: true,  desc: "Kolase asimetris dengan menu ringkas di pojok." },
-    { id: "control-room",  no: "05", name: "Control Room 2.0",  status: "planned", css: true,  js: true,  desc: "Sidebar berlabel, konten tengah, panel player kanan." },
-    { id: "main-stage",    no: "06", name: "Main Stage",        status: "planned", css: true,  js: true,  desc: "Immersive layar penuh per cerita.", experimental: true },
-    { id: "xerox-zine",    no: "07", name: "Xerox Zine",        status: "planned", css: true,  js: true,  desc: "Zine DIY per edisi dengan tab binder." },
-    { id: "index",         no: "08", name: "Index",             status: "planned", css: true,  js: true,  desc: "Swiss editorial: navbar bernomor, tabel indeks." },
-    { id: "frequency",     no: "09", name: "Frequency",         status: "planned", css: true,  js: true,  desc: "Player-first: dock radio sebagai navigasi channel." },
-    { id: "scene-atlas",   no: "10", name: "Scene Atlas",       status: "planned", css: true,  js: true,  desc: "Peta genre interaktif dengan panel baca.", experimental: true }
+    { id: "neon-bento",   no: "00", name: "Neon Bento",       status: "ready", css: false, js: false, desc: "Default. Bento dashboard, rail ikon, neon pink + UV.", tokens: {} },
+    { id: "front-page",   no: "01", name: "Front Page",       status: "ready", css: true,  js: true,  desc: "Editorial broadsheet: masthead, menu seksi, lead story, The Wire.",
+      tokens: { void: "#E9E3D6", bg: "#F3EFE6", shell: "#F3EFE6", surface: "#FBF8F1", surface2: "#EFE9DC", surface3: "#E6DECC", line: "#D5CCB8", line2: "#9C9180",
+        ink: "#16130F", inkSoft: "#2B2620", muted: "#574F43", faint: "#6E6557", accent: "#B80F2A", accentHi: "#D42A3C", accentTint: "#F8D7DC", onAccent: "#FFFFFF",
+        accent2: "#1B3A6B", accent2Hi: "#2E5797", accent2Tint: "#D9E2F1", ok: "#1F7A4D", warn: "#9A5F00", fontDisplay: "fraunces", fontBody: "inter", fontMono: "space-mono", radius: 0, scanlines: 0 } },
+    { id: "the-pit",      no: "02", name: "The Pit",          status: "ready", css: true,  js: true,  desc: "Brutalist: menu teks layar penuh, indeks judul raksasa.", experimental: true,
+      tokens: { void: "#000000", bg: "#0A0A0A", shell: "#0A0A0A", surface: "#111111", surface2: "#1A1A1A", surface3: "#242424", line: "#3A3A3A", line2: "#F5F5F0",
+        ink: "#F5F5F0", inkSoft: "#E4E4DE", muted: "#B5B5AD", faint: "#8C8C85", accent: "#D7FF1F", accentHi: "#E6FF6B", accentTint: "#F4FFC7", onAccent: "#0A0A0A",
+        accent2: "#FF4A1C", accent2Hi: "#FF7A57", accent2Tint: "#FFE0D6", ok: "#D7FF1F", warn: "#FF4A1C", fontDisplay: "archivo-black", fontBody: "inter-tight", fontMono: "space-mono", radius: 0, scanlines: 0 } },
+    { id: "setlist",      no: "03", name: "Setlist",          status: "ready", css: true,  js: true,  desc: "Satu kolom dengan pil navigasi mengambang.",
+      tokens: { void: "#0B0806", bg: "#120D0A", shell: "#120D0A", surface: "#1C1511", surface2: "#251C16", surface3: "#2F241C", line: "#3A2C22", line2: "#4F3C2E",
+        ink: "#FBEFE3", inkSoft: "#EADBCB", muted: "#C2AB95", faint: "#97806C", accent: "#FFB23F", accentHi: "#FFC86E", accentTint: "#FFF0D6", onAccent: "#1A1108",
+        accent2: "#FF6A47", accent2Hi: "#FF8F73", accent2Tint: "#FFE0D6", ok: "#7DDB8A", warn: "#FFB23F", fontDisplay: "inter-tight", fontBody: "inter", fontMono: "space-mono", radius: 22, scanlines: 0 } },
+    { id: "mosh-grid",    no: "04", name: "Mosh Grid",        status: "ready", css: true,  js: true,  desc: "Kolase asimetris dengan menu ringkas di pojok.",
+      tokens: { void: "#151515", bg: "#1D1D1D", shell: "#1D1D1D", surface: "#262626", surface2: "#2F2F2F", surface3: "#393939", line: "#444444", line2: "#5E5E5E",
+        ink: "#F4F4F1", inkSoft: "#E2E2DD", muted: "#B8B8B1", faint: "#8F8F88", accent: "#FF6A00", accentHi: "#FF8C3A", accentTint: "#FFE4CF", onAccent: "#140A00",
+        accent2: "#22C3FF", accent2Hi: "#66D6FF", accent2Tint: "#D6F3FF", ok: "#7CFF6B", warn: "#FFD23F", fontDisplay: "big-shoulders", fontBody: "inter", fontMono: "space-mono", radius: 3, scanlines: 0.5 } },
+    { id: "control-room", no: "05", name: "Control Room 2.0", status: "ready", css: true,  js: true,  desc: "Sidebar berlabel, konten tengah, panel player kanan.",
+      tokens: { void: "#030806", bg: "#050B08", shell: "#07100C", surface: "#0A140F", surface2: "#0F1C15", surface3: "#14251C", line: "#1C3327", line2: "#285040",
+        ink: "#D8FFE9", inkSoft: "#BDEBD1", muted: "#86BFA0", faint: "#64977B", accent: "#39FF88", accentHi: "#7DFFAF", accentTint: "#DFFFEA", onAccent: "#03140A",
+        accent2: "#FFB000", accent2Hi: "#FFC94D", accent2Tint: "#FFF0CC", ok: "#39FF88", warn: "#FFB000", fontDisplay: "space-mono", fontBody: "inter", fontMono: "space-mono", radius: 6, scanlines: 1 } },
+    { id: "main-stage",   no: "06", name: "Main Stage",       status: "ready", css: true,  js: true,  desc: "Immersive layar penuh per cerita.", experimental: true,
+      tokens: { void: "#000000", bg: "#000000", shell: "#000000", surface: "#0B0B0F", surface2: "#141419", surface3: "#1D1D24", line: "#26262E", line2: "#3A3A45",
+        ink: "#FFFFFF", inkSoft: "#E6E6EC", muted: "#B4B4C0", faint: "#8A8A96", accent: "#FF2D3D", accentHi: "#FF5A66", accentTint: "#FFE0E3", onAccent: "#000000",
+        accent2: "#FFD400", accent2Hi: "#FFE14D", accent2Tint: "#FFF6CC", ok: "#3DF5A7", warn: "#FFD400", fontDisplay: "bebas-neue", fontBody: "inter", fontMono: "space-mono", radius: 0, scanlines: 0 } },
+    { id: "xerox-zine",   no: "07", name: "Xerox Zine",       status: "ready", css: true,  js: true,  desc: "Zine DIY per edisi dengan tab binder.",
+      tokens: { void: "#DCDCD5", bg: "#EDEDE8", shell: "#EDEDE8", surface: "#F8F8F3", surface2: "#E4E4DE", surface3: "#D8D8D1", line: "#A3A39B", line2: "#1A1A1A",
+        ink: "#111111", inkSoft: "#222222", muted: "#45453F", faint: "#5F5F58", accent: "#E5006D", accentHi: "#FF2E88", accentTint: "#FFD6E9", onAccent: "#FFFFFF",
+        accent2: "#1F48C9", accent2Hi: "#3A63E0", accent2Tint: "#DCE4FA", ok: "#1C7C3A", warn: "#9A5F00", fontDisplay: "special-elite", fontBody: "inter", fontMono: "special-elite", radius: 0, scanlines: 0 } },
+    { id: "index",        no: "08", name: "Index",            status: "ready", css: true,  js: true,  desc: "Swiss editorial: navbar bernomor, tabel indeks.",
+      tokens: { void: "#F2F2F2", bg: "#FFFFFF", shell: "#FFFFFF", surface: "#FFFFFF", surface2: "#F4F4F4", surface3: "#EBEBEB", line: "#DDDDDD", line2: "#111111",
+        ink: "#111111", inkSoft: "#222222", muted: "#555555", faint: "#6E6E6E", accent: "#D7000F", accentHi: "#F0202D", accentTint: "#FDE2E4", onAccent: "#FFFFFF",
+        accent2: "#111111", accent2Hi: "#333333", accent2Tint: "#EEEEEE", ok: "#137A3A", warn: "#9A5F00", fontDisplay: "inter-tight", fontBody: "inter", fontMono: "mono", radius: 0, scanlines: 0 } },
+    { id: "frequency",    no: "09", name: "Frequency",        status: "ready", css: true,  js: true,  desc: "Player-first: dock radio sebagai navigasi channel.",
+      tokens: { void: "#03060C", bg: "#060A12", shell: "#08101C", surface: "#0C1422", surface2: "#111B2D", surface3: "#172338", line: "#1E2C45", line2: "#2B3E60",
+        ink: "#E8F4FF", inkSoft: "#CFE3F7", muted: "#93AECB", faint: "#6E89A8", accent: "#00E5FF", accentHi: "#66F0FF", accentTint: "#D6FAFF", onAccent: "#021018",
+        accent2: "#FF3DCB", accent2Hi: "#FF7ADB", accent2Tint: "#FFDDF5", ok: "#3DF5A7", warn: "#FFC23D", fontDisplay: "inter-tight", fontBody: "inter", fontMono: "space-mono", radius: 14, scanlines: 0.4 } },
+    { id: "scene-atlas",  no: "10", name: "Scene Atlas",      status: "ready", css: true,  js: true,  desc: "Peta genre interaktif dengan panel baca.", experimental: true,
+      tokens: { void: "#081021", bg: "#0B1426", shell: "#0D172C", surface: "#111D35", surface2: "#172644", surface3: "#1E3054", line: "#24375C", line2: "#33507F",
+        ink: "#EAF1FF", inkSoft: "#CFDCF5", muted: "#9BADCF", faint: "#7487AD", accent: "#FFC857", accentHi: "#FFD884", accentTint: "#FFF2D6", onAccent: "#10192B",
+        accent2: "#4FD1C5", accent2Hi: "#86E2D9", accent2Tint: "#D9F7F3", ok: "#4FD1C5", warn: "#FFC857", fontDisplay: "fraunces", fontBody: "inter", fontMono: "space-mono", radius: 10, scanlines: 0 } }
   ];
+  // Bump when any file in assets/themes/ changes: theme files are requested as ?v=<version>.<ASSET_REV>.
+  var ASSET_REV = "t-53d89b5e5b";
   var READY = THEMES.filter(function (t) { return t.status === "ready"; }).map(function (t) { return t.id; });
 
   // Default token values of "neon-bento" (the values at the top of assets/bento.css). The Theme
@@ -192,6 +227,16 @@
     return fams.length ? "https://fonts.googleapis.com/css2?" + fams.map(function (f) { return "family=" + f; }).join("&") + "&display=swap" : "";
   }
 
+  // A theme's full token set: DEFAULTS, then the theme's own tokens. The Theme Manager edits on top
+  // of this and stores only what differs from it.
+  function base(id) {
+    var out = {}, k, t = null;
+    for (var i = 0; i < THEMES.length; i++) if (THEMES[i].id === id) t = THEMES[i];
+    for (k in DEFAULTS) out[k] = DEFAULTS[k];
+    if (t && t.tokens) for (k in t.tokens) out[k] = t.tokens[k];
+    return out;
+  }
+
   // Nothing in the schema may be changed at runtime by other scripts.
   function deepFreeze(o) { Object.keys(o).forEach(function (k) { if (o[k] && typeof o[k] === "object") deepFreeze(o[k]); }); return Object.freeze(o); }
   [THEMES, READY, FONTS, TOKENS, DEFAULTS].forEach(deepFreeze);
@@ -204,6 +249,8 @@
     FONTS: FONTS,
     TOKENS: TOKENS,
     DEFAULTS: DEFAULTS,
+    ASSET_REV: ASSET_REV,
+    base: base,
     parseHex: parseHex,
     contrast: contrast,
     sanitizeTokens: sanitizeTokens,
