@@ -9,7 +9,8 @@
 //      the Google Fonts link for non-default fonts, and the theme's own files when it has any.
 //   4. Sets the security headers explicitly: Cloudflare does not apply _headers to responses that
 //      go through Pages Functions, so without this every page would lose CSP, HSTS, X-Frame-Options.
-// Any failure (database down, migration not applied, timeout, bad data) means: neon-bento, page intact.
+// Any failure (database down, migration not applied, timeout, bad data) means: the last theme that
+// was read and validated successfully ("last good"), or neon-bento when there is none. Page intact.
 
 import "../../../assets/theme/schema.js";
 
@@ -21,7 +22,8 @@ const PUBLIC_SUPABASE_KEY = "sb_publishable_MQDqmSmPb3qiSODbBOSKmA_U7aBEFtN";
 
 export const CACHE_TTL = 30;          // seconds a good answer is reused at one edge location
 export const CACHE_TTL_FAIL = 15;     // seconds a failed read is remembered (avoid hammering the DB)
-export const RPC_TIMEOUT_MS = 800;
+export const RPC_TIMEOUT_MS = 2000;    // far edge locations (US/EU) need ~0.3–0.9 s to Supabase Singapore
+export const LAST_GOOD_TTL = 7 * 24 * 3600; // seconds the last valid theme is kept for outages
 export const DEFAULT = Object.freeze({ theme: S.DEFAULT_THEME, tokens: {}, css: {}, version: "0", source: "default" });
 
 // Must stay identical to the "/*" block in _headers (a test compares them).
@@ -65,6 +67,61 @@ export function normalise(raw) {
   return { theme: cfg.theme, tokens: cfg.tokens, css: cfg.css, version, source: "rpc" };
 }
 
+// Strict check of an RPC answer. Only an answer that passes completely may become "last good":
+// a known theme id, a non-negative integer version, and tokens of which the sanitizer rejected none.
+// (A known but not yet ready theme is valid data; it is shown as neon-bento by normalise().)
+export function validConfig(raw) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  if (typeof raw.theme !== "string" || !S.THEMES.some((t) => t.id === raw.theme)) return null;
+  const v = typeof raw.version === "number" ? raw.version : NaN;
+  if (!Number.isSafeInteger(v) || v < 0) return null;
+  const tokens = raw.tokens == null ? {} : raw.tokens;
+  if (typeof tokens !== "object" || Array.isArray(tokens)) return null;
+  if (S.sanitizeTokens(tokens).rejected.length) return null;
+  const cfg = normalise({ theme: raw.theme, tokens, version: v });
+  return { theme: cfg.theme, tokens: cfg.tokens, version: Number(cfg.version) };
+}
+
+// Last good theme: kept in memory (per isolate) and in the edge cache (per location, LAST_GOOD_TTL).
+// Values are validated again whenever they are read back.
+let memLastGood = null; // { host, value }
+export function lastGoodKey(requestUrl) {
+  return new Request(new URL("/__ug/theme-last-good", requestUrl).toString(), { method: "GET" });
+}
+export function _resetMemoryForTests() { memLastGood = null; }
+
+async function readLastGood(store, requestUrl) {
+  const host = new URL(requestUrl).host;
+  if (memLastGood && memLastGood.host === host) {
+    const v = validConfig(memLastGood.value);
+    if (v) return v;
+  }
+  if (!store) return null;
+  try {
+    const hit = await store.match(lastGoodKey(requestUrl));
+    if (!hit) return null;
+    const v = validConfig(await hit.json());
+    if (v) memLastGood = { host, value: v };
+    return v;
+  } catch { return null; }
+}
+
+function writeLastGood(store, requestUrl, value, waitUntil) {
+  const host = new URL(requestUrl).host;
+  const same = memLastGood && memLastGood.host === host && JSON.stringify(memLastGood.value) === JSON.stringify(value);
+  memLastGood = { host, value };
+  if (!store || same) return null; // unchanged: no extra cache write
+  return store.put(lastGoodKey(requestUrl), new Response(JSON.stringify(value), {
+    headers: { "content-type": "application/json", "cache-control": "public, max-age=" + LAST_GOOD_TTL }
+  })).catch(() => {});
+}
+
+// What to serve when the database cannot give a valid answer.
+async function fallbackConfig(store, requestUrl, staleSource, noneSource) {
+  const lg = await readLastGood(store, requestUrl);
+  return lg ? { ...normalise(lg), source: staleSource } : { ...DEFAULT, source: noneSource };
+}
+
 // Read the active theme: edge cache first, then the RPC. Never throws.
 export async function readActiveTheme(env, requestUrl, { waitUntil, bypassCache = false, fetchImpl } = {}) {
   const store = cacheStore();
@@ -74,14 +131,16 @@ export async function readActiveTheme(env, requestUrl, { waitUntil, bypassCache 
       const hit = await store.match(key);
       if (hit) {
         const data = await hit.json();
-        return { ...normalise(data.value), source: data.ok ? "cache" : "cache-fallback" };
+        const v = data && data.ok ? validConfig(data.value) : null;
+        if (v) return { ...normalise(v), source: "cache" };
+        return await fallbackConfig(store, requestUrl, "cache-stale", "cache-fallback");
       }
     } catch { /* fall through to the RPC */ }
   }
 
   const { url, key: apikey } = supabaseConfig(env);
   const doFetch = fetchImpl || fetch;
-  let value = null, ok = false;
+  let value = null;
   try {
     const headers = { apikey, "content-type": "application/json", accept: "application/json" };
     if (!apikey.startsWith("sb_")) headers.Authorization = "Bearer " + apikey; // legacy anon JWT
@@ -90,17 +149,23 @@ export async function readActiveTheme(env, requestUrl, { waitUntil, bypassCache 
     });
     if (res.ok) {
       const text = await res.text();
-      if (text.length < 20000) { value = JSON.parse(text); ok = !!value && typeof value === "object"; }
+      if (text.length < 20000) value = validConfig(JSON.parse(text));
     }
-  } catch { ok = false; }
+  } catch { value = null; }
 
-  const result = ok ? normalise(value) : { ...DEFAULT, source: "fallback" };
+  const ok = !!value;
+  const result = ok ? { ...normalise(value), source: "rpc" } : await fallbackConfig(store, requestUrl, "stale", "fallback");
   if (store) {
-    const body = JSON.stringify({ ok, value: ok ? { theme: result.theme, tokens: result.tokens, version: Number(result.version) } : null });
-    const put = store.put(key, new Response(body, {
+    // A failure is remembered for CACHE_TTL_FAIL only, so the database is asked again soon.
+    const body = JSON.stringify({ ok, value: ok ? value : null });
+    const puts = [store.put(key, new Response(body, {
       headers: { "content-type": "application/json", "cache-control": "public, max-age=" + (ok ? CACHE_TTL : CACHE_TTL_FAIL) }
-    })).catch(() => {});
-    if (waitUntil) waitUntil(put); else await put;
+    })).catch(() => {})];
+    if (ok) puts.push(writeLastGood(store, requestUrl, value));
+    const all = Promise.all(puts.filter(Boolean));
+    if (waitUntil) waitUntil(all); else await all;
+  } else if (ok) {
+    writeLastGood(null, requestUrl, value);
   }
   return result;
 }

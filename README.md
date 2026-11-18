@@ -42,6 +42,7 @@ admin.html            Admin panel (one file, inline script): 2FA gate, AI genera
 privacy.html, terms.html   Legal pages (UU PDP rights, Resend, analytics, self-deletion).
 _headers              Security headers for static files: CSP, HSTS, X-Frame-Options, etc.
 robots.txt            Disallows /admin.html and /api/, links the sitemap.
+tests/                Node tests (theme-edge.test.mjs: middleware, cache, last good theme).
 _routes.json          Which URLs run Functions (all except /assets/*, robots.txt, manifest, favicon).
 manifest.webmanifest  PWA manifest (icons in assets/).
 
