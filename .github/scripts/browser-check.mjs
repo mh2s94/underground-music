@@ -13,7 +13,8 @@ for (const [path, vp] of [["/", { width: 1280, height: 900 }], ["/", { width: 39
   p.on("pageerror", (e) => errs.push("pageerror: " + e.message));
   const failed = [];
   p.on("requestfailed", (r) => failed.push(r.url() + " (" + (r.failure()?.errorText || "failed") + ")"));
-  p.on("console", (m) => { if (m.type() === "error" && !/^Failed to load resource/.test(m.text())) errs.push(m.text()); });
+  // Cloudflare Web Analytics refuses preview origins (CORS): not an error of the site.
+  p.on("console", (m) => { if (m.type() === "error" && !/^Failed to load resource|cloudflareinsights\.com/.test(m.text())) errs.push(m.text()); });
   const tag = `${path} ${vp.width}px`;
   await p.goto(BASE + path, { waitUntil: "load", timeout: 30000 });
   await p.waitForTimeout(5000);
