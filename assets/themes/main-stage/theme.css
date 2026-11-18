@@ -49,7 +49,7 @@ html[data-theme="main-stage"] .home > .col:last-child { grid-column: 2; grid-row
 
 /* articles: full-screen story slides */
 html[data-theme="main-stage"] .main.ms-snap { scroll-snap-type: y proximity; }
-html[data-theme="main-stage"] #view-articles .lib-head { min-height: 60vh; align-content: end; }
+html[data-theme="main-stage"] #view-articles .lib-head { min-height: 46vh; align-content: end; }
 html[data-theme="main-stage"] .grid4 { display: block; margin: 0 -22px; }
 html[data-theme="main-stage"] .grid4 > .acard { position: relative; display: flex; min-height: 92vh; border: 0; border-top: 1px solid var(--line); background: #000; scroll-snap-align: start; }
 html[data-theme="main-stage"] .grid4 > .acard .art-wrap { position: absolute; inset: 0; aspect-ratio: auto; border: 0; }
@@ -94,6 +94,8 @@ html[data-theme="main-stage"] .ft { background: #000; }
   html[data-theme="main-stage"] .view { padding: 20px 14px 84px; }
   html[data-theme="main-stage"] .home .hero { margin: 0 -14px; min-height: 92dvh; padding: 80px 20px 40px; }
   html[data-theme="main-stage"] .grid4 { margin: 0 -14px; }
+  /* phones: page headers start at the top (no empty black band above them) */
+  html[data-theme="main-stage"] #view-articles .lib-head, html[data-theme="main-stage"] .music-hero, html[data-theme="main-stage"] .charts-hero { min-height: 0; }
   html[data-theme="main-stage"] .grid4 > .acard { min-height: 86dvh; }
   html[data-theme="main-stage"] .grid4 > .acard .body { padding: 0 20px 40px; }
   html[data-theme="main-stage"] .ms-count { bottom: 74px; right: 14px; }
