@@ -61,7 +61,8 @@ html[data-theme="the-pit"] .hero-vid { border-radius: 0; border: 2px solid var(-
 html[data-theme="the-pit"] .hero-vid::before { background: var(--neon); mix-blend-mode: multiply; }
 html[data-theme="the-pit"] .hero-vid video { filter: grayscale(1) contrast(1.5); }
 html[data-theme="the-pit"] .hero-drop .t { font-size: 18px; }
-html[data-theme="the-pit"] .kpi { font-size: 72px; color: var(--neon); }
+html[data-theme="the-pit"] .kpi { font-size: clamp(40px, 9vw, 72px); color: var(--neon); }
+html[data-theme="the-pit"] .kpis > *, html[data-theme="the-pit"] .stats > * { min-width: 0; overflow-wrap: anywhere; }
 html[data-theme="the-pit"] .demo .ring-deco { display: none; }
 html[data-theme="the-pit"] .wire li + li { border-top: 2px solid var(--line); }
 html[data-theme="the-pit"] .wire .ico { border-radius: 0; background: var(--neon); color: var(--on-neon); box-shadow: none; }

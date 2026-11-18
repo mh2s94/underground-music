@@ -52,7 +52,9 @@ for (const vp of [{ width: 1280, height: 860, tag: "desktop" }, { width: 390, he
       const r = await p.evaluate(() => {
         const main = document.getElementById("main");
         const over = Math.max(document.documentElement.scrollWidth - innerWidth, main ? main.scrollWidth - main.clientWidth : 0);
-        return { view: window.UG.view, over };
+        const wide = over > 1 ? [...document.querySelectorAll("#view-" + window.UG.view + " *")].filter((e) => e.getBoundingClientRect().right > innerWidth + 1 && e.getBoundingClientRect().width > 0)
+          .slice(0, 3).map((e) => e.tagName.toLowerCase() + "." + String(e.className.baseVal ?? e.className).split(" ")[0] + "@" + Math.round(e.getBoundingClientRect().right)) : [];
+        return { view: window.UG.view, over, wide };
       });
       if (id === "neon-bento") {
         neonOver[v] = r.over;
