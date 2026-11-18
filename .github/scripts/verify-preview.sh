@@ -60,7 +60,11 @@ get "$PREV/admin" admin; get "$PREV/admin.html" admin_r
 [[ "$(status admin)" == 200 ]] && ok "/admin 200 (/admin.html → $(status admin_r) $(hval admin_r location))" || bad "/admin status $(status admin)"
 has admin x-ug-theme || has admin_r x-ug-theme && bad "admin page was themed" || ok "admin page not themed"
 [[ "$(hval admin x-frame-options)" == "deny" && "$(hval admin content-security-policy)" == "$CSP" ]] && ok "admin page DENY + CSP identical to _headers" || bad "admin page headers differ"
-cmp -s "$T/admin.b" admin.html && ok "admin page body byte-identical to repo admin.html" || bad "admin page body changed"
+# Cloudflare Web Analytics (automatic setup) inserts its beacon <script> into HTML at the edge; ignore that one tag.
+strip_beacon() { sed -E 's#<script defer src=.https://static\.cloudflareinsights\.com/beacon\.min\.js[^>]*></script>##g' "$1"; }
+if cmp -s "$T/admin.b" admin.html; then ok "admin page body byte-identical to repo admin.html"
+elif diff -q <(strip_beacon "$T/admin.b") <(strip_beacon admin.html) >/dev/null; then ok "admin page body identical to repo admin.html apart from Cloudflare's analytics beacon tag"
+else bad "admin page body changed:"; diff <(strip_beacon admin.html) <(strip_beacon "$T/admin.b") | head -20; fi
 
 echo; echo "== 3. API and other endpoints: unchanged vs production (status + content type), never themed"
 cmpep() { # cmpep <path> [curl args]
