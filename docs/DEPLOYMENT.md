@@ -105,9 +105,17 @@ Cloudflare Web Analytics is enabled by the owner (automatic beacon). The CSP all
 **Dashboard check 2026-11-17 (owner screenshot):** variables present: `ANTHROPIC_API_KEY`, `AUTODRAFT_NOTIFY`, `AUTODRAFT_TOKEN`, `GEMINI_API_KEY`, `GROQ_API_KEY`, `NEWSLETTER_FROM`, `RESEND_API_KEY`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_R…` (service key), `SUPABASE_URL`. Bindings: R2 `MUSIC` → `underground-music`, Workers AI `AI`. Build output directory `.`, root directory empty.
 
 ## Theme middleware (Tahap 3)
-- `_routes.json` (in the repo) tells Pages which URLs run Functions: everything except `/assets/*`,
+- `_routes.json` must sit in the **build output directory**. This project has no build step and its output
+  directory is the repository root (`.`), so the file is `/_routes.json` next to `index.html` and `_headers`.
+  If the output directory is ever changed (for example to `public`), `_headers`, `_routes.json`, `index.html`
+  and `assets/` must all move there together, while `functions/` stays at the root.
+- `_routes.json` tells Pages which URLs run Functions: everything except `/assets/*`,
   `robots.txt`, `manifest.webmanifest`, `favicon.ico`. No dashboard setting is needed.
 - `functions/_middleware.js` uses `SUPABASE_URL` / `SUPABASE_ANON_KEY` when set and otherwise the public
   project URL and publishable key built into `functions/api/theme/edge.js`, so preview deployments work
   without secrets. It never uses the service-role key.
+- Every pull request runs **Preview check** (`.github/workflows/preview-check.yml` →
+  `.github/scripts/verify-preview.sh`): waits for the Cloudflare preview of the commit and checks that static
+  files are byte-identical to the repo (so the output directory is the root), are not themed, HTML pages carry
+  the theme and the same security headers as `_headers`, and API endpoints answer exactly like production.
 - Check after a deploy: `curl -s -D - -o /dev/null https://music.mikasa.me/ | grep -i "x-ug-theme\|x-frame-options\|content-security"`.
