@@ -214,10 +214,10 @@ async function claimItem(rest, item) {
   const existingRes = await rest("news_ingestion?source_hash=eq." + item.source_hash + "&select=status,updated_at");
   if (!existingRes.ok) return { claimed: false };
   const [existing] = await existingRes.json();
-  if (!existing || existing.status !== "failed") return { claimed: false };
+  if (!existing || !["failed", "processing"].includes(existing.status)) return { claimed: false };
   const stale = !existing.updated_at || Date.now() - Date.parse(existing.updated_at) > 20 * 60 * 1000;
   if (!stale) return { claimed: false };
-  const retry = await rest("news_ingestion?source_hash=eq." + item.source_hash + "&status=eq.failed", {
+  const retry = await rest("news_ingestion?source_hash=eq." + item.source_hash + "&status=in.(failed,processing)", {
     method: "PATCH",
     headers: { Prefer: "return=representation" },
     body: JSON.stringify({ status: "processing", attempts: Number(existing.attempts || 1) + 1, last_error: null, updated_at: new Date().toISOString() })
