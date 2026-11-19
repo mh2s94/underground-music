@@ -116,7 +116,7 @@
         accent2: "#4FD1C5", accent2Hi: "#86E2D9", accent2Tint: "#D9F7F3", ok: "#4FD1C5", warn: "#FFC857", fontDisplay: "fraunces", fontBody: "inter", fontMono: "space-mono", radius: 10, scanlines: 0 } }
   ];
   // Bump when any file in assets/themes/ changes: theme files are requested as ?v=<version>.<ASSET_REV>.
-  var ASSET_REV = "t-4dbf7f9fb3";
+  var ASSET_REV = "t-ea026c1d8c";
   var READY = THEMES.filter(function (t) { return t.status === "ready"; }).map(function (t) { return t.id; });
 
   // Default token values of "neon-bento" (the values at the top of assets/bento.css). The Theme
