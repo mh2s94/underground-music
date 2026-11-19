@@ -30,7 +30,6 @@
     "frequency": [[6, 2, "a"], [6, 1, ""], [6, 1, "b"]],
     "scene-atlas": [[4, 4, "a"], [2, 4, "b"]],
     "monochrome-modular": [[1,4,""],[5,1,"a"],[5,2,""],[2,2,"b"],[3,2,""],[3,1,""]]
-
   };
 
   var st = { loaded: false, busy: false, missing: false, active: null, activeRow: null, configs: [], history: [], themeId: S.DEFAULT_THEME, values: {}, extra: {}, configId: null, name: "", note: "" };
