@@ -58,7 +58,7 @@ export async function onRequestPost({ request, env }) {
     .sort((a, b) => Date.parse(b.date) - Date.parse(a.date));
 
   let published = 0;
-  let skipped = 0;
+  let skipped = items.length - candidates.length;
   const outcomes = [];
   for (const item of candidates) {
     if (published >= RUN_LIMIT || dailyCount >= DAILY_LIMIT) break;
@@ -171,12 +171,19 @@ function qualityGate(item, now) {
   const date = Date.parse(item.date || "");
   if (!Number.isFinite(date) || date > now + 5 * 60 * 1000 || now - date > MAX_AGE_MS) return false;
   if (typeof item.summary !== "string" || wordCount(item.summary) < MIN_SUMMARY_WORDS) return false;
+  if (!looksEnglish(item.title + " " + item.summary)) return false;
   if (!Array.isArray(item.genres) || !item.genres.length) return false;
   if (!isNews(item)) return false;
   return true;
 }
 
 function wordCount(value) { return String(value || "").trim().split(/\s+/).filter(Boolean).length; }
+
+function looksEnglish(value) {
+  const words = String(value || "").toLowerCase().match(/[a-z]+/g) || [];
+  const common = new Set(["the", "and", "for", "with", "from", "that", "this", "their", "they", "was", "were", "are", "is", "has", "have", "will", "after", "before", "into", "about", "over", "under", "its", "new", "who", "which", "when", "where", "by", "on", "in", "to", "of", "as", "at"]);
+  return words.length >= 20 && words.filter((word) => common.has(word)).length >= 2;
+}
 
 function canonicalUrl(value) {
   try {
@@ -211,7 +218,7 @@ async function claimItem(rest, item) {
   const inserted = await insert.json();
   if (inserted.length) return { claimed: true };
 
-  const existingRes = await rest("news_ingestion?source_hash=eq." + item.source_hash + "&select=status,updated_at");
+  const existingRes = await rest("news_ingestion?source_hash=eq." + item.source_hash + "&select=status,updated_at,attempts");
   if (!existingRes.ok) return { claimed: false };
   const [existing] = await existingRes.json();
   if (!existing || !["failed", "processing"].includes(existing.status)) return { claimed: false };
