@@ -156,12 +156,13 @@ function findImage(b) {
 
 
 // Only inspect the RSS item XML; never fetch the linked article page for a video.
-function findYoutubeVideo(block) {
+export function findYoutubeVideo(block) {
   const decoded = decode(String(block || ""));
   const candidates = decoded.match(/(?:https?:)?\/\/(?:www\.|m\.)?(?:youtube\.com|youtube-nocookie\.com|youtu\.be)\/[^\s"'<>]+/gi) || [];
   for (const candidate of candidates) {
     try {
-      const url = new URL(candidate.startsWith("//") ? "https:" + candidate : candidate);
+      const cleanCandidate = candidate.replace(/[),.;!?]+$/g, "");
+      const url = new URL(cleanCandidate.startsWith("//") ? "https:" + cleanCandidate : cleanCandidate);
       const host = url.hostname.toLowerCase().replace(/^www\./, "").replace(/^m\./, "");
       if (!["youtube.com", "youtube-nocookie.com", "youtu.be"].includes(host)) continue;
       let id = "";
