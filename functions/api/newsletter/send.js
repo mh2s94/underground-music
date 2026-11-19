@@ -31,6 +31,7 @@ export async function onRequestPost({ request, env }) {
     return json({ error: "Email sending is not set up yet. Add RESEND_API_KEY and NEWSLETTER_FROM in Cloudflare Pages → Settings → Variables and Secrets, then redeploy.", setup: true }, 503);
   }
   let body; try { body = await request.json(); } catch { return json({ error: "Invalid JSON body." }, 400); }
+  if (!body || typeof body !== "object" || Array.isArray(body)) return json({ error: "Invalid JSON body." }, 400);
   const subject = String(body.subject || "").trim().slice(0, 150);
   const intro = String(body.intro || "").trim().slice(0, 1500);
   const ids = (Array.isArray(body.article_ids) ? body.article_ids : []).map(String).slice(0, 8);
@@ -57,22 +58,33 @@ export async function onRequestPost({ request, env }) {
   const html = (token) => emailHtml({ subject, intro, stories, unsub: token ? `${SITE}/unsubscribe?t=${token}` : `${SITE}/privacy.html` });
   const text = (token) => [subject, "", intro, "", ...stories.map((a) => `${a.title}\n${SITE}/a/${encodeURIComponent(a.slug || a.id)}\n`), token ? `Unsubscribe: ${SITE}/unsubscribe?t=${token}` : ""].join("\n");
 
-  // Resend batch API: up to 100 emails per request
+  // Resend batch API: up to 100 emails per request.
+  // Each batch of a real send carries an Idempotency-Key made from the newsletter content and its
+  // recipients, so pressing Send again after a failure (within Resend's 24 h window) skips the
+  // batches that already went out instead of emailing those subscribers twice.
   let sent = 0; const errors = [];
   for (let i = 0; i < recipients.length; i += 100) {
-    const chunk = recipients.slice(i, i + 100).map((x) => ({
+    const group = recipients.slice(i, i + 100);
+    const chunk = group.map((x) => ({
       from: env.NEWSLETTER_FROM, reply_to: env.NEWSLETTER_REPLY_TO || "hello@mikasa.me", to: [x.email], subject: (body.test ? "[Test] " : "") + subject,
       html: html(x.token), text: text(x.token),
       headers: x.token ? { "List-Unsubscribe": `<${SITE}/unsubscribe?t=${x.token}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" } : undefined
     }));
-    const r = await fetch("https://api.resend.com/emails/batch", {
-      method: "POST", headers: { Authorization: "Bearer " + env.RESEND_API_KEY, "content-type": "application/json" }, body: JSON.stringify(chunk)
-    });
+    const rh = { Authorization: "Bearer " + env.RESEND_API_KEY, "content-type": "application/json" };
+    if (!body.test) rh["Idempotency-Key"] = await batchKey(subject, intro, ids, group.map((x) => x.email));
+    const r = await fetch("https://api.resend.com/emails/batch", { method: "POST", headers: rh, body: JSON.stringify(chunk) });
     if (r.ok) sent += chunk.length;
     else { const j = await r.json().catch(() => ({})); errors.push(j.message || j.error || ("HTTP " + r.status)); break; }
   }
   if (!sent) return json({ error: "Resend refused the emails: " + (errors[0] || "unknown error") }, 502);
   return json({ sent, total: recipients.length, errors });
+}
+
+// Same newsletter + same recipients → same key. Changing the subject, intro or stories makes a new send.
+export async function batchKey(subject, intro, ids, emails) {
+  const data = new TextEncoder().encode(JSON.stringify([subject, intro, ids, emails]));
+  const hash = new Uint8Array(await crypto.subtle.digest("SHA-256", data));
+  return "ug-nl-" + Array.from(hash, (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 function emailHtml({ subject, intro, stories, unsub }) {

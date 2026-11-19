@@ -134,3 +134,14 @@ At the owner's request, to save AI quota: the daily AI drafts (`auto-draft.yml`,
 Tulis draft / Publish / Buang buttons and the Scene Radar autopilot (#55, #56) were removed. The Telegram digest
 stays as information only and no longer uses AI to score headlines. The admin generator and Auto-write still work,
 only when pressed.
+
+## 2026-11-19 · Bug fixes (`tests/bugfixes.test.mjs`, 19 checks, in CI)
+- **Unsubscribe** (`functions/unsubscribe.js`): opening the link no longer unsubscribes (email scanners open every link). GET shows an "Unsubscribe" button; POST unsubscribes. One-click unsubscribe from email apps (`List-Unsubscribe=One-Click`) still works.
+- **Newsletter retry** (`functions/api/newsletter/send.js`): every batch of a real send carries a Resend `Idempotency-Key` built from subject, intro, stories and recipients, so pressing Send again after a partial failure (within 24 h) does not email the same people twice. Test sends have no key. A JSON body of `null` is now a 400.
+- **Broken `%` in addresses** (`/a/%E0`, `/band/abc%`): no longer crash the router in `assets/bento.js` or the page functions `functions/a/[slug].js` and `functions/band/[slug].js`.
+- **Readers box** (`functions/api/readers.js`): country shares always add up to exactly 100 % (largest remainder rounding).
+- **Unknown bands** (`functions/band/[slug].js`): answer 404 when Deezer answered and has no such artist and the site has no published story or song for it. The page still renders; any error or timeout keeps 200.
+- **Markdown links**: a `*` inside a link address no longer turns into `<em>` inside the `href`.
+- `bento.js` cache-bust bumped to `?v=bf1`.
+- Status: IMPLEMENTED, NOT VERIFIED live (mock-tested).
+- **Newsletter sign-up was broken for everyone** ("violates check constraint newsletter_subscribers_email_check"): the live constraint had doubled backslashes, so it demanded a literal `\` in every address (0 subscribers had ever been saved). Fixed live on 2026-11-19 (migration `fix_newsletter_email_check`, checked: valid address accepted, invalid rejected) and the repair is in `supabase/extras.sql`. VERIFIED in the database; sign-up from the site to be confirmed by the owner.

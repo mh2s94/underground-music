@@ -79,12 +79,24 @@ export async function onRequestGet({ request, env, waitUntil }) {
   const rows = (acc.countries || []).filter((c) => c.dimensions?.countryName && c.dimensions.countryName !== "XX" && c.dimensions.countryName !== "T1");
   const top = rows.slice(0, TOP).map((c) => ({ code: c.dimensions.countryName, pct: (c.count / total) * 100 }));
 
-  // Round so the shares always add up to 100.
-  const shares = top.map((c) => ({ code: c.code, pct: Math.round(c.pct) })).filter((c) => c.pct >= 1);
-  const other = 100 - shares.reduce((s, c) => s + c.pct, 0);
-  if (other > 0) shares.push({ code: "other", pct: other });
+  const shares = roundShares(top);
 
   const res = json({ ok: true, days: DAYS, countries: shares }, CACHE_SECONDS);
   waitUntil(cache.put(cacheKey, res.clone()));
   return res;
+}
+
+// Whole percentages that always add up to exactly 100 (largest remainder method).
+// Countries that round to 0 % are left out and counted in "other".
+export function roundShares(top) {
+  const rows = top.map((c) => ({ code: c.code, pct: Math.max(0, c.pct) }));
+  const rest = Math.max(0, 100 - rows.reduce((s, c) => s + c.pct, 0));
+  const all = [...rows, { code: "other", pct: rest }];
+  const out = all.map((c) => ({ code: c.code, pct: Math.floor(c.pct), frac: c.pct - Math.floor(c.pct) }));
+  let left = 100 - out.reduce((s, c) => s + c.pct, 0);
+  for (const c of [...out].sort((a, b) => b.frac - a.frac)) { if (left <= 0) break; c.pct++; left--; }
+  const countries = out.slice(0, -1).filter((c) => c.pct >= 1).map(({ code, pct }) => ({ code, pct }));
+  const other = 100 - countries.reduce((s, c) => s + c.pct, 0);
+  if (other > 0) countries.push({ code: "other", pct: other });
+  return countries;
 }
