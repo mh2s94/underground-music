@@ -19,7 +19,8 @@ Last audit: **2026-11-19**, against `main` @ `82afca0` (Final Audit). Update thi
 | Scene Radar (public wire + admin) | VERIFIED | 6 of 7 sources work; New Noise blocked by captcha |
 | Scene Radar Auto-write (single) | VERIFIED | used by owner |
 | Scene Radar batch "Write as drafts" + Publish all | IMPLEMENTED, NOT VERIFIED | mock-tested; first live try hit the RLS bug; not re-run after the fix |
-| Daily AI drafts (GitHub Actions) | VERIFIED | run `43867308189` (2026-11-16) created 2 drafts via `workersai`; later scheduled runs not checked |
+| Scheduled AI drafts | REMOVED | Removed in PR #58 on 2026-11-19; AI generation is manual only |
+| RSS news publisher | IMPLEMENTED, NOT VERIFIED | PR branch `feat/rss-news-publisher`; short English RSS briefs, no AI, max 3/run and 10/day; SQL and secrets still require owner setup after PR approval |
 | Visitor accounts (sign up, sign in, reset) | IMPLEMENTED, NOT VERIFIED in this audit | Supabase dashboard settings not visible from repo |
 | Account page design (Amp Head, rack slide) | IMPLEMENTED | mock-tested at 412 px and 1280 px |
 | Comments, saved articles, demos (+ rate limits) | IMPLEMENTED, NOT VERIFIED | |
@@ -50,7 +51,7 @@ Last audit: **2026-11-19**, against `main` @ `82afca0` (Final Audit). Update thi
 | supabase-js pinned to 2.119.0 with SRI (`index.html`, `admin.html`) | IMPLEMENTED (this PR) | same file that `@2` served on 2026-11-19; hash checked in CI (`tests/supabase-js-pin.test.mjs`) and in a browser on the preview |
 | Production smoke test every 6 h (`smoke-production.yml`, read-only) | IMPLEMENTED (this PR) | first scheduled run after merge |
 | Hero drummer video (C · beside buttons, neon tint, full 5 s loop; `assets/media/hero-drummer.mp4` 294 KB, Kling AI clip supplied by owner, watermark kept) | IMPLEMENTED | owner ACC 2026-11-18; loads only on screen, never for reduced motion / Save-Data |
-| Telegram bot: radar digest 3x a day, write/publish/discard drafts from Telegram | Digest VERIFIED live 2026-11-18 (owner screenshot); draft/publish buttons NOT VERIFIED live | SQL, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` set by owner |
+| Telegram bot: information-only radar digest 3x a day | VERIFIED live 2026-11-18 (owner screenshot); draft/publish buttons removed in PR #58 | SQL, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` set by owner |
 | Footer "Where our readers are" (style B strip, `/api/readers`) | VERIFIED | live on music.mikasa.me (owner screenshot 2026-11-17) |
 | Google Search Console | VERIFIED (ownership) / PENDING (indexing) | |
 
