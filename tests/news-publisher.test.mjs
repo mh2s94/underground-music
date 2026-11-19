@@ -2,6 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { findYoutubeVideo } from "../functions/api/news.js";
+import { supabaseProjectUrl } from "../functions/api/draft-lib.js";
+
 
 const source = await readFile(new URL("../functions/api/news-publish.js", import.meta.url), "utf8");
 const feed = await readFile(new URL("../functions/api/news.js", import.meta.url), "utf8");
@@ -58,4 +60,14 @@ test("tracking table is idempotent and client-inaccessible", async () => {
   assert.match(sql, /source_url text not null unique/);
   assert.match(sql, /enable row level security/i);
   assert.match(sql, /revoke all .* from anon, authenticated/i);
+});
+
+test("Supabase project URL normalization avoids malformed REST paths", () => {
+  assert.equal(supabaseProjectUrl("https://example.supabase.co"), "https://example.supabase.co");
+  assert.equal(supabaseProjectUrl("https://example.supabase.co/"), "https://example.supabase.co");
+  assert.equal(supabaseProjectUrl("https://example.supabase.co/rest/v1"), "https://example.supabase.co");
+  assert.equal(supabaseProjectUrl("https://example.supabase.co/rest/v1/"), "https://example.supabase.co");
+  assert.equal(supabaseProjectUrl("https://example.supabase.co/project/path"), "");
+  assert.equal(supabaseProjectUrl("ftp://example.supabase.co"), "");
+  assert.equal(supabaseProjectUrl("https://user:pass@example.supabase.co"), "");
 });
