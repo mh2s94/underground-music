@@ -67,7 +67,7 @@ Admins open the panel from their profile ("Admin panel" button), after signing i
    Without `aal2` the route returns `403 {"mfa": true}`.
 3. **Database (the real boundary):** RLS. See [DATABASE.md §5](DATABASE.md#5-rls-model-and-mfa).
 
-`/api/auto-draft` is the exception: GitHub Actions calls it with the `AUTODRAFT_TOKEN` bearer token (compared in constant time), and it writes with the Supabase **secret/service key**. That key bypasses RLS, so the route only inserts drafts.
+`/api/telegram/digest` is the exception: GitHub Actions calls it with the `AUTODRAFT_TOKEN` bearer token (compared in constant time), and it uses the Supabase **secret/service key**. That key bypasses RLS, so the route only reads article text and writes its own `telegram_radar` rows; it never writes articles.
 
 ## 2FA operations
 - **Requirement:** Supabase → Authentication → Multi-Factor → TOTP enabled (Supabase default). If it is off, enrolment fails and the screen says so.
@@ -122,12 +122,12 @@ If you do step 3 before step 2, every sign-in fails.
   - match Hostname `music.mikasa.me` AND URI path starts with `/api/`
   - limit 100 requests per 10 s per IP
   - action Block for 10 s
-- **Do not** enable Bot Fight Mode: it would challenge the GitHub Actions call to `/api/auto-draft`.
+- **Do not** enable Bot Fight Mode: it would challenge the GitHub Actions call to `/api/telegram/digest`.
 
 ## Secrets management
 - Secrets live only in **Cloudflare Pages → Settings → Variables and Secrets** (type *Secret*) and **GitHub → Settings → Secrets → Actions**. Full list: [DEPLOYMENT.md](DEPLOYMENT.md#environment-variables).
 - The Supabase **publishable** key and project URL in `bento.js` and `admin.html` are public by design.
-- The Supabase **secret/service key** must never be in the repo or the browser. With new `sb_secret_…` keys, `auto-draft.js` sends it only in the `apikey` header.
+- The Supabase **secret/service key** must never be in the repo or the browser. With new `sb_secret_…` keys, `draft-lib.js` sends it only in the `apikey` header.
 - Never paste secret values into chats, issues, commits or screenshots. If one leaks, rotate it at the provider, then update Cloudflare and GitHub, then redeploy.
 
 ## Content safety

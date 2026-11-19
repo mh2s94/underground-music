@@ -19,7 +19,7 @@ Audited 2026-11-17. Secret values are never written here.
 ### How deployment works
 - Every push to `main` deploys production.
 - Every push to another branch creates a **preview deployment** at `https://<branch>.underground-music.pages.dev`.
-  - Previews may not have the production secrets (preview environment variables are separate). AI, auto-draft and similar may fail there with "Server is not configured". Use production for real work.
+  - Previews may not have the production secrets (preview environment variables are separate). AI and similar may fail there with "Server is not configured". Use production for real work.
   - A commit message containing `[CF-Pages-Skip]` skips the Cloudflare build.
 - **Merging:** the usual flow in this project is branch → pull request → squash merge → wait about 75 s.
 
@@ -33,7 +33,7 @@ Audited 2026-11-17. Secret values are never written here.
 
 | Binding | Type | Used by | Status |
 | --- | --- | --- | --- |
-| `AI` | Workers AI | `generate.js`, `track-info.js` (provider `workersai`) | VERIFIED (auto-draft used `workersai`) |
+| `AI` | Workers AI | `generate.js`, `track-info.js` (provider `workersai`) | VERIFIED (the removed daily drafts used `workersai`) |
 | `MUSIC` | R2 bucket `underground-music` | `/api/music/*` | VERIFIED in dashboard (2026-11-17) |
 | `ASSETS` | automatic | `a/[slug].js`, `band/[slug].js` (fetch `index.html`) | built in |
 
@@ -45,20 +45,18 @@ Set in Cloudflare → Workers & Pages → underground-music → **Settings → V
 | --- | --- | --- | --- | --- | --- |
 | `SUPABASE_URL` | Supabase project URL | yes | plain or secret | all functions that touch the DB | yes (site works) |
 | `SUPABASE_ANON_KEY` | publishable/anon key, used to verify user tokens and call RLS-protected REST | yes | secret | `generate`, `track-info`, `music`, `newsletter/send`, `a/[slug]`, `sitemap`, `unsubscribe` | yes |
-| `SUPABASE_SERVICE_ROLE_KEY` (aliases `SUPABASE_SECRET_KEY`, `SUPABASE_SERVICE_KEY`, `SUPABASE_SERVICE_ROLE`, `SERVICE_ROLE_KEY`) | secret key that bypasses RLS, used **only** by auto-draft | for auto-draft | **secret** | `auto-draft` | yes (run succeeded) |
-| `AUTODRAFT_TOKEN` | shared token between GitHub Actions and `/api/auto-draft` | for auto-draft | **secret** | `auto-draft` | yes; **rotation PENDING** |
-| `AUTODRAFT_COUNT` | drafts per run (1–3, default 2) | no | plain | `auto-draft` | unknown |
-| `AUTODRAFT_NOTIFY` | email for the morning summary | no | plain | `auto-draft` | yes |
-| `RESEND_API_KEY` | Resend API key | for newsletter | **secret** | `newsletter/send`, `auto-draft` | yes (test email sent) |
-| `NEWSLETTER_FROM` | sender, e.g. `UNDERGROUND <news@mikasa.me>` (domain verified in Resend) | for newsletter | plain | `newsletter/send`, `auto-draft` | yes |
+| `SUPABASE_SERVICE_ROLE_KEY` (aliases `SUPABASE_SECRET_KEY`, `SUPABASE_SERVICE_KEY`, `SUPABASE_SERVICE_ROLE`, `SERVICE_ROLE_KEY`) | secret key that bypasses RLS, used **only** by the Telegram digest (`telegram_radar`) | for the digest | **secret** | `telegram/digest` | yes (run succeeded) |
+| `AUTODRAFT_TOKEN` | shared token between GitHub Actions and `/api/telegram/digest` (name kept from the removed daily drafts) | for the digest | **secret** | `telegram/digest` | yes; **rotation PENDING** |
+| `RESEND_API_KEY` | Resend API key | for newsletter | **secret** | `newsletter/send` | yes (test email sent) |
+| `NEWSLETTER_FROM` | sender, e.g. `UNDERGROUND <news@mikasa.me>` (domain verified in Resend) | for newsletter | plain | `newsletter/send` | yes |
 | `NEWSLETTER_REPLY_TO` | reply-to (default `hello@mikasa.me`) | no | plain | `newsletter/send` | unknown |
 | `AI_PROVIDER_ORDER` | provider order (default `gemini,workersai,groq,openrouter,mistral,deepseek,openai,claude`) | no | plain | `generate`, `track-info` | unknown |
 | `GEMINI_API_KEY`, `GROQ_API_KEY`, `OPENROUTER_API_KEY`, `MISTRAL_API_KEY`, `DEEPSEEK_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` | AI provider keys; at least one provider (or the `AI` binding) is needed | at least one | **secret** | `generate`, `track-info` | unknown each |
 | `CF_ACCOUNT_ID` | Cloudflare account ID for the footer "Where our readers are" box | no (box hidden without it) | plain | `readers` | yes (readers box live 2026-11-17) |
 | `CF_ANALYTICS_TOKEN` | Cloudflare API token, permission **Account Analytics: Read** only | no (box hidden without it) | **secret** | `readers` | yes (readers box live 2026-11-17) |
 | `CF_WA_HOST` | Hostname counted by `/api/readers` (default `music.mikasa.me`) | no | plain | `readers` | optional |
-| `TELEGRAM_BOT_TOKEN` | Editor's Telegram bot (from @BotFather); the webhook secret is derived from it | no (bot off without it) | **secret** | `telegram/*`, `auto-draft` | yes (digest live 2026-11-18) |
-| `TELEGRAM_CHAT_ID` | The only chat the bot obeys (the bot replies with it after `/start`) | no | plain | `telegram/*`, `auto-draft` | yes (digest live 2026-11-18) |
+| `TELEGRAM_BOT_TOKEN` | Editor's Telegram bot (from @BotFather); the webhook secret is derived from it | no (bot off without it) | **secret** | `telegram/*` | yes (digest live 2026-11-18) |
+| `TELEGRAM_CHAT_ID` | The only chat the bot obeys (the bot replies with it after `/start`) | no | plain | `telegram/*` | yes (digest live 2026-11-18) |
 | `GEMINI_MODEL`, `WORKERSAI_MODEL`, `GROQ_MODEL`, `OPENROUTER_MODEL`, `MISTRAL_MODEL`, `DEEPSEEK_MODEL`, `OPENAI_MODEL`, `CLAUDE_MODEL` | model overrides | no | plain | `generate`, `track-info` | unknown |
 | `YOUTUBE_API_KEY` | YouTube Data API v3 for video lookup (else page parsing) | no | **secret** | `generate` | unknown |
 
@@ -85,7 +83,6 @@ Cloudflare Web Analytics is enabled by the owner (automatic beacon). The CSP all
 
 | Workflow | File | Trigger | Needs |
 | --- | --- | --- | --- |
-| Daily AI drafts | `.github/workflows/auto-draft.yml` | cron `43 21 * * *` (21:43 UTC = 06:43 WIT) + manual **Run workflow** | secret `AUTODRAFT_TOKEN` |
 | Telegram radar digest | `.github/workflows/telegram-digest.yml` | 08:07, 14:07, 20:07 WIT + manual | secret `AUTODRAFT_TOKEN` |
 | Production smoke test | `.github/workflows/smoke-production.yml` → `.github/scripts/smoke-production.sh` | every 6 h (`23 */6 * * *` UTC) + manual + PRs that change it | nothing. Optional GitHub secrets `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` also send failures to Telegram |
 | Preview check | `.github/workflows/preview-check.yml` | every pull request | nothing |
@@ -119,6 +116,8 @@ Cloudflare Web Analytics is enabled by the owner (automatic beacon). The CSP all
 - `manifest.webmanifest` plus the icons and `assets/og.png` share image.
 - Google Search Console: Domain property `mikasa.me` verified. Indexing of the site is not yet confirmed (PENDING).
 
+
+**No longer used (2026-11-19):** `AUTODRAFT_NOTIFY`, `AUTODRAFT_COUNT` (daily drafts removed). They can be deleted in Cloudflare; leaving them does nothing.
 
 **Dashboard check 2026-11-17 (owner screenshot):** variables present: `ANTHROPIC_API_KEY`, `AUTODRAFT_NOTIFY`, `AUTODRAFT_TOKEN`, `GEMINI_API_KEY`, `GROQ_API_KEY`, `NEWSLETTER_FROM`, `RESEND_API_KEY`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_R…` (service key), `SUPABASE_URL`. Bindings: R2 `MUSIC` → `underground-music`, Workers AI `AI`. Build output directory `.`, root directory empty.
 

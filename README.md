@@ -28,9 +28,8 @@ applied from the admin Theme Manager ([THEMES.md](docs/THEMES.md#catalogue-11-th
 ## 1. Project overview
 
 **Who it is for.** Readers and bands of the extreme-music underground, written in English, run by one owner/editor
-(Indonesia, WIT). The editor works from the admin panel and from a Telegram bot. AI writes drafts; the only thing
-it publishes on its own is the **Scene Radar autopilot** (max 5 news pieces a day, written from the source only,
-checked by a second AI and by checks without AI; the editor can take any back with ↩️ Tarik).
+(Indonesia, WIT). The editor works from the admin panel; a Telegram bot sends headline digests as information. AI only runs
+when the editor presses a button in the admin (generator, Auto-write); nothing is written or published on a schedule.
 
 **Main features** (status of each: [PROJECT-STATUS.md](docs/PROJECT-STATUS.md)):
 
@@ -39,8 +38,7 @@ checked by a second AI and by checks without AI; the editor can take any back wi
 | Articles | Markdown stories with genre, tags, cover, YouTube embed, review score; own page `/a/<slug>` with SEO meta + JSON-LD |
 | Admin newsroom | AI generator fills every field; Draft / Review / Publish; demo inbox; music upload; Settings |
 | Scene Radar | Headlines from 7 RSS sources (6 working) as a public "Underground wire"; admin Auto-write and batch drafts |
-| AI drafts | 2 drafts every morning (06:43 WIT) from fresh headlines, saved as drafts only |
-| Telegram Radar | Digest of relevant headlines 3× a day (08:07, 14:07, 20:07 WIT) with buttons: write draft, publish draft, discard |
+| Telegram Radar | Digest of new genre-tagged headlines 3× a day (08:07, 14:07, 20:07 WIT), information only (no AI, no buttons) |
 | Music library | Upload with tag auto-fill and covers, persistent player, Now Playing, lock-screen controls |
 | Charts | Community (members' star ratings) and Global (Deezer) Top 10 bands and tracks, playable 30 s previews |
 | Band profiles | `/band/<slug>`: stories, tracks, ratings, Deezer data, related bands |
@@ -92,12 +90,12 @@ assets/         bento.js (public app) · bento.css (design tokens + Neon Bento) 
                 preview.js (admin draft preview) · manager.js/.css (Theme Manager)
   themes/<id>/  theme.css + shell.js of the ten themes 01–10 (Neon Bento needs no files)
 functions/      _middleware.js · a/[slug].js · band/[slug].js · sitemap.xml.js · unsubscribe.js
-  api/          generate · track-info · auto-draft · draft-lib · news · charts · preview · cover · band · readers
-                newsletter/send · music/[[path]] · telegram/{digest,webhook,autopilot,lib} · theme/{edge,refresh}
+  api/          generate · track-info · draft-lib · news · charts · preview · cover · band · readers
+                newsletter/send · music/[[path]] · telegram/{digest,webhook,lib} · theme/{edge,refresh}
                 aal.js (2FA check) · genres-data.js (server copy of the taxonomy)
 supabase/       SQL migrations, run in the Supabase SQL editor in the order of docs/DATABASE.md
 tests/          theme-edge.test.mjs (edge) · themes.test.mjs (catalogue + theme files) · supabase-js-pin.test.mjs (SRI)
-.github/        workflows/ (auto-draft, telegram-digest, smoke-production, preview-check) · scripts/
+.github/        workflows/ (telegram-digest, smoke-production, preview-check) · scripts/
 docs/           Detailed documentation (table below)
 ```
 
@@ -111,10 +109,8 @@ docs/           Detailed documentation (table below)
   theme refresh (each checks the token, `admin_users` and `aal2`).
 - **Articles and AI.** Generator (`/api/generate`) tries providers in order with timeouts; output is saved as a
   draft by the admin. Scene Radar (`/api/news`) merges RSS feeds; the admin can turn headlines into drafts.
-  Scheduled drafts (`/api/auto-draft`) and the Telegram bot use the server-side Supabase secret key and only
-  ever create, publish or discard **drafts**. The autopilot (`/api/telegram/autopilot`, after each digest) publishes
-  only articles that passed a second AI and the source checks in `autopilot-core.js`; the bot can unpublish
-  (back to draft) only those.
+  The Telegram digest uses the server-side Supabase secret key only to remember which headlines it sent
+  (`telegram_radar`); it never writes or publishes articles.
 - **Music.** Upload to R2 (chunked for large files) or Supabase Storage; `/api/music/file/…` streams with Range.
   Ratings and charts come from SQL functions in `charts.sql`; global charts from Deezer via `/api/charts`.
 - **Community.** Members write comments, saves and demos straight to Supabase; RLS + triggers enforce ownership,
@@ -134,7 +130,7 @@ Details: [SECURITY.md](docs/SECURITY.md).
 - **Admin membership** is a row in `admin_users`, added by hand in the SQL editor. Admins must enrol TOTP 2FA.
 - **RLS** is on for every table; members can only write their own rows; drafts are admin-only. Privileged
   actions run in `SECURITY DEFINER` functions with a fixed `search_path`.
-- **Automation endpoints** use a shared token (`/api/auto-draft`, `/api/telegram/digest`, constant-time compare)
+- **Automation endpoints** use a shared token (`/api/telegram/digest`, constant-time compare)
   or Telegram's secret header plus the owner's chat id (`/api/telegram/webhook`).
 - **Security headers**: CSP, HSTS, `X-Frame-Options: DENY`, nosniff, referrer and permissions policy, COOP.
   Static files get them from `_headers`; HTML pages from the middleware (`SECURITY_HEADERS` in
@@ -189,8 +185,7 @@ Details: [DEPLOYMENT.md](docs/DEPLOYMENT.md) (every environment variable), [TROU
 
   | Workflow | When | What |
   | --- | --- | --- |
-  | `auto-draft.yml` | 06:43 WIT daily | 2 AI drafts from fresh headlines |
-  | `telegram-digest.yml` | 08:07, 14:07, 20:07 WIT | Telegram digest of relevant headlines |
+  | `telegram-digest.yml` | 08:07, 14:07, 20:07 WIT | Telegram digest of new headlines (no AI) |
   | `smoke-production.yml` | every 6 h | Read-only checks of the live site; fails loudly with the reason |
   | `preview-check.yml` | every pull request | Unit tests, then 68 checks + a real-browser check on the preview deployment |
 
