@@ -37,6 +37,11 @@ create table if not exists public.newsletter_subscribers (
   source text check (source is null or char_length(source) <= 40),
   created_at timestamptz not null default now()
 );
+-- Repair (2026-11-19): the live table had this check saved with doubled backslashes ([^@\\s], \\.),
+-- which needs a literal backslash in the address, so every sign-up failed. Re-create it correctly.
+alter table public.newsletter_subscribers drop constraint if exists newsletter_subscribers_email_check;
+alter table public.newsletter_subscribers add constraint newsletter_subscribers_email_check
+  check (char_length(email) between 6 and 254 and email ~* '^[^@\s]+@[^@\s]+\.[^@\s]+$');
 create unique index if not exists newsletter_email_key on public.newsletter_subscribers (lower(email));
 alter table public.newsletter_subscribers enable row level security;
 drop policy if exists "Admins read subscribers" on public.newsletter_subscribers;

@@ -144,4 +144,4 @@ only when pressed.
 - **Markdown links**: a `*` inside a link address no longer turns into `<em>` inside the `href`.
 - `bento.js` cache-bust bumped to `?v=bf1`.
 - Status: IMPLEMENTED, NOT VERIFIED live (mock-tested).
-
+- **Newsletter sign-up was broken for everyone** ("violates check constraint newsletter_subscribers_email_check"): the live constraint had doubled backslashes, so it demanded a literal `\` in every address (0 subscribers had ever been saved). Fixed live on 2026-11-19 (migration `fix_newsletter_email_check`, checked: valid address accepted, invalid rejected) and the repair is in `supabase/extras.sql`. VERIFIED in the database; sign-up from the site to be confirmed by the owner.
