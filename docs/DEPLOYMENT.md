@@ -104,7 +104,7 @@ Cloudflare Web Analytics is enabled by the owner (automatic beacon). The CSP all
   supabase-js loads with its SRI hash, articles load, admin login shows) and `.github/scripts/themes-check.mjs`
   (every theme switched in the page only, nothing saved). Job `unit` also runs `tests/themes.test.mjs`.
 
-- **Debugging:** Actions → Daily AI drafts → the run → step "Ask the site to write today's drafts". The log prints the JSON answer and the HTTP code:
+- **Debugging:** Actions → RSS news publisher → the run → step "Publish eligible RSS briefs". The log prints the JSON result and HTTP code. The older scheduled AI-drafts workflow was removed:
   - `401`: token mismatch between GitHub and Cloudflare
   - `503` with `variables_seen`: the service key name is missing in Cloudflare
   - `502`: no headlines, or every AI provider failed (see `failed`)
