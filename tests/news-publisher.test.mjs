@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { findYoutubeVideo } from "../functions/api/news.js";
 
 const source = await readFile(new URL("../functions/api/news-publish.js", import.meta.url), "utf8");
 const feed = await readFile(new URL("../functions/api/news.js", import.meta.url), "utf8");
@@ -27,6 +28,19 @@ test("RSS parser extracts validated YouTube video URLs from feed item XML", () =
   assert.match(feed, /youtubeVideoId: video\?\.id/);
   assert.match(feed, /youtube\.com\/watch\?v=/);
   assert.match(feed, /never fetch the linked article page/);
+});
+
+
+test("YouTube RSS extraction supports watch, short, embed, shorts and nocookie URLs", () => {
+  const cases = [
+    ['<description>https://www.youtube.com/watch?v=abcdefghijk</description>', "abcdefghijk"],
+    ['<content:encoded><![CDATA[<a href="https://youtu.be/abcdefghijk">Watch</a>]]></content:encoded>', "abcdefghijk"],
+    ['<description><![CDATA[<iframe src="https://www.youtube.com/embed/abcdefghijk?rel=0"></iframe>]]></description>', "abcdefghijk"],
+    ['<description>https://youtube.com/shorts/abcdefghijk</description>', "abcdefghijk"],
+    ['<description>https://www.youtube-nocookie.com/embed/abcdefghijk</description>', "abcdefghijk"]
+  ];
+  for (const [xml, id] of cases) assert.equal(findYoutubeVideo(xml)?.id, id);
+  assert.equal(findYoutubeVideo("<description>https://www.youtube.com/channel/UC123</description>"), null);
 });
 
 test("publisher embeds only a valid YouTube ID supplied by Scene Radar", () => {
