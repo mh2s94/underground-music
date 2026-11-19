@@ -3,6 +3,7 @@
 // link previews (WhatsApp, Instagram, X, Facebook) show the real story. The page itself then
 // opens the article as usual.
 
+import { sbUrl } from "../api/draft-lib.js";
 const SITE = "https://music.mikasa.me";
 const DEFAULT_IMAGE = SITE + "/assets/og.png";
 const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -77,10 +78,10 @@ export async function onRequestGet({ request, env, params }) {
 }
 
 async function findArticle(env, slug) {
-  if (!slug || !env.SUPABASE_URL || !env.SUPABASE_ANON_KEY) return null;
+  if (!slug || !sbUrl(env) || !env.SUPABASE_ANON_KEY) return null;
   const cols = "id,slug,title,excerpt,content,cover_image_url,genre,tags,band_name,album_name,published_at,updated_at";
   const h = { apikey: env.SUPABASE_ANON_KEY, Authorization: "Bearer " + env.SUPABASE_ANON_KEY };
-  const base = `${env.SUPABASE_URL}/rest/v1/articles?select=${cols}&status=eq.published&limit=1`;
+  const base = `${sbUrl(env)}/rest/v1/articles?select=${cols}&status=eq.published&limit=1`;
   const q = /^[0-9a-f-]{36}$|^\d+$/i.test(slug) ? `&id=eq.${encodeURIComponent(slug)}` : `&slug=eq.${encodeURIComponent(slug)}`;
   let r = await fetch(base.replace("&status", ",kind,score&status") + q, { headers: h, signal: AbortSignal.timeout(5000) });
   if (!r.ok) r = await fetch(base + q, { headers: h, signal: AbortSignal.timeout(5000) }); // before extras.sql

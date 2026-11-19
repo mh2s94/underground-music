@@ -80,7 +80,7 @@ export async function onRequestPost({ request, env }) {
     const suffix = sourceHash.slice(0, 10);
     const slug = slugify(item.title).slice(0, 78).replace(/-+$/g, "") + "-" + suffix;
     const sourceDate = new Date(item.date).toISOString();
-    const summary = String(item.summary).trim();
+    const summary = tidySummary(item.summary);
     const youtubeId = /^[\w-]{11}$/.test(String(item.youtubeVideoId || "")) ? String(item.youtubeVideoId) : "";
     const content = [
       summary,
@@ -177,6 +177,20 @@ function qualityGate(item, now) {
   if (!Array.isArray(item.genres) || !item.genres.length) return false;
   if (!isNews(item)) return false;
   return true;
+}
+
+// Scene Radar cuts summaries at 45 words with "…". End the brief at the last full sentence when
+// that still leaves at least MIN_SUMMARY_WORDS words; otherwise keep the "…".
+export function tidySummary(value) {
+  const text = String(value || "").trim();
+  if (!/…$/.test(text)) return text;
+  const body = text.replace(/\s*…$/, "");
+  const cut = Math.max(body.lastIndexOf(". "), body.lastIndexOf("! "), body.lastIndexOf("? "), /[.!?]$/.test(body) ? body.length - 1 : -1);
+  if (cut > 0) {
+    const sentence = body.slice(0, cut + 1).trim();
+    if (wordCount(sentence) >= MIN_SUMMARY_WORDS) return sentence;
+  }
+  return text;
 }
 
 function wordCount(value) { return String(value || "").trim().split(/\s+/).filter(Boolean).length; }

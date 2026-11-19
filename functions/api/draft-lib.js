@@ -21,6 +21,10 @@ export function supabaseProjectUrl(value) {
   } catch { return ""; }
 }
 
+// Project URL from env, normalized (empty string when missing or invalid). Use this instead of
+// env.SUPABASE_URL everywhere, so a value saved with /rest/v1 or a trailing slash cannot break the site.
+export const sbUrl = (env) => supabaseProjectUrl(env && env.SUPABASE_URL);
+
 // Supabase REST with the service key. Returns { rest } or { error, seen }.
 export function serviceRest(env) {
   const NAMES = ["SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_SECRET_KEY", "SUPABASE_SERVICE_KEY", "SUPABASE_SERVICE_ROLE", "SERVICE_ROLE_KEY"];

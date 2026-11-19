@@ -45,7 +45,8 @@ export function applySecurityHeaders(headers) {
 export function supabaseConfig(env) {
   const url = (env && env.SUPABASE_URL) || PUBLIC_SUPABASE_URL;
   const key = (env && env.SUPABASE_ANON_KEY) || PUBLIC_SUPABASE_KEY;
-  return { url: String(url).replace(/\/+$/, ""), key: String(key) };
+  // A value saved with /rest/v1 or a trailing slash must not break the theme (same rule as draft-lib sbUrl)
+  return { url: String(url).trim().replace(/[?#].*$/, "").replace(/\/rest\/v1\/?$/i, "").replace(/\/+$/, ""), key: String(key) };
 }
 
 // The cache entry lives per host (production and previews never share it) under a path that no

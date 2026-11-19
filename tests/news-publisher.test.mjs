@@ -2,7 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { findYoutubeVideo } from "../functions/api/news.js";
-import { supabaseProjectUrl } from "../functions/api/draft-lib.js";
+import { supabaseProjectUrl, sbUrl } from "../functions/api/draft-lib.js";
+import { tidySummary } from "../functions/api/news-publish.js";
+import { supabaseConfig } from "../functions/api/theme/edge.js";
 
 
 const source = await readFile(new URL("../functions/api/news-publish.js", import.meta.url), "utf8");
@@ -70,4 +72,24 @@ test("Supabase project URL normalization avoids malformed REST paths", () => {
   assert.equal(supabaseProjectUrl("https://example.supabase.co/project/path"), "");
   assert.equal(supabaseProjectUrl("ftp://example.supabase.co"), "");
   assert.equal(supabaseProjectUrl("https://user:pass@example.supabase.co"), "");
+});
+
+
+test("briefs end at the last full sentence instead of a cut-off word", () => {
+  const long = "Deadlands have shared a new video for Savior. The track is taken from the band's new album which arrives early next year via a new label home. The band will also tour Europe with three other heavy bands in the spring and they promise more dates…";
+  assert.equal(tidySummary(long), "Deadlands have shared a new video for Savior. The track is taken from the band's new album which arrives early next year via a new label home.");
+  const short = "Band A announce a tour. The run starts in March and covers twenty cities across the country with special guests and more to be announced soon for fans…";
+  assert.equal(tidySummary(short), short); // the first sentence alone would be under 20 words
+  assert.equal(tidySummary("A full summary with no cut."), "A full summary with no cut.");
+});
+
+test("every server route normalizes SUPABASE_URL", async () => {
+  const env = { SUPABASE_URL: "https://abc.supabase.co/rest/v1/", SUPABASE_ANON_KEY: "k" };
+  assert.equal(sbUrl(env), "https://abc.supabase.co");
+  assert.equal(supabaseConfig(env).url, "https://abc.supabase.co");
+  assert.equal(supabaseConfig({ SUPABASE_URL: "https://abc.supabase.co/", SUPABASE_ANON_KEY: "k" }).url, "https://abc.supabase.co");
+  for (const f of ["sitemap.xml.js", "unsubscribe.js", "a/[slug].js", "api/generate.js", "api/track-info.js", "api/music/[[path]].js", "api/newsletter/send.js"]) {
+    const code = await readFile(new URL("../functions/" + f, import.meta.url), "utf8");
+    assert.doesNotMatch(code, /env\.SUPABASE_URL/, f + " uses env.SUPABASE_URL directly");
+  }
 });

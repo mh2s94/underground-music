@@ -12,6 +12,7 @@
 import { buildProviders, DEFAULT_ORDER } from "./generate.js";
 import { PROMPT_LIST, canonicalGenre } from "./genres-data.js";
 import { isAal2, MFA_ERROR } from "./aal.js";
+import { sbUrl } from "./draft-lib.js";
 const SYSTEM = "You identify music tracks and return strict JSON only. No prose, no code fences.";
 
 const json = (data, status = 200) => new Response(JSON.stringify(data), {
@@ -153,15 +154,15 @@ Return only JSON: {"title":"","artist":"","album":null,"year":null,"genre":""}`;
 }
 
 async function requireAdmin(request, env) {
-  if (!env.SUPABASE_URL || !env.SUPABASE_ANON_KEY) return json({ error: "Server is not configured." }, 503);
+  if (!sbUrl(env) || !env.SUPABASE_ANON_KEY) return json({ error: "Server is not configured." }, 503);
   const auth = request.headers.get("Authorization") || "";
   if (!auth.startsWith("Bearer ")) return json({ error: "Sign in required." }, 401);
   const headers = { apikey: env.SUPABASE_ANON_KEY, Authorization: auth };
   try {
-    const u = await fetch(env.SUPABASE_URL + "/auth/v1/user", { headers, signal: AbortSignal.timeout(8000) });
+    const u = await fetch(sbUrl(env) + "/auth/v1/user", { headers, signal: AbortSignal.timeout(8000) });
     if (!u.ok) return json({ error: "Your session is invalid or expired. Sign in again." }, 401);
     const user = await u.json();
-    const a = await fetch(env.SUPABASE_URL + "/rest/v1/admin_users?select=user_id&user_id=eq." + encodeURIComponent(user.id), { headers, signal: AbortSignal.timeout(8000) });
+    const a = await fetch(sbUrl(env) + "/rest/v1/admin_users?select=user_id&user_id=eq." + encodeURIComponent(user.id), { headers, signal: AbortSignal.timeout(8000) });
     if (!a.ok || !(await a.json()).length) return json({ error: "Administrator access required." }, 403);
     if (!isAal2(request)) return json({ error: MFA_ERROR, mfa: true }, 403);
     return null;

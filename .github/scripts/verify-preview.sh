@@ -91,6 +91,7 @@ cmpep() { # cmpep <path> [curl args]
   has "$n" x-ug-theme && bad "$p has x-ug-theme" || true
 }
 cmpep /api/news
+echo "   Scene Radar sources on preview: $(curl -s -m 25 "$PREV/api/news?refresh=1" | jq -c "[.sources[]? | {name, ok, count, error}]" 2>/dev/null)"
 cmpep /api/charts
 cmpep /api/readers
 cmpep /sitemap.xml

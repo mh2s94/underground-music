@@ -58,7 +58,7 @@ get "$SITE/sitemap.xml" sitemap; n=$(grep -o "<loc>$SITE/a/" "$T/sitemap.b" | wc
 # 5. Public APIs (all cached at the edge, no AI)
 get "$SITE/api/news" news; c=$(jq -r '.items | length' "$T/news.b" 2>/dev/null || echo 0)
 [[ "$(st news)" == 200 && "$c" -gt 0 ]] && ok "/api/news $c items" || bad "/api/news status $(st news), $c items"
-down=$(jq -r '[.sources[]? | select(.ok != true) | .name] | join(", ")' "$T/news.b" 2>/dev/null); [[ -z "$down" ]] || warn "Scene Radar sources failing: $down"
+down=$(jq -r '[.sources[]? | select(.ok != true) | "\(.name) (\(.error // "failed"))"] | join(", ")' "$T/news.b" 2>/dev/null); [[ -z "$down" ]] || warn "Scene Radar sources failing: $down"
 get "$SITE/api/charts" charts; [[ "$(st charts)" == 200 ]] && jq -e . "$T/charts.b" >/dev/null 2>&1 && ok "/api/charts 200 JSON" || bad "/api/charts status $(st charts): $(head -c 160 "$T/charts.b")"
 get "$SITE/api/readers" readers; r=$(jq -r 'if .ok then "ok" else (.reason // "?") end' "$T/readers.b" 2>/dev/null)
 [[ "$(st readers)" == 200 ]] || bad "/api/readers status $(st readers)"; [[ "$r" == ok ]] && ok "/api/readers ok" || warn "/api/readers ok:false ($r): footer box hidden"

@@ -16,7 +16,7 @@ Last audit: **2026-11-19**, against `main` @ `82afca0` (Final Audit). Update thi
 | Articles, reader, `/a/<slug>` SEO pages | IMPLEMENTED, NOT VERIFIED | Google indexing not confirmed |
 | Review scores (`kind`, `score`) | IMPLEMENTED, NOT VERIFIED | needs `extras.sql`, assumed applied |
 | Admin newsroom: AI generator, Save, Publish | VERIFIED | owner, 2026-11-17 (draft saved after RLS fix) |
-| Scene Radar (public wire + admin) | VERIFIED | 6 of 7 sources work; New Noise blocked by captcha |
+| Scene Radar (public wire + admin) | VERIFIED | 7 sources; New Noise (captcha) replaced by Lambgoat on 2026-11-19 |
 | Scene Radar Auto-write (single) | VERIFIED | used by owner |
 | Scene Radar batch "Write as drafts" + Publish all | IMPLEMENTED, NOT VERIFIED | mock-tested; first live try hit the RLS bug; not re-run after the fix |
 | Scheduled AI drafts | REMOVED | Removed in PR #58 on 2026-11-19; AI generation is manual only |
@@ -134,3 +134,8 @@ At the owner's request, to save AI quota: the daily AI drafts (`auto-draft.yml`,
 Tulis draft / Publish / Buang buttons and the Scene Radar autopilot (#55, #56) were removed. The Telegram digest
 stays as information only and no longer uses AI to score headlines. The admin generator and Auto-write still work,
 only when pressed.
+
+## 2026-11-19 · Leftovers fixed
+- Every server route now normalizes `SUPABASE_URL` (`sbUrl` in `draft-lib.js`; theme edge too), so a value with `/rest/v1` or a trailing slash cannot break the sitemap, theme, article pages, admin AI/music/newsletter or unsubscribe again (that happened on 2026-11-19 between about 19:00 and 23:20 WIT).
+- Scene Radar: New Noise (captcha) replaced by Lambgoat; sources can have alternative feed URLs.
+- RSS briefs end at the last full sentence instead of a word cut off with "…".

@@ -11,7 +11,8 @@ const SOURCES = [
   { name: "Theprp", url: "https://www.theprp.com/feed/" },
   { name: "Decibel", url: "https://www.decibelmagazine.com/feed/" },
   { name: "Loudwire", url: "https://loudwire.com/category/metal/feed/" },
-  { name: "New Noise", url: "https://newnoisemagazine.com/feed/" },
+  // New Noise was removed: its site answers every automated request with a captcha (2026-11-17).
+  { name: "Lambgoat", url: "https://lambgoat.com/rss/", alt: ["https://lambgoat.com/feed/", "https://lambgoat.com/news/rss/", "https://lambgoat.com/rss.xml"] },
   { name: "Distorted Sound", url: "https://distortedsoundmag.com/feed/" }
 ];
 
@@ -73,15 +74,25 @@ export async function onRequestGet({ request, waitUntil }) {
   return res;
 }
 
+// Tries the feed URL, then each alternative URL (sites move their feeds).
 async function fetchSource(source) {
-  const r = await fetch(source.url, {
+  const urls = [source.url, ...(source.alt || [])];
+  let last;
+  for (const url of urls) {
+    try { return await fetchFeed(url, source.name); } catch (e) { last = e; }
+  }
+  throw last;
+}
+
+async function fetchFeed(url, name) {
+  const r = await fetch(url, {
     headers: { "user-agent": UA, accept: "application/rss+xml, application/atom+xml, application/xml, text/xml;q=0.9, */*;q=0.5" },
     signal: AbortSignal.timeout(8000),
     cf: { cacheTtl: 600, cacheEverything: true }
   });
   if (!r.ok) throw new Error("HTTP " + r.status);
   const xml = await r.text();
-  const items = parseFeed(xml, source.name);
+  const items = parseFeed(xml, name);
   if (!items.length) throw new Error("No items in feed");
   return items;
 }

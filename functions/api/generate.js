@@ -15,6 +15,7 @@
 
 import { PROMPT_LIST, canonicalGenre } from "./genres-data.js";
 import { isAal2, MFA_ERROR } from "./aal.js";
+import { sbUrl } from "./draft-lib.js";
 export const DEFAULT_ORDER = "gemini,workersai,groq,openrouter,mistral,deepseek,openai,claude";
 const DEADLINE_MS = 75000;         // whole AI phase
 const PROVIDER_TIMEOUT_MS = 50000; // one provider attempt
@@ -27,7 +28,7 @@ const json = (data, status = 200) => new Response(JSON.stringify(data), {
 });
 
 export async function onRequestPost({ request, env }) {
-  if (!env.SUPABASE_URL || !env.SUPABASE_ANON_KEY) {
+  if (!sbUrl(env) || !env.SUPABASE_ANON_KEY) {
     return json({ error: "Server is not configured. SUPABASE_URL and SUPABASE_ANON_KEY are required." }, 503);
   }
 
@@ -39,14 +40,14 @@ export async function onRequestPost({ request, env }) {
 
   let user;
   try {
-    const r = await fetch(env.SUPABASE_URL + "/auth/v1/user", { headers: sbHeaders, signal: AbortSignal.timeout(8000) });
+    const r = await fetch(sbUrl(env) + "/auth/v1/user", { headers: sbHeaders, signal: AbortSignal.timeout(8000) });
     if (!r.ok) return json({ error: "Your session is invalid or expired. Sign in again." }, 401);
     user = await r.json();
   } catch {
     return json({ error: "Could not verify your Supabase session. Try again." }, 502);
   }
   try {
-    const r = await fetch(env.SUPABASE_URL + "/rest/v1/admin_users?select=user_id&user_id=eq." + encodeURIComponent(user.id), {
+    const r = await fetch(sbUrl(env) + "/rest/v1/admin_users?select=user_id&user_id=eq." + encodeURIComponent(user.id), {
       headers: sbHeaders, signal: AbortSignal.timeout(8000)
     });
     if (!r.ok || !(await r.json()).length) return json({ error: "Administrator access required." }, 403);

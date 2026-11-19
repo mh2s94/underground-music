@@ -14,6 +14,7 @@
 // and admin_users membership, exactly like /api/generate.
 
 import { isAal2, MFA_ERROR } from "../aal.js";
+import { sbUrl } from "../draft-lib.js";
 const MAX_BYTES = 100 * 1024 * 1024;   // per file
 const SINGLE_PUT_MAX = 95 * 1024 * 1024; // one-request uploads stay under Cloudflare's 100 MB body limit
 const PART_MAX = 50 * 1024 * 1024;
@@ -167,15 +168,15 @@ async function serveFile(request, env, key) {
 }
 
 async function requireAdmin(request, env) {
-  if (!env.SUPABASE_URL || !env.SUPABASE_ANON_KEY) return json({ error: "Server is not configured." }, 503);
+  if (!sbUrl(env) || !env.SUPABASE_ANON_KEY) return json({ error: "Server is not configured." }, 503);
   const auth = request.headers.get("Authorization") || "";
   if (!auth.startsWith("Bearer ")) return json({ error: "Sign in required." }, 401);
   const headers = { apikey: env.SUPABASE_ANON_KEY, Authorization: auth };
   try {
-    const u = await fetch(env.SUPABASE_URL + "/auth/v1/user", { headers, signal: AbortSignal.timeout(8000) });
+    const u = await fetch(sbUrl(env) + "/auth/v1/user", { headers, signal: AbortSignal.timeout(8000) });
     if (!u.ok) return json({ error: "Your session is invalid or expired. Sign in again." }, 401);
     const user = await u.json();
-    const a = await fetch(env.SUPABASE_URL + "/rest/v1/admin_users?select=user_id&user_id=eq." + encodeURIComponent(user.id), { headers, signal: AbortSignal.timeout(8000) });
+    const a = await fetch(sbUrl(env) + "/rest/v1/admin_users?select=user_id&user_id=eq." + encodeURIComponent(user.id), { headers, signal: AbortSignal.timeout(8000) });
     if (!a.ok || !(await a.json()).length) return json({ error: "Administrator access required." }, 403);
     if (!isAal2(request)) return json({ error: MFA_ERROR, mfa: true }, 403);
     return null;
