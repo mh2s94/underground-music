@@ -157,20 +157,20 @@ function findImage(b) {
 
 function findYoutubeVideo(block) {
   const decoded = decode(String(block || ""));
-  const candidates = decoded.match(/(?:https?:)?\\/\\/(?:www\\.|m\\.)?(?:youtube\\.com|youtube-nocookie\\.com|youtu\\.be)\\/[^\\s"'<>]+/gi) || [];
+  const candidates = decoded.match(/(?:https?:)?\/\/(?:www\.|m\.)?(?:youtube\.com|youtube-nocookie\.com|youtu\.be)\/[^\s"'<>]+/gi) || [];
   for (const candidate of candidates) {
     try {
       const url = new URL(candidate.startsWith("//") ? "https:" + candidate : candidate);
-      const host = url.hostname.toLowerCase().replace(/^www\\./, "").replace(/^m\\./, "");
+      const host = url.hostname.toLowerCase().replace(/^www\./, "").replace(/^m\./, "");
       if (!["youtube.com", "youtube-nocookie.com", "youtu.be"].includes(host)) continue;
       let id = "";
       if (host === "youtu.be") id = url.pathname.split("/").filter(Boolean)[0] || "";
       else if (url.pathname === "/watch") id = url.searchParams.get("v") || "";
       else {
-        const match = url.pathname.match(/^\\/(?:embed|v|shorts|live)\\/([\\w-]{11})(?:$|\\/)/);
+        const match = url.pathname.match(/^\/(?:embed|v|shorts|live)\/([\w-]{11})(?:$|\/)/);
         id = match?.[1] || "";
       }
-      if (/^[\\w-]{11}$/.test(id)) return { id, url: "https://www.youtube.com/watch?v=" + id };
+      if (/^[\w-]{11}$/.test(id)) return { id, url: "https://www.youtube.com/watch?v=" + id };
     } catch { /* Ignore malformed or non-video YouTube URLs. */ }
   }
   return null;
