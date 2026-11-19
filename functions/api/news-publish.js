@@ -81,12 +81,14 @@ export async function onRequestPost({ request, env }) {
     const slug = slugify(item.title).slice(0, 78).replace(/-+$/g, "") + "-" + suffix;
     const sourceDate = new Date(item.date).toISOString();
     const summary = String(item.summary).trim();
+    const youtubeId = /^[\\w-]{11}$/.test(String(item.youtubeVideoId || "")) ? String(item.youtubeVideoId) : "";
     const content = [
       summary,
       "",
       "Originally published by " + String(item.source).trim() + " on " + sourceDate.slice(0, 10) + ".",
       "",
-      "Read the original report: [" + String(item.source).trim() + "](" + sourceUrl + ")."
+      "Read the original report: [" + String(item.source).trim() + "](" + sourceUrl + ").",
+      ...(youtubeId ? ["", "https://www.youtube.com/watch?v=" + youtubeId] : [])
     ].join("\n");
 
     const article = {
@@ -101,7 +103,7 @@ export async function onRequestPost({ request, env }) {
       category_id: categoryId,
       genre: genres.join(", ").slice(0, 120) || null,
       tags: genres,
-      cover_image_url: null
+      cover_image_url: youtubeId ? "https://i.ytimg.com/vi/" + youtubeId + "/hqdefault.jpg" : null
     };
     const insert = await rest("articles", {
       method: "POST",
