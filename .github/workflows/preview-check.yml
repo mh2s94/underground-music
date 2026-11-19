@@ -29,8 +29,6 @@ jobs:
         run: node tests/themes.test.mjs
       - name: Basement Radio cuts (trim math, admin saves only trim columns)
         run: node tests/trim.test.mjs
-      - name: Basement Radio cuts (trim math, admin saves only trim columns)
-        run: node tests/trim.test.mjs
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 15
