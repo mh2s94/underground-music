@@ -90,6 +90,19 @@ The admin retries the network call once.
 - **Auto-draft** also sends each of its daily drafts as the same card when the bot is configured.
 - The bot can only write drafts, publish drafts and delete drafts. Status: IMPLEMENTED, NOT VERIFIED live (mock-tested 2026-11-18).
 
+
+## Scene Radar autopilot: `POST /api/telegram/autopilot`
+Runs after every digest (same workflow, up to 2 calls per run), so up to **`AUTOPILOT_DAILY` (default 5)** articles a day (Jayapura day). Switch it off with the Cloudflare variable `AUTOPILOT=off`.
+1. Picks the best headline the digest just sent (`score >= AUTOPILOT_MIN_SCORE`, default 7, status `sent`, not handled by the autopilot) and claims it (`writing`).
+2. Reads the source page (paragraph text, max 7000 characters). Fewer than 60 words of source → not published.
+3. **Writer** (order Gemini → Groq → Claude → Workers AI) writes 150–350 words **only from the source** (prompt forbids own knowledge, guesses and invented quotes).
+4. **Checker** from another company (Workers AI Llama → Groq → Claude → Gemini; never the same company as the writer) lists every claim not in the source. Unclear answers count as a failure.
+5. **Checks without AI** (`functions/api/autopilot-core.js` `factGate`): band and release names, every number with 2+ digits, every quote, and every name (capitalised word) must be in the source; no 14+ words copied in a row; length.
+6. Problems go back to the writer: up to `AUTOPILOT_ROUNDS` (default 2) fixes, then 4–5 again.
+7. All passed → saved as **published** (`kind` News, link to the source, YouTube only if the video title names the band and release) and Telegram gets **🤖 Tayang otomatis** with **↩️ Tarik** (back to draft) and **✏️ Edit**. Otherwise nothing is published; Telegram gets **🤖 Tidak ditayangkan** with the reason and **✍️ Tulis draft manual**.
+The result is kept in `telegram_radar.item.auto` (`result`, `writer`, `checker`, `rounds`, `reason`). No database change was needed.
+**Test run:** Actions → *Telegram radar digest* → Run workflow → tick *Only test the autopilot*: runs every step on the newest headline and prints the article and verdicts; nothing is saved, published or sent.
+
 ## Music metadata: `POST /api/track-info` (admin + 2FA)
 - **Input:** tags read in the browser by `assets/audiotags.js` (title, artist, album, year, genre, filename, duration).
 - **Steps:**

@@ -3,8 +3,9 @@
 //   1. The X-Telegram-Bot-Api-Secret-Token header must match (derived from the bot token).
 //   2. Only TELEGRAM_CHAT_ID is obeyed; everyone else is ignored (except /start, which
 //      only tells the sender their own chat ID so the owner can set it up).
-//   3. The bot can only write drafts, publish drafts and discard drafts. It cannot edit,
-//      unpublish or delete published articles, or touch anything else.
+//   3. The bot can only write drafts, publish drafts, discard drafts, and take back (unpublish to
+//      draft) an article the autopilot published. It cannot edit or delete published articles,
+//      or unpublish articles a person published, or touch anything else.
 // Retries: a button press is claimed in the database first, so a repeated delivery does nothing.
 
 import { serviceRest, firstAdmin, writeDraftFromItem, same } from "../draft-lib.js";
@@ -31,7 +32,7 @@ export async function onRequestPost({ request, env }) {
       return OK();
     }
     if (chat !== owner) return OK(); // strangers are ignored
-    await tg(env, "sendMessage", { chat_id: chat, text: "🤘 Bot UNDERGROUND aktif.\nRingkasan Scene Radar dikirim 3x sehari (08.00, 14.00, 20.00 WIT). Tekan ✍️ Tulis draft pada berita yang mau ditulis AI." });
+    await tg(env, "sendMessage", { chat_id: chat, text: "🤘 Bot UNDERGROUND aktif.\nRingkasan Scene Radar dikirim 3x sehari (08.00, 14.00, 20.00 WIT).\n🤖 Autopilot: berita terbaik ditulis AI, diperiksa AI kedua dan cek fakta otomatis, lalu langsung tayang (maks. 5 per hari). Tekan ↩️ Tarik kalau ada yang tidak cocok.\nTekan ✍️ Tulis draft untuk berita lain yang mau ditulis AI." });
     return OK();
   }
 
@@ -94,6 +95,16 @@ export async function onRequestPost({ request, env }) {
     await answer("Tayang!");
     await label("✅ Published");
     await tg(env, "sendMessage", { chat_id: owner, text: `🚀 <b>Tayang!</b>\n${SITE}/a/${encodeURIComponent(rows[0].slug || rows[0].id)}`, parse_mode: "HTML" });
+    return OK();
+  }
+
+  if (act === "u") { // Tarik: unpublish an article the AUTOPILOT published (back to draft, nothing deleted)
+    const own = await rest(`telegram_radar?select=hash&article_id=eq.${key}&item->auto->>result=eq.published&limit=1`);
+    if (!own.ok || !(await own.json()).length) { await answer("Hanya artikel autopilot yang bisa ditarik dari sini."); return OK(); }
+    const rows = await claim(`articles?id=eq.${key}&status=eq.published&select=id,title`, { status: "draft", updated_at: new Date().toISOString() });
+    if (!rows.length) { await answer("Artikel sudah tidak tayang."); await label("↩️ Sudah ditarik"); return OK(); }
+    await answer("Ditarik, sekarang jadi draft");
+    await tg(env, "editMessageReplyMarkup", { ...msg, reply_markup: { inline_keyboard: [[{ text: "🚀 Tayangkan lagi", callback_data: "p:" + key }, { text: "🗑 Buang", callback_data: "x:" + key }]] } });
     return OK();
   }
 

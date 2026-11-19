@@ -28,8 +28,9 @@ applied from the admin Theme Manager ([THEMES.md](docs/THEMES.md#catalogue-11-th
 ## 1. Project overview
 
 **Who it is for.** Readers and bands of the extreme-music underground, written in English, run by one owner/editor
-(Indonesia, WIT). The editor works from the admin panel and from a Telegram bot; AI helps write drafts but
-**never publishes on its own**.
+(Indonesia, WIT). The editor works from the admin panel and from a Telegram bot. AI writes drafts; the only thing
+it publishes on its own is the **Scene Radar autopilot** (max 5 news pieces a day, written from the source only,
+checked by a second AI and by checks without AI; the editor can take any back with ↩️ Tarik).
 
 **Main features** (status of each: [PROJECT-STATUS.md](docs/PROJECT-STATUS.md)):
 
@@ -92,7 +93,7 @@ assets/         bento.js (public app) · bento.css (design tokens + Neon Bento) 
   themes/<id>/  theme.css + shell.js of the ten themes 01–10 (Neon Bento needs no files)
 functions/      _middleware.js · a/[slug].js · band/[slug].js · sitemap.xml.js · unsubscribe.js
   api/          generate · track-info · auto-draft · draft-lib · news · charts · preview · cover · band · readers
-                newsletter/send · music/[[path]] · telegram/{digest,webhook,lib} · theme/{edge,refresh}
+                newsletter/send · music/[[path]] · telegram/{digest,webhook,autopilot,lib} · theme/{edge,refresh}
                 aal.js (2FA check) · genres-data.js (server copy of the taxonomy)
 supabase/       SQL migrations, run in the Supabase SQL editor in the order of docs/DATABASE.md
 tests/          theme-edge.test.mjs (edge) · themes.test.mjs (catalogue + theme files) · supabase-js-pin.test.mjs (SRI)
@@ -111,7 +112,9 @@ docs/           Detailed documentation (table below)
 - **Articles and AI.** Generator (`/api/generate`) tries providers in order with timeouts; output is saved as a
   draft by the admin. Scene Radar (`/api/news`) merges RSS feeds; the admin can turn headlines into drafts.
   Scheduled drafts (`/api/auto-draft`) and the Telegram bot use the server-side Supabase secret key and only
-  ever create, publish or discard **drafts**.
+  ever create, publish or discard **drafts**. The autopilot (`/api/telegram/autopilot`, after each digest) publishes
+  only articles that passed a second AI and the source checks in `autopilot-core.js`; the bot can unpublish
+  (back to draft) only those.
 - **Music.** Upload to R2 (chunked for large files) or Supabase Storage; `/api/music/file/…` streams with Range.
   Ratings and charts come from SQL functions in `charts.sql`; global charts from Deezer via `/api/charts`.
 - **Community.** Members write comments, saves and demos straight to Supabase; RLS + triggers enforce ownership,
