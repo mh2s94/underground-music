@@ -288,6 +288,13 @@
   let queue = [], qi = -1;
   const audio = $("audio");
   const fmtTime = (sec) => { sec = Math.max(0, Math.floor(sec || 0)); return Math.floor(sec / 60) + ":" + String(sec % 60).padStart(2, "0"); };
+  // Trimmed songs (supabase/music-v3-trim.sql): the file stays whole, the player plays only the cut.
+  // Every time and seek bar the listener sees is measured inside the cut; "Full" plays the whole file.
+  const TR = window.UGTrim || { isCut: () => false, fullAllowed: () => true, shownSec: (t) => (t && t.duration_sec) || 0, range: (t, d) => ({ a: 0, b: d || (t && t.duration_sec) || 0, cut: false }), toBar: (c, r) => (r.b > r.a ? Math.round(Math.min(1, Math.max(0, (c - r.a) / (r.b - r.a))) * 1000) : 0), fromBar: (v, r) => r.a + v / 1000 * (r.b - r.a) };
+  let fullMode = false, cutEnded = false, cutTimer = null;
+  const durOf = (t) => TR.shownSec(t);
+  const durTxt = (t) => (durOf(t) ? fmtTime(durOf(t)) : "");
+  const seg = () => TR.range(current(), audio.duration, fullMode);
   const PLAY_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"/></svg>';
   const EQ = '<span class="eq" aria-hidden="true"><i></i><i></i><i></i></span>';
   const coverMark = (a, t) => a ? `<i hidden data-cover-a="${esc(a)}"${t ? ` data-cover-t="${esc(t)}"` : ""}></i>` : "";
@@ -317,7 +324,8 @@
   async function loadTracks() {
     const q = (cols) => db.from("tracks").select(cols)
       .eq("status", "published").order("published_at", { ascending: false }).limit(300);
-    let { data, error } = await q("id,title,artist,genre,album,release_year,cover_url,audio_url,duration_sec,published_at");
+    let { data, error } = await q("id,title,artist,genre,album,release_year,cover_url,audio_url,duration_sec,published_at,trim_start_ms,trim_end_ms,allow_full");
+    if (error) ({ data, error } = await q("id,title,artist,genre,album,release_year,cover_url,audio_url,duration_sec,published_at")); // before music-v3-trim.sql: songs play in full
     if (error) ({ data, error } = await q("id,title,artist,genre,cover_url,audio_url,duration_sec,published_at")); // before music-v2.sql
     tracks = error ? [] : (data || []).filter((t) => /^https:\/\//i.test(t.audio_url || ""));
     renderMusicPills(); renderTrackList(); renderHomeTracks();
@@ -340,7 +348,7 @@
       <span class="tr-cover">${trackCover(t)}<span class="tr-play" aria-hidden="true">${PLAY_SVG}</span></span>
       <span class="tr-meta"><span class="tr-title">${esc(t.title)}</span><span class="tr-artist">${esc(t.artist)}${t.album ? " · " + esc(t.album) : ""}${t.release_year ? " · " + esc(t.release_year) : ""}</span></span>
       ${tagHtml(t.genre || "Underground")}
-      <span class="tr-dur">${t.duration_sec ? fmtTime(t.duration_sec) : ""}</span>
+      <span class="tr-dur">${durTxt(t)}</span>
     </button></li>`;
   }
   function renderTrackList() {
@@ -361,11 +369,14 @@
     markPlaying();
   }
 
-  function playFrom(list, i) {
+  function playFrom(list, i, opts) {
     if (!list.length) return;
     queue = list.slice(); qi = Math.max(0, Math.min(i, queue.length - 1));
     const t = queue[qi];
-    audio.src = t.audio_url;
+    hideCutEnd(); fullMode = !!(opts && opts.full); cutEnded = false;
+    const r = TR.range(t, NaN, fullMode);
+    // the #t= media fragment starts the download at the cut; loadedmetadata below makes sure
+    audio.src = t.audio_url + (r.cut && r.a > 0 ? "#t=" + r.a.toFixed(1) : "");
     audio.play().catch(() => {});
     showPlayer(t);
   }
@@ -378,8 +389,9 @@
     ["plCover", "plOpen"].forEach((id) => { const el = $(id); el.classList.remove("swap"); void el.offsetWidth; el.classList.add("swap"); });
     syncNP(t);
     $("plCur").textContent = "0:00";
-    $("plDur").textContent = t.duration_sec ? fmtTime(t.duration_sec) : "0:00";
-    $("plSeek").value = 0;
+    $("plDur").textContent = durTxt(t) || "0:00";
+    $("plSeek").value = 0; $("plSeek").style.setProperty("--p", "0%");
+    syncCutUi();
     showRating(t);
     if ("mediaSession" in navigator) {
       navigator.mediaSession.metadata = new MediaMetadata({
@@ -387,18 +399,22 @@
         artwork: t.cover_url ? [{ src: t.cover_url, sizes: "600x600" }] : []
       });
     }
+    positionState();
     markPlaying();
   }
   const current = () => (qi >= 0 ? queue[qi] : null);
   function step(dir) {
     if (!queue.length) return;
-    if (dir < 0 && audio.currentTime > 3) { audio.currentTime = 0; return; }
+    if (dir < 0 && audio.currentTime - seg().a > 3) { hideCutEnd(); cutEnded = false; audio.currentTime = seg().a; audio.play().catch(() => {}); return; }
     qi = (qi + dir + queue.length) % queue.length;
     playFrom(queue, qi);
   }
   function togglePlay() {
     if (!current()) return playFrom(filteredTracks(), 0);
-    if (audio.paused) audio.play().catch(() => {}); else audio.pause();
+    if (audio.paused) {
+      if (cutEnded) { hideCutEnd(); cutEnded = false; audio.currentTime = seg().a; }
+      audio.play().catch(() => {});
+    } else audio.pause();
   }
   function markPlaying() {
     const t = current();
@@ -434,17 +450,17 @@
   $("plNext").onclick = () => step(1);
   $("plClose").onclick = () => {
     audio.pause(); audio.removeAttribute("src"); audio.load();
-    queue = []; qi = -1;
+    queue = []; qi = -1; hideCutEnd(); fullMode = false; cutEnded = false; syncCutUi();
     $("player").hidden = true; document.body.classList.remove("has-player");
     markPlaying();
   };
   let seeking = false;
   $("plSeek").addEventListener("input", () => {
     seeking = true;
-    if (isFinite(audio.duration)) $("plCur").textContent = fmtTime($("plSeek").value / 1000 * audio.duration);
+    const r = seg(); if (r.b > r.a) $("plCur").textContent = fmtTime(TR.fromBar($("plSeek").value, r) - r.a);
   });
   $("plSeek").addEventListener("change", () => {
-    if (isFinite(audio.duration)) audio.currentTime = $("plSeek").value / 1000 * audio.duration;
+    const r = seg(); if (r.b > r.a) { hideCutEnd(); cutEnded = false; audio.currentTime = Math.min(TR.fromBar($("plSeek").value, r), r.b - 0.25); }
     seeking = false;
   });
   let lastVol = 1;
@@ -457,19 +473,89 @@
     $("plMute").setAttribute("aria-label", audio.muted ? "Unmute" : "Mute");
   };
   audio.addEventListener("timeupdate", () => {
-    if (!isFinite(audio.duration) || seeking) return;
-    $("plSeek").value = Math.round(audio.currentTime / audio.duration * 1000);
-    $("plSeek").style.setProperty("--p", (audio.currentTime / audio.duration * 100) + "%");
-    $("plCur").textContent = fmtTime(audio.currentTime);
-    if (!npSeeking) { $("npSeek").value = $("plSeek").value; $("npSeek").style.setProperty("--p", (audio.currentTime / audio.duration * 100) + "%"); $("npCur").textContent = fmtTime(audio.currentTime); $("npDur").textContent = fmtTime(audio.duration); }
+    if (!isFinite(audio.duration) || !current()) return;
+    const r = seg();
+    if (r.cut && !cutEnded) {
+      if (audio.currentTime < r.a - 0.5 && !audio.seeking) { audio.currentTime = r.a; return; }
+      if (audio.currentTime >= r.b - 0.08) { endOfCut(); return; }
+    }
+    if (seeking) return;
+    const bar = TR.toBar(audio.currentTime, r), pct = bar / 10 + "%";
+    const cur = fmtTime(Math.min(audio.currentTime, r.b) - r.a), len = fmtTime(r.b - r.a);
+    $("plSeek").value = bar; $("plSeek").style.setProperty("--p", pct);
+    $("plCur").textContent = cur; $("plDur").textContent = len;
+    if (!npSeeking) { $("npSeek").value = bar; $("npSeek").style.setProperty("--p", pct); $("npCur").textContent = cur; $("npDur").textContent = len; }
   });
   // Buffering state: spinner ring on the play buttons
   ["waiting", "loadstart"].forEach((ev) => audio.addEventListener(ev, () => { if (audio.getAttribute("src")) document.body.classList.add("pl-loading"); }));
   ["playing", "pause", "canplay", "error", "emptied"].forEach((ev) => audio.addEventListener(ev, () => document.body.classList.remove("pl-loading")));
-  audio.addEventListener("loadedmetadata", () => { if (isFinite(audio.duration)) $("plDur").textContent = fmtTime(audio.duration); });
+  audio.addEventListener("loadedmetadata", () => {
+    if (!isFinite(audio.duration) || !current()) return;
+    const r = seg();
+    if (r.cut && Math.abs(audio.currentTime - r.a) > 0.3 && audio.currentTime < r.a) audio.currentTime = r.a; // Safari ignores #t= sometimes
+    $("plDur").textContent = fmtTime(r.b - r.a);
+    if (!npSeeking) $("npDur").textContent = fmtTime(r.b - r.a);
+    positionState();
+  });
   audio.addEventListener("play", markPlaying);
   audio.addEventListener("pause", markPlaying);
-  audio.addEventListener("ended", () => { if (qi < queue.length - 1) step(1); else markPlaying(); });
+  audio.addEventListener("ended", () => {
+    if (TR.isCut(current()) && !fullMode && !cutEnded) { endOfCut(); return; }
+    if (qi < queue.length - 1) step(1); else markPlaying();
+  });
+
+  // End of a cut: offer the full song (if the admin allows it) or move on after 8 seconds
+  function endOfCut() {
+    const t = current(); cutEnded = true;
+    audio.pause();
+    const hasNext = qi < queue.length - 1;
+    if (!TR.fullAllowed(t)) { cutEnded = false; if (hasNext) step(1); else { audio.currentTime = seg().a; cutEnded = true; markPlaying(); } return; }
+    const box = $("plCutEnd"); box.hidden = false;
+    $("plCutNext").hidden = !hasNext;
+    let left = 8;
+    const tick = () => { $("plCutNext").textContent = `Next song (${left})`; };
+    tick(); clearInterval(cutTimer);
+    cutTimer = setInterval(() => {
+      left--; tick();
+      if (left <= 0) { hideCutEnd(); if (hasNext) step(1); else markPlaying(); }
+    }, 1000);
+    markPlaying();
+  }
+  function hideCutEnd() { clearInterval(cutTimer); cutTimer = null; const b = $("plCutEnd"); if (b) b.hidden = true; }
+  function setFull(on) {
+    const t = current(); if (!t || !TR.isCut(t) || !TR.fullAllowed(t)) return;
+    const wasEnded = cutEnded;
+    fullMode = !!on; hideCutEnd(); cutEnded = false;
+    const r = seg();
+    if (wasEnded && fullMode) audio.currentTime = 0; // heard the cut, now the whole song from the top
+    else if (audio.currentTime < r.a || audio.currentTime >= r.b) audio.currentTime = r.a;
+    audio.play().catch(() => {});
+    syncCutUi(); positionState();
+    $("plDur").textContent = $("npDur").textContent = fmtTime(r.b - r.a);
+  }
+  function syncCutUi() {
+    const t = current(), cut = TR.isCut(t), can = cut && TR.fullAllowed(t);
+    const b = $("plFull"), nb = $("npFull");
+    [b, nb].forEach((el) => {
+      if (!el) return;
+      el.hidden = !can;
+      el.textContent = fullMode ? "Cut" : "Full";
+      el.setAttribute("aria-pressed", fullMode ? "true" : "false");
+      el.setAttribute("aria-label", fullMode ? "Back to the cut version" : "Play the full song");
+    });
+    document.body.classList.toggle("pl-cut", cut && !fullMode);
+    if (t && $("npSrc")) $("npSrc").textContent = t.preview ? "30s preview" : cut ? (fullMode ? "Full song" : "Cut · " + durTxt(t)) : (t.genre || "Basement radio");
+  }
+  function positionState() {
+    try {
+      const r = seg();
+      if (!("mediaSession" in navigator) || !navigator.mediaSession.setPositionState || !(r.b > r.a)) return;
+      navigator.mediaSession.setPositionState({ duration: r.b - r.a, position: Math.min(r.b - r.a, Math.max(0, audio.currentTime - r.a)), playbackRate: audio.playbackRate || 1 });
+    } catch { /* older browsers */ }
+  }
+  $("plFull").addEventListener("click", () => setFull(!fullMode));
+  $("plCutFull").addEventListener("click", () => setFull(true));
+  $("plCutNext").addEventListener("click", () => { hideCutEnd(); step(1); });
   audio.addEventListener("error", () => {
     if (!audio.getAttribute("src")) return;
     toast("warning", "This track can't be played", "Skipping to the next one.", { duration: 3500 });
@@ -480,6 +566,7 @@
     navigator.mediaSession.setActionHandler("pause", () => audio.pause());
     navigator.mediaSession.setActionHandler("previoustrack", () => step(-1));
     navigator.mediaSession.setActionHandler("nexttrack", () => step(1));
+    try { navigator.mediaSession.setActionHandler("seekto", (d) => { const r = seg(); if (d && isFinite(d.seekTime) && r.b > r.a) { audio.currentTime = r.a + Math.min(r.b - r.a - 0.25, Math.max(0, d.seekTime)); positionState(); } }); } catch { /* not supported */ }
   }
 
   // ---- Render: articles ----------------------------------------------------
@@ -1667,7 +1754,7 @@
     chartQueues.bandSongs = songs; chartQueues.bandTop = playable;
     $("bhActions").innerHTML = (songs.length ? `<button class="btn btn-white" type="button" data-play-band="bandSongs">▶ Play songs</button>` : playable.length ? `<button class="btn btn-white" type="button" data-play-band="bandTop">▶ Play top tracks</button>` : "")
       + (dz && dz.link ? `<a class="btn btn-ghost-dark" href="${esc(dz.link)}" target="_blank" rel="noopener">Deezer ↗</a>` : "");
-    if (songs.length) { $("bhSongsCard").hidden = false; $("bhSongs").innerHTML = songs.map((t, i) => `<li><button class="chart-row" type="button" data-track="${esc(t.id)}" data-from="bandSongs" style="--i:${i}"><span class="c-rank">${i + 1}</span><span class="c-cover">${chartCover(t.cover_url, t.id, t.artist, t.title)}</span><span class="c-meta"><span class="c-title">${esc(t.title)}</span><span class="c-sub">${esc(t.album || t.genre || "")}</span></span><span class="c-score"><span class="c-votes">${t.duration_sec ? fmtTime(t.duration_sec) : ""}</span></span></button></li>`).join(""); }
+    if (songs.length) { $("bhSongsCard").hidden = false; $("bhSongs").innerHTML = songs.map((t, i) => `<li><button class="chart-row" type="button" data-track="${esc(t.id)}" data-from="bandSongs" style="--i:${i}"><span class="c-rank">${i + 1}</span><span class="c-cover">${chartCover(t.cover_url, t.id, t.artist, t.title)}</span><span class="c-meta"><span class="c-title">${esc(t.title)}</span><span class="c-sub">${esc(t.album || t.genre || "")}</span></span><span class="c-score"><span class="c-votes">${durTxt(t)}</span></span></button></li>`).join(""); }
     if (playable.length) { $("bhTopCard").hidden = false; $("bhTop").innerHTML = playable.map((t, i) => `<li><button class="chart-row" type="button" data-track="${esc(t.id)}" data-from="bandTop" style="--i:${i}"><span class="c-rank">${i + 1}</span><span class="c-cover">${chartCover(t.cover_url, t.id, disp, t.title)}</span><span class="c-meta"><span class="c-title">${esc(t.title)}</span><span class="c-sub">${esc(t.album || "")}</span></span><span class="c-score"><span class="c-votes">Preview</span></span></button></li>`).join(""); }
     if (stories.length) {
       $("bhStoriesCard").hidden = false; $("bhStoriesN").textContent = stories.length + (stories.length === 1 ? " story" : " stories");
@@ -1695,11 +1782,11 @@
     $("npTitle").textContent = t.title;
     $("npArtist").textContent = t.artist;
     $("npArtist").setAttribute("href", t.preview ? "#/charts" : "/band/" + encodeURIComponent(bandSlug(t.artist)));
-    $("npSrc").textContent = t.preview ? "30s preview" : (t.genre || "Basement radio");
+    $("npSrc").textContent = t.preview ? "30s preview" : TR.isCut(t) && t === current() ? (fullMode ? "Full song" : "Cut · " + durTxt(t)) : (t.genre || "Basement radio");
     $("npArt").innerHTML = trackCover(t); hydrateCovers($("npArt"));
     $("npBg").style.backgroundImage = t.cover_url ? `url("${String(t.cover_url).replace(/"/g, "%22")}")` : "";
     $("npSeek").value = 0; $("npSeek").style.setProperty("--p", "0%"); $("npCur").textContent = "0:00";
-    $("npDur").textContent = t.duration_sec ? fmtTime(t.duration_sec) : "0:00";
+    $("npDur").textContent = durTxt(t) || "0:00";
     const d = $("npArt"); d.classList.remove("swap"); void d.offsetWidth; d.classList.add("swap");
     renderUpNext();
     // the cover may arrive later (lookup): mirror it into the background
@@ -1710,7 +1797,7 @@
     const next = [];
     for (let k = 1; k <= 3 && queue.length > 1; k++) { const i = (qi + k) % queue.length; if (i === qi || next.some((x) => x.i === i)) break; next.push({ i, t: queue[i] }); }
     $("npNextWrap").hidden = !next.length;
-    $("npList").innerHTML = next.map(({ i, t }, n) => `<li><button class="np-item" type="button" data-q="${i}" style="--i:${n}"><span class="np-thumb">${trackCover(t)}</span><span class="np-it"><b>${esc(t.title)}</b><span>${esc(t.artist)}</span></span><span class="np-dur">${t.duration_sec ? fmtTime(t.duration_sec) : ""}</span></button></li>`).join("");
+    $("npList").innerHTML = next.map(({ i, t }, n) => `<li><button class="np-item" type="button" data-q="${i}" style="--i:${n}"><span class="np-thumb">${trackCover(t)}</span><span class="np-it"><b>${esc(t.title)}</b><span>${esc(t.artist)}</span></span><span class="np-dur">${durTxt(t)}</span></button></li>`).join("");
     hydrateCovers($("npList"));
   }
   $("npList").addEventListener("click", (e) => { const b = e.target.closest("[data-q]"); if (b) playFrom(queue, +b.dataset.q); });
@@ -1736,9 +1823,10 @@
   $("npSeek").addEventListener("input", () => {
     npSeeking = true;
     $("npSeek").style.setProperty("--p", ($("npSeek").value / 10) + "%");
-    if (isFinite(audio.duration)) $("npCur").textContent = fmtTime($("npSeek").value / 1000 * audio.duration);
+    const r = seg(); if (r.b > r.a) $("npCur").textContent = fmtTime(TR.fromBar($("npSeek").value, r) - r.a);
   });
-  $("npSeek").addEventListener("change", () => { if (isFinite(audio.duration)) audio.currentTime = $("npSeek").value / 1000 * audio.duration; npSeeking = false; });
+  $("npSeek").addEventListener("change", () => { const r = seg(); if (r.b > r.a) { hideCutEnd(); cutEnded = false; audio.currentTime = Math.min(TR.fromBar($("npSeek").value, r), r.b - 0.25); } npSeeking = false; });
+  $("npFull").addEventListener("click", () => setFull(!fullMode));
   // swipe down to close on phones
   const npSheet = $("np").querySelector(".np-sheet");
   npSheet.addEventListener("touchstart", (e) => { if (e.target.closest(".np-seek")) return; npTouchY = e.touches[0].clientY; }, { passive: true });
@@ -1776,7 +1864,7 @@
     publishedAt: a.published_at, url: "/a/" + keyOf(a), bandUrl: a.band_name ? "/band/" + encodeURIComponent(bandSlug(a.band_name)) : ""
   });
   const pickTrack = (t) => copy({
-    id: t.id, title: t.title, artist: t.artist, genre: t.genre || "", album: t.album || "", cover: t.cover_url || "", durationSec: t.duration_sec || 0
+    id: t.id, title: t.title, artist: t.artist, genre: t.genre || "", album: t.album || "", cover: t.cover_url || "", durationSec: durOf(t)
   });
   window.UG = Object.freeze({
     contract: 1,

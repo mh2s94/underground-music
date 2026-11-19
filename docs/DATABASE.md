@@ -23,6 +23,7 @@ Every file is idempotent ("safe to re-run"): `create … if not exists`, `create
 | 8 | `supabase/telegram.sql` | `telegram_radar` for the Telegram bot (service key only) | — |
 | 9 | `supabase/themes.sql` | Theme Manager: `site_theme_active`, `site_theme_configs`, `site_theme_history`, `ug_clean_theme_tokens`, `ug_theme_id_ok`, `ug_active_theme`, `ug_apply_theme`, `ug_restore_theme`, `ug_reset_theme` | 6 (`ug_is_admin()` with 2FA). Applied by the owner on 2026-11-18 and verified. Do not re-run without a technical reason. |
 | 10 | `supabase/news-ingestion.sql` | RSS publisher idempotency and publication tracking (`news_ingestion`) | Base `articles` table; pending until release approval |
+| 11 | `supabase/music-v3-trim.sql` | Basement Radio cuts: `tracks.trim_start_ms`, `trim_end_ms`, `allow_full`, `waveform` + checks; `ug_chart_tracks` returns the cut (drop + create, new return type) | 2, 4. **Pending: owner reviews and runs it.** The site works before it runs (songs play in full). After it runs, re-running `charts.sql` fails on `ug_chart_tracks` (return type); re-run `music-v3-trim.sql` instead. |
 
 Owner-reported state: files 6 and 7 applied on 2026-11-17 (2FA working; "Admins can read all articles" added in the dashboard); file 9 (`themes.sql`) applied and verified on 2026-11-18. The application status of files 1–5 and 8 is inferred from working features, not from a schema dump.
 
@@ -61,7 +62,7 @@ Used column: `user_id` (auth user id). Membership = admin. Owner-reported RLS: a
 ### `demo_submissions` (`community.sql`)
 `id`, `user_id` → `profiles.id` (cascade), `band_name`, `country`, `genre`, `link` (must be `https://…`), `message`, `contact_email`, `status` (`new` | `listened` | `featured` | `declined`), `created_at`. Index on `created_at desc`. Trigger `ug_demo_rate_limit`: at most 3 per member per day. RLS: members insert their own and see their own; admins see, update and delete all.
 
-### `tracks` (`music.sql`, `music-v2.sql`)
+### `tracks` (`music.sql`, `music-v2.sql`, `music-v3-trim.sql`)
 `id` uuid, `title`, `artist` (1–160), `genre` (≤ 40), `description` (≤ 1000), `audio_path`, `audio_url` (https), `cover_path`, `cover_url` (https), `duration_sec` (0–7200), `status` (`draft` | `published`), `published_at`, `created_at`, `updated_at`, `album` (≤ 160), `release_year` (1900–2100). Index `tracks_published_idx (status, published_at desc)`. RLS: published public (admins see all); admin insert, update and delete.
 
 ### `track_ratings` (`charts.sql`)

@@ -150,7 +150,7 @@ Details, columns, functions and verification queries: [DATABASE.md](docs/DATABAS
 | `admin_users` | Admin membership | **dashboard, not in repo** |
 | `profiles` | Member profile (auto-created on sign-up) | `community.sql` |
 | `comments`, `saved_articles`, `demo_submissions` | Community | `community.sql` |
-| `tracks` | Music library | `music.sql`, `music-v2.sql` |
+| `tracks` | Music library | `music.sql`, `music-v2.sql`, `music-v3-trim.sql` |
 | `track_ratings` | Members' star ratings | `charts.sql` |
 | `newsletter_subscribers` | Newsletter list + unsubscribe token | `extras.sql` |
 | `gigs` | Unused (feature removed) | `extras.sql` |
@@ -163,7 +163,8 @@ Important relations: `profiles.id` → `auth.users` (cascade); comments, saves a
 
 **Migrations** (all idempotent), in this order: *(0) base tables from the dashboard* → `community.sql` →
 `music.sql` → `music-v2.sql` → `charts.sql` → `extras.sql` → `security.sql` → `security-check.sql` →
-`telegram.sql` → `themes.sql`. All of them are applied in production.
+`telegram.sql` → `themes.sql`. All of them are applied in production. `music-v3-trim.sql` (Basement Radio cuts)
+comes last and is **not applied yet**: the owner runs it after review.
 
 **Rebuilding the database from the repo is not yet possible**, because step 0 is missing. Files 1–9 apply
 cleanly (and re-run cleanly) on PostgreSQL 16 once those three tables exist. The read-only export query in
