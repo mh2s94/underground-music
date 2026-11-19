@@ -113,7 +113,7 @@
     { id: "scene-atlas",  no: "10", name: "Scene Atlas",      status: "ready", css: true,  js: true,  desc: "Peta genre interaktif dengan panel baca.", experimental: true,
       tokens: { void: "#081021", bg: "#0B1426", shell: "#0D172C", surface: "#111D35", surface2: "#172644", surface3: "#1E3054", line: "#24375C", line2: "#33507F",
         ink: "#EAF1FF", inkSoft: "#CFDCF5", muted: "#9BADCF", faint: "#7487AD", accent: "#FFC857", accentHi: "#FFD884", accentTint: "#FFF2D6", onAccent: "#10192B",
-        accent2: "#4FD1C5", accent2Hi: "#86E2D9", accent2Tint: "#D9F7F3", ok: "#4FD1C5", warn: "#FFC857", fontDisplay: "fraunces", fontBody: "inter", fontMono: "space-mono", radius: 10, scanlines: 0 } }
+        accent2: "#4FD1C5", accent2Hi: "#86E2D9", accent2Tint: "#D9F7F3", ok: "#4FD1C5", warn: "#FFC857", fontDisplay: "fraunces", fontBody: "inter", fontMono: "space-mono", radius: 10, scanlines: 0 } },
     { id: "monochrome-modular", no: "11", name: "Monochrome Modular", status: "ready", css: true, js: false, desc: "Industrial editorial: monochrome, modular grid, high-contrast photography.",
       tokens: { void: "#000000", bg: "#080808", shell: "#090909", surface: "#111111", surface2: "#171717", surface3: "#202020", line: "#303030", line2: "#555555",
         ink: "#F4F4F4", inkSoft: "#E4E4E4", muted: "#B0B0B0", faint: "#858585", accent: "#F4F4F4", accentHi: "#FFFFFF", accentTint: "#D8D8D8", onAccent: "#080808",
