@@ -287,7 +287,7 @@ function hedgedRace(names, providers) {
 // ===========================================================================
 // Tolerant parser: tagged text first, JSON (with repair) as a fallback.
 // ===========================================================================
-function parseArticle(raw) {
+export function parseArticle(raw) {
   let text = String(raw || "").replace(/\r\n?/g, "\n").trim();
   text = text.replace(/<think>[\s\S]*?<\/think>/gi, "").trim(); // reasoning models
   text = text.replace(/^```[a-z]*\n?/i, "").replace(/\n?```\s*$/, "").trim();
@@ -349,7 +349,7 @@ function repairJsonStrings(s) {
 // ===========================================================================
 // YouTube lookup: Data API when YOUTUBE_API_KEY is set, else public search page.
 // ===========================================================================
-async function findYouTube(band, title, env) {
+export async function findYouTube(band, title, env) {
   const q = (band + " " + title + (title ? " official" : "")).trim();
   if (!q) return null;
   if (env.YOUTUBE_API_KEY) {

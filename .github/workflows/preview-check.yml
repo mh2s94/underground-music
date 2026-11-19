@@ -25,6 +25,8 @@ jobs:
         run: node tests/supabase-js-pin.test.mjs
       - name: Theme catalogue and theme files (scoping, tokens, contrast, budget, ASSET_REV)
         run: node tests/themes.test.mjs
+      - name: Scene Radar autopilot (fact checks, roles, limits)
+        run: node tests/autopilot.test.mjs
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 15
