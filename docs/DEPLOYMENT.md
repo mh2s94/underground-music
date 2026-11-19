@@ -47,6 +47,7 @@ Set in Cloudflare → Workers & Pages → underground-music → **Settings → V
 | `SUPABASE_ANON_KEY` | publishable/anon key, used to verify user tokens and call RLS-protected REST | yes | secret | `generate`, `track-info`, `music`, `newsletter/send`, `a/[slug]`, `sitemap`, `unsubscribe` | yes |
 | `SUPABASE_SERVICE_ROLE_KEY` (aliases `SUPABASE_SECRET_KEY`, `SUPABASE_SERVICE_KEY`, `SUPABASE_SERVICE_ROLE`, `SERVICE_ROLE_KEY`) | secret key that bypasses RLS, used **only** by the Telegram digest (`telegram_radar`) | for the digest | **secret** | `telegram/digest` | yes (run succeeded) |
 | `AUTODRAFT_TOKEN` | shared token between GitHub Actions and `/api/telegram/digest` (name kept from the removed daily drafts) | for the digest | **secret** | `telegram/digest` | yes; **rotation PENDING** |
+| `NEWS_PUBLISH_TOKEN` | dedicated bearer token for the RSS publisher | for publishing | **secret** | `news-publish` | PENDING; add the same value to Cloudflare Production and GitHub Actions after release approval |
 | `RESEND_API_KEY` | Resend API key | for newsletter | **secret** | `newsletter/send` | yes (test email sent) |
 | `NEWSLETTER_FROM` | sender, e.g. `UNDERGROUND <news@mikasa.me>` (domain verified in Resend) | for newsletter | plain | `newsletter/send` | yes |
 | `NEWSLETTER_REPLY_TO` | reply-to (default `hello@mikasa.me`) | no | plain | `newsletter/send` | unknown |
@@ -65,7 +66,7 @@ Set in Cloudflare → Workers & Pages → underground-music → **Settings → V
 - `SUPABASE_URL`, the Supabase **publishable** key, `SUBMIT_EMAIL` and `TURNSTILE_SITE_KEY` in `assets/bento.js`
 - the URL and publishable key in `admin.html`
 
-**GitHub Actions secrets:** `AUTODRAFT_TOKEN`, with the same value as in Cloudflare. Optional: `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` (same values as in Cloudflare) so the production smoke test can also report failures to Telegram.
+**GitHub Actions secrets:** `AUTODRAFT_TOKEN`, with the same value as in Cloudflare. The RSS publisher additionally needs `NEWS_PUBLISH_TOKEN` in both GitHub Actions and Cloudflare Pages Production. Optional: `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` (same values as in Cloudflare) so the production smoke test can also report failures to Telegram.
 
 ## DNS and email (zone `mikasa.me` on Cloudflare)
 
@@ -83,6 +84,7 @@ Cloudflare Web Analytics is enabled by the owner (automatic beacon). The CSP all
 
 | Workflow | File | Trigger | Needs |
 | --- | --- | --- | --- |
+| RSS news publisher | `.github/workflows/news-publisher.yml` | Every 30 min + manual | secret `NEWS_PUBLISH_TOKEN`; safely skips if missing |
 | Telegram radar digest | `.github/workflows/telegram-digest.yml` | 08:07, 14:07, 20:07 WIT + manual | secret `AUTODRAFT_TOKEN` |
 | Production smoke test | `.github/workflows/smoke-production.yml` → `.github/scripts/smoke-production.sh` | every 6 h (`23 */6 * * *` UTC) + manual + PRs that change it | nothing. Optional GitHub secrets `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` also send failures to Telegram |
 | Preview check | `.github/workflows/preview-check.yml` | every pull request | nothing |
