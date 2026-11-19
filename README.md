@@ -218,8 +218,7 @@ Details: [DEPLOYMENT.md](docs/DEPLOYMENT.md) (every environment variable), [TROU
 
 ## 8. Project status and maintenance
 
-- **Verified in production**: public site and all views, security headers, admin 2FA gate, AI generator and
-  daily drafts, Scene Radar, Telegram digest, global charts, readers footer, Theme Manager (Apply, Restore,
+- **Verified in production**: public site and all views, security headers, admin 2FA gate, manual AI generator, Scene Radar, Telegram digest, global charts, readers footer, Theme Manager (Apply, Restore,
   Reset) and edge resilience.
 - **Implemented, not yet verified live**: member flows (accounts, comments, saves, demos, newsletter sign-up,
   unsubscribe, self-deletion), music upload, Scene Radar batch, Telegram buttons. The SQL rules behind them pass
@@ -250,7 +249,7 @@ change, and use the [release checklist](docs/DEVELOPMENT-GUIDE.md#testing-checkl
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System diagram, frontend, routing, every API route, data flows |
 | [docs/DATABASE.md](docs/DATABASE.md) | Tables, columns, relations, functions, RLS + MFA model, SQL order, verification and export queries |
 | [docs/SECURITY.md](docs/SECURITY.md) | Accounts, admin membership, 2FA, headers/CSP/HSTS, supabase-js SRI, Turnstile, rate limits, secrets |
-| [docs/AI-SYSTEM.md](docs/AI-SYSTEM.md) | Providers, models, fallback, timeouts, Auto-write, batch and scheduled drafts |
+| [docs/AI-SYSTEM.md](docs/AI-SYSTEM.md) | Providers, models, fallback, timeouts, manual generator, Auto-write and batch drafting |
 | [docs/MUSIC-SYSTEM.md](docs/MUSIC-SYSTEM.md) | Upload limits, R2 vs Supabase, streaming, tags, player, charts and ratings |
 | [docs/THEMES.md](docs/THEMES.md) | Theme engine, edge middleware, Theme Manager, how to build a theme |
 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Pages settings, bindings, environment variables, DNS and email, GitHub Actions |
