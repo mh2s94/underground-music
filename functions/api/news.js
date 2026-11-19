@@ -108,10 +108,11 @@ function parseFeed(xml, sourceName) {
       ...[...b.matchAll(/<category[^>]*term=["']([^"']+)["']/gi)].map((m) => decode(m[1]))
     ].filter(Boolean).slice(0, 12);
     const image = findImage(b);
+    const video = findYoutubeVideo(b);
     const iso = date && !isNaN(Date.parse(date)) ? new Date(date).toISOString() : "";
     out.push({
       title, link: link.trim(), source: sourceName, date: iso, summary,
-      image, categories: cats,
+      image, videoUrl: video?.url || "", youtubeVideoId: video?.id || "", categories: cats,
       genres: detectGenres(title + " " + summary + " " + cats.join(" ")),
       band: guessBand(title)
     });
@@ -151,6 +152,30 @@ function findImage(b) {
     || decode(b).match(/<img[^>]*src=["'](https:\/\/[^"']+)["']/i);
   const u = m ? decode(m[1]) : "";
   return /^https:\/\//i.test(u) ? u : "";
+}
+
+
+// Only inspect the RSS item XML; never fetch the linked article page for a video.
+export function findYoutubeVideo(block) {
+  const decoded = decode(String(block || ""));
+  const candidates = decoded.match(/(?:https?:)?\/\/(?:www\.|m\.)?(?:youtube\.com|youtube-nocookie\.com|youtu\.be)\/[^\s"'<>]+/gi) || [];
+  for (const candidate of candidates) {
+    try {
+      const cleanCandidate = candidate.replace(/[),.;!?]+$/g, "");
+      const url = new URL(cleanCandidate.startsWith("//") ? "https:" + cleanCandidate : cleanCandidate);
+      const host = url.hostname.toLowerCase().replace(/^www\./, "").replace(/^m\./, "");
+      if (!["youtube.com", "youtube-nocookie.com", "youtu.be"].includes(host)) continue;
+      let id = "";
+      if (host === "youtu.be") id = url.pathname.split("/").filter(Boolean)[0] || "";
+      else if (url.pathname === "/watch") id = url.searchParams.get("v") || "";
+      else {
+        const match = url.pathname.match(/^\/(?:embed|v|shorts|live)\/([\w-]{11})(?:$|\/)/);
+        id = match?.[1] || "";
+      }
+      if (/^[\w-]{11}$/.test(id)) return { id, url: "https://www.youtube.com/watch?v=" + id };
+    } catch { /* Ignore malformed or non-video YouTube URLs. */ }
+  }
+  return null;
 }
 
 function detectGenres(text) {

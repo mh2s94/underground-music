@@ -2,9 +2,11 @@
 
 ## Scope
 
-The publisher creates short English news briefs from the public RSS/Atom data already exposed by Scene Radar. It does not call an AI provider, translate text, fetch or scrape the original article page, or republish feed images. The source publication remains the authoritative report; each brief links directly to it.
+The publisher creates short English news briefs from the public RSS/Atom data already exposed by Scene Radar. It does not call an AI provider, translate text, fetch or scrape the original article page, or reuse arbitrary RSS images. The source publication remains the authoritative report; each brief links directly to it.
 
-Each article uses `kind = 'News'`, `status = 'published'`, `author_id = null`, and the actual site publication time in `published_at`. The source's publication timestamp is preserved separately in `news_ingestion.source_published_at` and printed in the attribution. No cover image is assigned until image rights are verified.
+Scene Radar extracts direct YouTube video URLs present inside each RSS item (including `watch`, `youtu.be`, `embed`, `shorts`, and `live` URL forms). It validates the 11-character video ID and passes it to the publisher. The publisher appends a standalone YouTube URL to the article content, which the existing article reader renders as an embedded player, and sets the matching YouTube thumbnail. It does not infer videos from headlines or open source article pages to search for a video. If an RSS item has no direct YouTube URL, the article is published without a video and without a cover image.
+
+Each article uses `kind = 'News'`, `status = 'published'`, `author_id = null`, and the actual site publication time in `published_at`. The source's publication timestamp is preserved separately in `news_ingestion.source_published_at` and printed in the attribution.
 
 ## Editorial eligibility
 
@@ -33,7 +35,7 @@ The 10/day cap is enforced against the publisher tracking table. Do not run mult
 
 ## Database
 
-Apply `supabase/news-ingestion.sql` to the production Supabase project only after the PR is reviewed and approved for release. It creates `public.news_ingestion`, with a unique source hash and URL, state, attempt count, source metadata, article reference and publication timestamps. RLS is enabled and grants are revoked from `anon` and `authenticated`; only the server-side service key can use it.
+The production database has `public.news_ingestion`, with a unique source hash and URL, state, attempt count, source metadata, article reference and publication timestamps. RLS is enabled and grants are revoked from `anon` and `authenticated`; only the server-side service key can use it.
 
 Do not use `telegram_radar` for this state. That table tracks which digest headlines have been sent, which is a separate concern.
 
@@ -44,8 +46,8 @@ The endpoint is disabled unless `NEWS_PUBLISH_TOKEN` is set.
 1. Generate a high-entropy random token locally, for example with `openssl rand -hex 32`. Do not paste it into chat or commit it.
 2. Add the same value as a **secret** named `NEWS_PUBLISH_TOKEN` in Cloudflare Pages → `underground-music` → Settings → Variables and Secrets → Production.
 3. Add the same value as a GitHub Actions repository secret named `NEWS_PUBLISH_TOKEN`.
-4. After the SQL migration is applied and the PR is merged, redeploy Cloudflare Pages so the Pages Function receives the secret.
-5. Run **RSS news publisher** once with GitHub Actions → Run workflow and inspect its JSON summary and Telegram notification.
+4. After changes are merged, Cloudflare Pages redeploys the Pages Function.
+5. Inspect the next scheduled run or run **RSS news publisher** from GitHub Actions and inspect its JSON summary and Telegram notification.
 
 If the GitHub secret is absent, the scheduled workflow exits without calling the endpoint. If the Cloudflare secret is absent or mismatched, the endpoint returns 401. If the table is missing, it returns 503 and publishes nothing.
 
@@ -57,4 +59,4 @@ Disable the GitHub Actions workflow or remove its `NEWS_PUBLISH_TOKEN` secret to
 
 ## Verification
 
-The PR adds static safety tests for the token gate, volume and age limits, summary/genre filters, no-AI constraint, no RSS image reuse, and database RLS. The standard Preview check must pass. A real production run is intentionally deferred until the owner applies the SQL migration and configures both secrets after approving the PR.
+The PR includes static safety tests for the token gate, volume and age limits, RSS YouTube URL extraction, video ID validation, no-AI constraint, no arbitrary RSS image reuse, and database RLS. The standard Preview check must pass. A real production run should be inspected after merge.
