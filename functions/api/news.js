@@ -155,6 +155,7 @@ function findImage(b) {
 }
 
 
+// Only inspect the RSS item XML; never fetch the linked article page for a video.
 function findYoutubeVideo(block) {
   const decoded = decode(String(block || ""));
   const candidates = decoded.match(/(?:https?:)?\/\/(?:www\.|m\.)?(?:youtube\.com|youtube-nocookie\.com|youtu\.be)\/[^\s"'<>]+/gi) || [];
