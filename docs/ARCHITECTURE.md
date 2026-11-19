@@ -12,7 +12,7 @@ UNDERGROUND is a **static site with serverless functions**:
 - **Cloudflare R2** stores music files (binding `MUSIC`). Supabase Storage is the fallback.
 - **Free public APIs** (Deezer, iTunes, YouTube page, RSS feeds) provide charts, covers, band data and news.
 - **AI providers** write articles and clean up music metadata. Their keys exist only in Cloudflare secrets.
-- **GitHub Actions** triggers the daily AI drafts.
+- **GitHub Actions** triggers the code-based RSS publisher and information-only Telegram digest. AI generation remains manual.
 
 ```mermaid
 flowchart LR
@@ -34,7 +34,7 @@ flowchart LR
   EXT["Deezer · iTunes · YouTube<br/>RSS news sites"]
   AIP["AI providers<br/>Gemini, Groq, OpenRouter,<br/>Mistral, DeepSeek, OpenAI, Claude"]
   RESEND["Resend (email)"]
-  GH["GitHub Actions<br/>daily cron"]
+  GH["GitHub Actions<br/>30m RSS publisher + digest"]
 
   SITE -- "supabase-js (publishable key)" --> AUTH
   SITE -- "REST / RPC" --> DB
@@ -168,9 +168,12 @@ Consumers:
 - the Telegram digest (`/api/telegram/digest`, no AI)
 
 ### 3.8 Scheduled jobs
-Two scheduled workflows (all times WIT = UTC+9). No scheduled job uses AI (daily drafts and the autopilot were removed on 2026-11-19):
-- `telegram-digest.yml`, 08:07, 14:07, 20:07: POSTs to `/api/telegram/digest` with the `AUTODRAFT_TOKEN` secret.
+Three scheduled workflows:
+- `news-publisher.yml`, every 30 minutes: POSTs to `/api/news-publish` with `NEWS_PUBLISH_TOKEN`; publishes eligible RSS briefs (max 3/run, 10/day), without AI.
+- `telegram-digest.yml`, 08:07, 14:07, 20:07 WIT: POSTs to `/api/telegram/digest` with `AUTODRAFT_TOKEN`; information only.
 - `smoke-production.yml`, every 6 hours: read-only checks of the live site (pages, headers, theme, static files, supabase-js SRI, sitemap, public APIs, public Supabase reads).
+
+The RSS publisher has its own state table and editorial gates. See [NEWS-PUBLISHER.md](NEWS-PUBLISHER.md).
 
 Plus `preview-check.yml` on every pull request. Details: [DEPLOYMENT.md](DEPLOYMENT.md#github-actions).
 

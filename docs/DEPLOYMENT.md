@@ -33,7 +33,7 @@ Audited 2026-11-17. Secret values are never written here.
 
 | Binding | Type | Used by | Status |
 | --- | --- | --- | --- |
-| `AI` | Workers AI | `generate.js`, `track-info.js` (provider `workersai`) | VERIFIED (the removed daily drafts used `workersai`) |
+| `AI` | Workers AI | `generate.js`, `track-info.js` (provider `workersai`) | VERIFIED (manual AI generation and metadata enrichment) |
 | `MUSIC` | R2 bucket `underground-music` | `/api/music/*` | VERIFIED in dashboard (2026-11-17) |
 | `ASSETS` | automatic | `a/[slug].js`, `band/[slug].js` (fetch `index.html`) | built in |
 
@@ -47,6 +47,7 @@ Set in Cloudflare → Workers & Pages → underground-music → **Settings → V
 | `SUPABASE_ANON_KEY` | publishable/anon key, used to verify user tokens and call RLS-protected REST | yes | secret | `generate`, `track-info`, `music`, `newsletter/send`, `a/[slug]`, `sitemap`, `unsubscribe` | yes |
 | `SUPABASE_SERVICE_ROLE_KEY` (aliases `SUPABASE_SECRET_KEY`, `SUPABASE_SERVICE_KEY`, `SUPABASE_SERVICE_ROLE`, `SERVICE_ROLE_KEY`) | secret key that bypasses RLS, used **only** by the Telegram digest (`telegram_radar`) | for the digest | **secret** | `telegram/digest` | yes (run succeeded) |
 | `AUTODRAFT_TOKEN` | shared token between GitHub Actions and `/api/telegram/digest` (name kept from the removed daily drafts) | for the digest | **secret** | `telegram/digest` | yes; **rotation PENDING** |
+| `NEWS_PUBLISH_TOKEN` | dedicated bearer token for the RSS publisher | for publishing | **secret** | `news-publish` | PENDING; add the same value to Cloudflare Production and GitHub Actions after release approval |
 | `RESEND_API_KEY` | Resend API key | for newsletter | **secret** | `newsletter/send` | yes (test email sent) |
 | `NEWSLETTER_FROM` | sender, e.g. `UNDERGROUND <news@mikasa.me>` (domain verified in Resend) | for newsletter | plain | `newsletter/send` | yes |
 | `NEWSLETTER_REPLY_TO` | reply-to (default `hello@mikasa.me`) | no | plain | `newsletter/send` | unknown |
@@ -65,7 +66,7 @@ Set in Cloudflare → Workers & Pages → underground-music → **Settings → V
 - `SUPABASE_URL`, the Supabase **publishable** key, `SUBMIT_EMAIL` and `TURNSTILE_SITE_KEY` in `assets/bento.js`
 - the URL and publishable key in `admin.html`
 
-**GitHub Actions secrets:** `AUTODRAFT_TOKEN`, with the same value as in Cloudflare. Optional: `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` (same values as in Cloudflare) so the production smoke test can also report failures to Telegram.
+**GitHub Actions secrets:** `AUTODRAFT_TOKEN`, with the same value as in Cloudflare. The RSS publisher additionally needs `NEWS_PUBLISH_TOKEN` in both GitHub Actions and Cloudflare Pages Production. Optional: `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` (same values as in Cloudflare) so the production smoke test can also report failures to Telegram.
 
 ## DNS and email (zone `mikasa.me` on Cloudflare)
 
@@ -83,6 +84,7 @@ Cloudflare Web Analytics is enabled by the owner (automatic beacon). The CSP all
 
 | Workflow | File | Trigger | Needs |
 | --- | --- | --- | --- |
+| RSS news publisher | `.github/workflows/news-publisher.yml` | Every 30 min + manual | secret `NEWS_PUBLISH_TOKEN`; safely skips if missing |
 | Telegram radar digest | `.github/workflows/telegram-digest.yml` | 08:07, 14:07, 20:07 WIT + manual | secret `AUTODRAFT_TOKEN` |
 | Production smoke test | `.github/workflows/smoke-production.yml` → `.github/scripts/smoke-production.sh` | every 6 h (`23 */6 * * *` UTC) + manual + PRs that change it | nothing. Optional GitHub secrets `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` also send failures to Telegram |
 | Preview check | `.github/workflows/preview-check.yml` | every pull request | nothing |
@@ -102,7 +104,7 @@ Cloudflare Web Analytics is enabled by the owner (automatic beacon). The CSP all
   supabase-js loads with its SRI hash, articles load, admin login shows) and `.github/scripts/themes-check.mjs`
   (every theme switched in the page only, nothing saved). Job `unit` also runs `tests/themes.test.mjs`.
 
-- **Debugging:** Actions → Daily AI drafts → the run → step "Ask the site to write today's drafts". The log prints the JSON answer and the HTTP code:
+- **Debugging:** Actions → RSS news publisher → the run → step "Publish eligible RSS briefs". The log prints the JSON result and HTTP code. The older scheduled AI-drafts workflow was removed:
   - `401`: token mismatch between GitHub and Cloudflare
   - `503` with `variables_seen`: the service key name is missing in Cloudflare
   - `502`: no headlines, or every AI provider failed (see `failed`)

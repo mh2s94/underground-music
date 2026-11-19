@@ -28,8 +28,7 @@ applied from the admin Theme Manager ([THEMES.md](docs/THEMES.md#catalogue-11-th
 ## 1. Project overview
 
 **Who it is for.** Readers and bands of the extreme-music underground, written in English, run by one owner/editor
-(Indonesia, WIT). The editor works from the admin panel; a Telegram bot sends headline digests as information. AI only runs
-when the editor presses a button in the admin (generator, Auto-write); nothing is written or published on a schedule.
+(Indonesia, WIT). The editor works from the admin panel; a Telegram bot sends headline digests as information. AI only runs when the editor presses a button in the admin (generator, Auto-write). A separate code-based RSS publisher can publish short, attributed English news briefs on a schedule; it does not use AI or translation.
 
 **Main features** (status of each: [PROJECT-STATUS.md](docs/PROJECT-STATUS.md)):
 
@@ -64,7 +63,7 @@ captcha (Turnstile not configured yet).
 | External data | Deezer (charts, previews, artists), iTunes (covers, metadata), RSS feeds, YouTube |
 | Email | Resend (newsletter), Cloudflare Email Routing (`hello@mikasa.me`) |
 | Analytics | Cloudflare Web Analytics |
-| Automation | GitHub Actions: daily AI drafts, Telegram digest, production smoke test every 6 h, preview check on every PR |
+| Automation | GitHub Actions: RSS news publisher every 30 min, Telegram digest, production smoke test every 6 h, preview check on every PR |
 
 ## 3. Architecture
 
@@ -110,7 +109,8 @@ docs/           Detailed documentation (table below)
 - **Articles and AI.** Generator (`/api/generate`) tries providers in order with timeouts; output is saved as a
   draft by the admin. Scene Radar (`/api/news`) merges RSS feeds; the admin can turn headlines into drafts.
   The Telegram digest uses the server-side Supabase secret key only to remember which headlines it sent
-  (`telegram_radar`); it never writes or publishes articles.
+  (`telegram_radar`). The separate RSS publisher uses `news_ingestion` and the service key to publish short,
+  source-attributed briefs; it never calls an AI provider. See [NEWS-PUBLISHER.md](docs/NEWS-PUBLISHER.md).
 - **Music.** Upload to R2 (chunked for large files) or Supabase Storage; `/api/music/file/…` streams with Range.
   Ratings and charts come from SQL functions in `charts.sql`; global charts from Deezer via `/api/charts`.
 - **Community.** Members write comments, saves and demos straight to Supabase; RLS + triggers enforce ownership,
@@ -154,7 +154,8 @@ Details, columns, functions and verification queries: [DATABASE.md](docs/DATABAS
 | `track_ratings` | Members' star ratings | `charts.sql` |
 | `newsletter_subscribers` | Newsletter list + unsubscribe token | `extras.sql` |
 | `gigs` | Unused (feature removed) | `extras.sql` |
-| `telegram_radar` | Telegram bot state (server key only) | `telegram.sql` |
+| `telegram_radar` | Telegram digest state (server key only) |
+| `news_ingestion` | RSS publisher idempotency and publication tracking (server key only; migration pending) | `news-ingestion.sql` |
 | `site_theme_active`, `site_theme_configs`, `site_theme_history` | Theme Manager | `themes.sql` |
 
 Important relations: `profiles.id` → `auth.users` (cascade); comments, saves and demos → `profiles` and `articles`
@@ -185,6 +186,7 @@ Details: [DEPLOYMENT.md](docs/DEPLOYMENT.md) (every environment variable), [TROU
 
   | Workflow | When | What |
   | --- | --- | --- |
+  | `news-publisher.yml` | Every 30 min | Publish eligible RSS briefs; max 3/run and 10/day; no AI |
   | `telegram-digest.yml` | 08:07, 14:07, 20:07 WIT | Telegram digest of new headlines (no AI) |
   | `smoke-production.yml` | every 6 h | Read-only checks of the live site; fails loudly with the reason |
   | `preview-check.yml` | every pull request | Unit tests, then 68 checks + a real-browser check on the preview deployment |
@@ -216,8 +218,7 @@ Details: [DEPLOYMENT.md](docs/DEPLOYMENT.md) (every environment variable), [TROU
 
 ## 8. Project status and maintenance
 
-- **Verified in production**: public site and all views, security headers, admin 2FA gate, AI generator and
-  daily drafts, Scene Radar, Telegram digest, global charts, readers footer, Theme Manager (Apply, Restore,
+- **Verified in production**: public site and all views, security headers, admin 2FA gate, manual AI generator, Scene Radar, Telegram digest, global charts, readers footer, Theme Manager (Apply, Restore,
   Reset) and edge resilience.
 - **Implemented, not yet verified live**: member flows (accounts, comments, saves, demos, newsletter sign-up,
   unsubscribe, self-deletion), music upload, Scene Radar batch, Telegram buttons. The SQL rules behind them pass
@@ -248,10 +249,11 @@ change, and use the [release checklist](docs/DEVELOPMENT-GUIDE.md#testing-checkl
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System diagram, frontend, routing, every API route, data flows |
 | [docs/DATABASE.md](docs/DATABASE.md) | Tables, columns, relations, functions, RLS + MFA model, SQL order, verification and export queries |
 | [docs/SECURITY.md](docs/SECURITY.md) | Accounts, admin membership, 2FA, headers/CSP/HSTS, supabase-js SRI, Turnstile, rate limits, secrets |
-| [docs/AI-SYSTEM.md](docs/AI-SYSTEM.md) | Providers, models, fallback, timeouts, Auto-write, batch and scheduled drafts |
+| [docs/AI-SYSTEM.md](docs/AI-SYSTEM.md) | Providers, models, fallback, timeouts, manual generator, Auto-write and batch drafting |
 | [docs/MUSIC-SYSTEM.md](docs/MUSIC-SYSTEM.md) | Upload limits, R2 vs Supabase, streaming, tags, player, charts and ratings |
 | [docs/THEMES.md](docs/THEMES.md) | Theme engine, edge middleware, Theme Manager, how to build a theme |
 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Pages settings, bindings, environment variables, DNS and email, GitHub Actions |
+| [docs/NEWS-PUBLISHER.md](docs/NEWS-PUBLISHER.md) | RSS publisher eligibility, limits, secrets, migration and rollback |
 | [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | Real problems and how to diagnose them safely |
 | [docs/DEVELOPMENT-GUIDE.md](docs/DEVELOPMENT-GUIDE.md) | Rules, owner preferences, workflow, conventions, release checklist |
 | [docs/PROJECT-STATUS.md](docs/PROJECT-STATUS.md) | Feature and security status, owner to-dos, known issues, audits and tests |

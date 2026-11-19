@@ -1,0 +1,35 @@
+name: RSS news publisher
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rss-news-publisher
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Publish eligible RSS briefs
+        env:
+          TOKEN: ${{ secrets.NEWS_PUBLISH_TOKEN }}
+        run: |
+          if [ -z "$TOKEN" ]; then
+            echo "NEWS_PUBLISH_TOKEN secret is not configured; publisher is safely disabled."
+            exit 0
+          fi
+          code=$(curl -sS -o response.json -w "%{http_code}" --max-time 120 -X POST \
+            -H "Authorization: Bearer $TOKEN" \
+            -H "Accept: application/json" \
+            https://music.mikasa.me/api/news-publish) || code=000
+          cat response.json || true
+          echo
+          echo "HTTP $code"
+          [ "$code" = "200" ]

@@ -22,6 +22,7 @@ Every file is idempotent ("safe to re-run"): `create … if not exists`, `create
 | 7 | `supabase/security-check.sql` | `ug_security_check()` diagnostic (read-only, test inserts rolled back) | 6 |
 | 8 | `supabase/telegram.sql` | `telegram_radar` for the Telegram bot (service key only) | — |
 | 9 | `supabase/themes.sql` | Theme Manager: `site_theme_active`, `site_theme_configs`, `site_theme_history`, `ug_clean_theme_tokens`, `ug_theme_id_ok`, `ug_active_theme`, `ug_apply_theme`, `ug_restore_theme`, `ug_reset_theme` | 6 (`ug_is_admin()` with 2FA). Applied by the owner on 2026-11-18 and verified. Do not re-run without a technical reason. |
+| 10 | `supabase/news-ingestion.sql` | RSS publisher idempotency and publication tracking (`news_ingestion`) | Base `articles` table; pending until release approval |
 
 Owner-reported state: files 6 and 7 applied on 2026-11-17 (2FA working; "Admins can read all articles" added in the dashboard); file 9 (`themes.sql`) applied and verified on 2026-11-18. The application status of files 1–5 and 8 is inferred from working features, not from a schema dump.
 
@@ -74,6 +75,9 @@ Used column: `user_id` (auth user id). Membership = admin. Owner-reported RLS: a
 
 ### Storage bucket `music` (`music.sql`)
 Public read, 25 MB per file (`26214400`), audio and image MIME types only, admin-only writes through `storage.objects` policies. Used only when R2 is not available.
+
+### `news_ingestion` (`supabase/news-ingestion.sql`)
+Tracks RSS source URL/hash, title, source, source publication date, status (`processing` / `published` / `failed` / `skipped`), optional `article_id` → `articles.id`, attempts, last error, and creation/update/publication/Telegram-notification timestamps. RLS is enabled; grants are revoked from `anon` and `authenticated`; only the server service key uses it. Apply only after the publisher PR is approved for release.
 
 ### `telegram_radar` (`supabase/telegram.sql`)
 Headlines the Telegram bot has sent: `hash` (pk, short SHA-256 of the link), `link`, `title`, `item` jsonb (headline, source, summary, date, image, band, genres), `status` (`sent` / `writing` / `drafted` / `skipped`), `article_id`, `sent_at`, `updated_at`. RLS on with **no policies** and grants revoked from `anon`/`authenticated`: only the server's service key uses it. Status: PENDING (owner must run the SQL).
