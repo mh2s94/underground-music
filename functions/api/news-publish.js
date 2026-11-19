@@ -220,7 +220,7 @@ async function claimItem(rest, item) {
   const retry = await rest("news_ingestion?source_hash=eq." + item.source_hash + "&status=eq.failed", {
     method: "PATCH",
     headers: { Prefer: "return=representation" },
-    body: JSON.stringify({ status: "processing", attempts: "attempts+1", last_error: null, updated_at: new Date().toISOString() })
+    body: JSON.stringify({ status: "processing", attempts: Number(existing.attempts || 1) + 1, last_error: null, updated_at: new Date().toISOString() })
   });
   if (!retry.ok) return { claimed: false };
   return { claimed: (await retry.json()).length > 0 };
