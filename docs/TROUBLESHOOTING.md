@@ -101,7 +101,7 @@ Read the run log (Actions → Daily AI drafts):
 | `502` + `failed[]` | AI or insert errors | see the AI entry; an insert error shows the DB message |
 | `200` + `note` | nothing new to write | normal |
 
-Digests and deals are filtered by `NOT_NEWS` in `auto-draft.js`. Adjust the regex there if a non-news item slips through.
+Digests and deals are filtered by `NOT_NEWS` in `draft-lib.js`. Adjust the regex there if a non-news item slips through.
 
 ---
 

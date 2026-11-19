@@ -127,3 +127,9 @@ Status: READY WITH MINOR ISSUES. Evidence, all automated unless noted:
 
 ## Cancelled
 - **RADAR Intelligence / ALL POSTS SCAN** (2026-11-17): a large archive-analysis plan (about 206,580 historical posts were found across 4 sources). Cancelled by the owner. Scene Radar stays as it is, with batch drafting added instead. The design document exists as a Claude artifact; nothing was built.
+
+## 2026-11-19 · Scheduled AI removed
+At the owner's request, to save AI quota: the daily AI drafts (`auto-draft.yml`, `/api/auto-draft`), the Telegram
+Tulis draft / Publish / Buang buttons and the Scene Radar autopilot (#55, #56) were removed. The Telegram digest
+stays as information only and no longer uses AI to score headlines. The admin generator and Auto-write still work,
+only when pressed.

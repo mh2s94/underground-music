@@ -67,7 +67,7 @@ export async function onRequestPost({ request, env }) {
   return json(out.body, out.status);
 }
 
-// Shared by /api/generate (admin button) and /api/auto-draft (daily schedule).
+// Used by /api/generate (the admin button).
 // Returns { status, body } where body is the article (status 200) or { error, attempts }.
 export async function writeArticle(env, { band, song = "", category = "", genre = "", notes = "" }) {
   const youtubePromise = findYouTube(band, song, env).catch(() => null);
@@ -287,7 +287,7 @@ function hedgedRace(names, providers) {
 // ===========================================================================
 // Tolerant parser: tagged text first, JSON (with repair) as a fallback.
 // ===========================================================================
-export function parseArticle(raw) {
+function parseArticle(raw) {
   let text = String(raw || "").replace(/\r\n?/g, "\n").trim();
   text = text.replace(/<think>[\s\S]*?<\/think>/gi, "").trim(); // reasoning models
   text = text.replace(/^```[a-z]*\n?/i, "").replace(/\n?```\s*$/, "").trim();
@@ -349,7 +349,7 @@ function repairJsonStrings(s) {
 // ===========================================================================
 // YouTube lookup: Data API when YOUTUBE_API_KEY is set, else public search page.
 // ===========================================================================
-export async function findYouTube(band, title, env) {
+async function findYouTube(band, title, env) {
   const q = (band + " " + title + (title ? " official" : "")).trim();
   if (!q) return null;
   if (env.YOUTUBE_API_KEY) {

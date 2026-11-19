@@ -67,41 +67,14 @@ The admin retries the network call once.
   - **Publish all** in the drafts banner publishes every AI draft (rows with a `Source:` line) after a confirmation. It keeps the stored `published_at`, or sets it to now.
 - **Already written:** a headline whose link appears in any loaded article's content shows **✓ Written** and cannot be selected.
 
-## Scheduled AI drafts: `POST /api/auto-draft`
-- **Caller:** GitHub Actions `.github/workflows/auto-draft.yml` daily at 21:43 UTC = 06:43 WIT, or **Run workflow** for a manual run. The workflow uses `curl` with a 280 s timeout and one retry after 60 s.
-- **Auth:** `Authorization: Bearer <AUTODRAFT_TOKEN>`, compared in constant time.
-- **Database access:** uses the Supabase **secret/service key**, accepted under any of these names: `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_SECRET_KEY`, `SUPABASE_SERVICE_KEY`, `SUPABASE_SERVICE_ROLE`, `SERVICE_ROLE_KEY`. Keys starting with `sb_` go only in the `apikey` header. If the key is missing, the 503 response lists the matching variable **names** it can see (never values).
-- **Steps:**
-  1. Fetch `/api/news?refresh=1`.
-  2. Skip headlines whose link is already in the last 300 articles' content.
-  3. Skip non-news with the `NOT_NEWS` regex: top-N stories, this week's, round-ups, podcasts, giveaways, "deals on/for", "on sale", Black Friday, polls and similar.
-  4. Take `AUTODRAFT_COUNT` items (default 2, max 3).
-  5. Call `writeArticle()` for each.
-  6. Insert as **draft**, with author = the first admin and `published_at` = the source time.
-  7. Optional summary email to `AUTODRAFT_NOTIFY` via Resend.
-- **Returns:** `{created:[…], failed:[…]}`, HTTP 200 if at least one draft was created, 502 otherwise.
-- **Status:** VERIFIED. Run `43867308189` on 2026-11-16 created 2 drafts via `workersai`. Daily cron runs after that were not checked during the audit.
-
-**Nothing is ever published automatically.**
+## No scheduled AI (since 2026-11-19)
+At the owner's request every AI job that ran on its own was removed to save AI quota: the daily drafts
+(`/api/auto-draft`, 06:43 WIT), the Telegram **Tulis draft / Publish / Buang** buttons and the Scene Radar
+**autopilot** (#55–#56). AI now runs only when the editor presses a button in the admin.
 
 ## Telegram bot: `POST /api/telegram/digest` + `POST /api/telegram/webhook`
-- **Digest:** GitHub Actions `.github/workflows/telegram-digest.yml` at 08:07, 14:07 and 20:07 WIT (or **Run workflow**) calls `/api/telegram/digest` with `AUTODRAFT_TOKEN`. It takes up to 25 unseen headlines (not written up, not sent before, table `telegram_radar`), has Workers AI (`WORKERSAI_MODEL`, default Llama 3.3 70B) score each 0–10 for fit with UNDERGROUND, and sends the best ones scoring 6 or more (max 5) with a `🎯 score · reason` line; lower scores are stored as `skipped` so they are not scored again. Without AI it falls back to headlines tagged with our genres. Each is sent as one message with **✍️ Tulis draft** / **✖ Abaikan**. The same call (re)registers the webhook.
-- **Tulis draft:** the webhook claims the row (`sent` → `writing`), writes with the same generator as Auto-draft (`writeDraftFromItem` in `functions/api/draft-lib.js`) and sends a "Draft siap" card with **🚀 Publish**, **✏️ Edit di admin** (`admin.html#edit=<id>`, still behind login + 2FA) and **🗑 Buang draft**. A `writing` row older than 3 minutes can be retried.
-- **Auto-draft** also sends each of its daily drafts as the same card when the bot is configured.
-- The bot can only write drafts, publish drafts and delete drafts. Status: IMPLEMENTED, NOT VERIFIED live (mock-tested 2026-11-18).
-
-
-## Scene Radar autopilot: `POST /api/telegram/autopilot`
-Runs after every digest (same workflow, up to 2 calls per run), so up to **`AUTOPILOT_DAILY` (default 5)** articles a day (Jayapura day). Switch it off with the Cloudflare variable `AUTOPILOT=off`.
-1. Picks the best headline the digest just sent (`score >= AUTOPILOT_MIN_SCORE`, default 7, status `sent`, not handled by the autopilot) and claims it (`writing`).
-2. Reads the source page (paragraph text, max 7000 characters). Fewer than 60 words of source → not published.
-3. **Writer** (order Gemini → Groq → Claude → Workers AI) writes 150–350 words **only from the source** (prompt forbids own knowledge, guesses and invented quotes).
-4. **Checker** from another company (Workers AI Llama → Groq → Claude → Gemini; never the same company as the writer) lists every claim not in the source. Unclear answers count as a failure.
-5. **Checks without AI** (`functions/api/autopilot-core.js` `factGate`): band and release names, every number with 2+ digits, every quote, and every name (capitalised word) must be in the source; no 14+ words copied in a row; length.
-6. Problems go back to the writer: up to `AUTOPILOT_ROUNDS` (default 2) fixes, then 4–5 again.
-7. All passed → saved as **published** (`kind` News, link to the source, YouTube only if the video title names the band and release) and Telegram gets **🤖 Tayang otomatis** with **↩️ Tarik** (back to draft) and **✏️ Edit**. Otherwise nothing is published; Telegram gets **🤖 Tidak ditayangkan** with the reason and **✍️ Tulis draft manual**.
-The result is kept in `telegram_radar.item.auto` (`result`, `writer`, `checker`, `rounds`, `reason`). No database change was needed.
-**Test run:** Actions → *Telegram radar digest* → Run workflow → tick *Only test the autopilot*: runs every step on the newest headline and prints the article and verdicts; nothing is saved, published or sent.
+- **Digest:** GitHub Actions `.github/workflows/telegram-digest.yml` at 08:07, 14:07 and 20:07 WIT (or **Run workflow**) calls `/api/telegram/digest` with `AUTODRAFT_TOKEN`. It sends up to 5 new headlines tagged with our genres (not written up, not sent before; table `telegram_radar`), each with source, genres, summary and link. **No AI, no buttons.** The same call (re)registers the webhook.
+- **Webhook:** answers `/start` from the owner's chat; buttons in older messages get "Tombol ini sudah tidak dipakai." and do nothing. The bot cannot write, publish or change anything.
 
 ## Music metadata: `POST /api/track-info` (admin + 2FA)
 - **Input:** tags read in the browser by `assets/audiotags.js` (title, artist, album, year, genre, filename, duration).

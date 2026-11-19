@@ -99,7 +99,6 @@ cmpep "/api/band?name=Metallica"
 cmpep /api/generate -X POST
 cmpep /api/track-info -X POST
 cmpep /api/newsletter/send -X POST
-cmpep /api/auto-draft -X POST
 cmpep /assets/__missing__.css
 get "$PREV/api/theme/refresh" r1; get "$PREV/api/theme/refresh" r2 -X POST
 [[ "$(status r1)" == 405 && "$(status r2)" == 401 ]] && ok "/api/theme/refresh GET 405, POST without login 401" || bad "/api/theme/refresh GET $(status r1) POST $(status r2)"

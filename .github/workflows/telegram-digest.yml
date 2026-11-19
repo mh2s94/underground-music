@@ -1,7 +1,5 @@
-# 3x a day the Telegram bot sends the editor the newest Scene Radar headlines,
-# each with [Tulis draft] [Abaikan] buttons. Then the autopilot writes, fact-checks (second AI +
-# checks without AI) and publishes the best ones, up to AUTOPILOT_DAILY (default 5) a day.
-# The editor gets a Telegram note with [↩️ Tarik]. Switch it off with AUTOPILOT=off in Cloudflare.
+# 3x a day the Telegram bot sends the editor the newest Scene Radar headlines as information
+# (no AI, no buttons; nothing is written or published).
 name: Telegram radar digest
 
 on:
@@ -10,25 +8,13 @@ on:
     - cron: "7 5 * * *"    # 14:07 WIT
     - cron: "7 11 * * *"   # 20:07 WIT
   workflow_dispatch:       # "Run workflow" button: send a digest now (also registers the bot)
-    inputs:
-      autopilot_test:
-        description: "Only test the autopilot (nothing is published or sent)"
-        type: boolean
-        default: false
 
 jobs:
   digest:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 5
     steps:
-      - name: Autopilot test run (nothing is published or sent)
-        if: ${{ inputs.autopilot_test }}
-        env:
-          TOKEN: ${{ secrets.AUTODRAFT_TOKEN }}
-        run: |
-          curl -sS --max-time 260 -X POST -H "Authorization: Bearer $TOKEN" "https://music.mikasa.me/api/telegram/autopilot?dry=1"; echo
       - name: Ask the site to send the digest
-        if: ${{ !inputs.autopilot_test }}
         env:
           TOKEN: ${{ secrets.AUTODRAFT_TOKEN }}
         run: |
@@ -37,15 +23,3 @@ jobs:
             -H "Authorization: Bearer $TOKEN" https://music.mikasa.me/api/telegram/digest) || code=000
           cat out.json || true; echo; echo "HTTP $code"
           [ "$code" = "200" ]
-      - name: Autopilot (write, fact-check, publish; max 2 per run)
-        if: ${{ !inputs.autopilot_test }}
-        env:
-          TOKEN: ${{ secrets.AUTODRAFT_TOKEN }}
-        run: |
-          for i in 1 2; do
-            code=$(curl -sS -o ap.json -w "%{http_code}" --max-time 260 -X POST \
-              -H "Authorization: Bearer $TOKEN" https://music.mikasa.me/api/telegram/autopilot) || code=000
-            cat ap.json || true; echo; echo "HTTP $code"
-            [ "$code" = "200" ] || exit 1
-            grep -q '"done": true' ap.json && break
-          done

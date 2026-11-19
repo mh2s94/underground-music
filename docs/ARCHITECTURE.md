@@ -48,7 +48,7 @@ flowchart LR
   FN --> AIP
   FN --> EXT
   FN --> RESEND
-  GH -- "POST /api/auto-draft" --> FN
+  GH -- "POST /api/telegram/digest" --> FN
   ADMIN -. "fallback upload" .-> ST
 ```
 
@@ -149,7 +149,6 @@ The database layer is the one that matters. The other two give good error messag
 | `/api/track-info` | POST | admin + aal2 | Music metadata lookup + AI clean-up | IMPLEMENTED, NOT VERIFIED (since 2FA) |
 | `/api/music/*` | GET/PUT/POST | file GET public, rest admin + aal2 | R2 upload, multipart, streaming, delete, purge | IMPLEMENTED, NOT VERIFIED (R2 binding not confirmed) |
 | `/api/newsletter/send` | POST | admin + aal2 | Sends newsletter via Resend | VERIFIED (test email, before 2FA) |
-| `/api/auto-draft` | POST | `AUTODRAFT_TOKEN` | Daily AI drafts | VERIFIED (run 43867308189) |
 
 `functions/api/genres-data.js`, `functions/api/aal.js` and `functions/api/theme/edge.js` export helpers only (no handler).
 
@@ -166,12 +165,11 @@ Consumers:
 
 - the public "Underground wire" card
 - admin Scene radar: Auto-write one item, or select up to 5 and **Write as drafts**
-- `/api/auto-draft`
+- the Telegram digest (`/api/telegram/digest`, no AI)
 
 ### 3.8 Scheduled jobs
-Three scheduled workflows (all times WIT = UTC+9):
-- `auto-draft.yml`, 06:43: POSTs to `/api/auto-draft` with the `AUTODRAFT_TOKEN` secret, retrying once after 60 s. Details: [AI-SYSTEM.md](AI-SYSTEM.md#scheduled-ai-drafts-post-apiauto-draft).
-- `telegram-digest.yml`, 08:07, 14:07, 20:07: POSTs to `/api/telegram/digest` with the same token.
+Two scheduled workflows (all times WIT = UTC+9). No scheduled job uses AI (daily drafts and the autopilot were removed on 2026-11-19):
+- `telegram-digest.yml`, 08:07, 14:07, 20:07: POSTs to `/api/telegram/digest` with the `AUTODRAFT_TOKEN` secret.
 - `smoke-production.yml`, every 6 hours: read-only checks of the live site (pages, headers, theme, static files, supabase-js SRI, sitemap, public APIs, public Supabase reads).
 
 Plus `preview-check.yml` on every pull request. Details: [DEPLOYMENT.md](DEPLOYMENT.md#github-actions).
