@@ -28,7 +28,9 @@
     "xerox-zine": [[5, 2, "a"], [1, 4, "b"], [2, 2, ""], [3, 2, ""]],
     "index": [[6, 1, "b"], [4, 2, "a"], [2, 2, ""], [6, 1, ""]],
     "frequency": [[6, 2, "a"], [6, 1, ""], [6, 1, "b"]],
-    "scene-atlas": [[4, 4, "a"], [2, 4, "b"]]
+    "scene-atlas": [[4, 4, "a"], [2, 4, "b"]],
+    "monochrome-modular": [[1,4,""],[5,1,"a"],[5,2,""],[2,2,"b"],[3,2,""],[3,1,""]]
+
   };
 
   var st = { loaded: false, busy: false, missing: false, active: null, activeRow: null, configs: [], history: [], themeId: S.DEFAULT_THEME, values: {}, extra: {}, configId: null, name: "", note: "" };
