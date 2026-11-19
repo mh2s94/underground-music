@@ -88,17 +88,19 @@ export const numbersIn = (s) => [...new Set((String(s || "").match(/\d[\d,.:/]*\
 export const quotesIn = (s) => (String(s || "").match(/[“"]([^"”\n]{12,400})[”"]/g) || []).map((q) => q.slice(1, -1)).filter((q) => wordCount(q) >= 4);
 
 // Longest run of identical consecutive words shared with the source (plagiarism guard).
-export function longestCopiedRun(article, source) {
+export function longestCopiedRun(article, source) { return copiedPassage(article, source).length; }
+// The longest copied passage itself: { length, text } (text is shown to the writer to rewrite)
+export function copiedPassage(article, source) {
   const a = norm(article).trim().split(" "), s = norm(source).trim().split(" ");
-  if (a.length < 2 || s.length < 2) return 0;
+  if (a.length < 2 || s.length < 2) return { length: 0, text: "" };
   const grams = new Set();
   const N = 8;
   for (let i = 0; i + N <= s.length; i++) grams.add(s.slice(i, i + N).join(" "));
-  let best = 0, run = 0;
+  let best = 0, run = 0, end = 0;
   for (let i = 0; i + N <= a.length; i++) {
-    if (grams.has(a.slice(i, i + N).join(" "))) { run = run ? run + 1 : N; best = Math.max(best, run); } else run = 0;
+    if (grams.has(a.slice(i, i + N).join(" "))) { run = run ? run + 1 : N; if (run > best) { best = run; end = i + N; } } else run = 0;
   }
-  return best;
+  return { length: best, text: best ? a.slice(end - best, end).join(" ") : "" };
 }
 
 // ---------------------------------------------------------------------------
@@ -122,8 +124,8 @@ export function factGate(article, { title = "", summary = "", text = "", source 
   const unknown = properNames(all).filter((w) => !allow.has(norm(w).trim()) && !inSource(w, S));
   const tolerance = opts.nameTolerance ?? 0; // any unknown name goes back to the writer to remove
   if (unknown.length > tolerance) problems.push(`Names not found in the source: ${unknown.slice(0, 8).join(", ")}.`);
-  const copied = longestCopiedRun(body, src);
-  if (copied >= (opts.maxCopied ?? 14)) problems.push(`${copied} words in a row are copied from the source; rewrite them in your own words.`);
+  const cp = copiedPassage(body, src);
+  if (cp.length >= (opts.maxCopied ?? 14)) problems.push(`${cp.length} words in a row are copied from the source; rewrite this passage completely in your own words with a different sentence structure: "${cp.text.slice(0, 300)}"`);
   if (/\b(as an ai|i cannot|i can't|not provided in the source|the source does not)\b/i.test(all)) problems.push("The article talks about the AI or the source instead of the news.");
   return { ok: problems.length === 0, problems, unknownNames: unknown, words };
 }
@@ -138,7 +140,7 @@ STRICT RULES
 - Use ONLY facts that are written in the SOURCE below. Do not use your own knowledge of the band.
 - Do not invent or guess anything: no names, members, labels, cities, dates, numbers, track titles, quotes or chart positions that are not in the SOURCE.
 - If a detail is missing, leave it out. Never mention that information is missing, never mention these rules.
-- Write in your own words. Do not copy sentences from the SOURCE. A quote is allowed only if it is copied exactly from the SOURCE inside quotation marks.
+- Write in your own words with your own sentence structure. Never copy a sentence or a long phrase from the SOURCE (8+ words in a row is copying). A quote is allowed only if it is copied exactly from the SOURCE inside quotation marks.
 - Say that ${item.source || "the source"} reported the news.
 - 150-350 words of Markdown, 1-2 "## " subheadings, no links, no title at the top.
 
@@ -184,6 +186,7 @@ List every problem:
 - any fact in the ARTICLE that is not stated in the SOURCE (names, band members, labels, places, dates, numbers, song or album titles, tour stops, quotes, claims about the past),
 - anything that contradicts the SOURCE,
 - a wrong band name or wrong release name.
+Facts that are in the SOURCE but missing from the ARTICLE are NOT problems: the article may leave things out.
 General wording about the music that does not add a new fact (for example "heavy", "new chapter", "fans can expect") is NOT a problem.
 Judge only against the SOURCE, never against your own knowledge.
 
@@ -204,6 +207,7 @@ or
 {"verdict":"fail","problems":["<the wrong claim> — <why / what the source says>"]}`;
 }
 
+const OMISSION = /\b(article|it) (does not|doesn't|did not|didn't|fails to) (mention|include|say|state|cover|note)|\bnot (mentioned|included|covered) in the article|\b(omits|omitted|missing from the article|is left out)\b/i;
 // Tolerant parse of the checker's JSON. Unclear answers count as a failure.
 export function parseVerdict(raw) {
   const text = String(raw || "").replace(/<think>[\s\S]*?<\/think>/gi, "").replace(/```[a-z]*\n?|```/gi, "");
@@ -213,8 +217,11 @@ export function parseVerdict(raw) {
   try { j = JSON.parse(m[0]); } catch {
     try { j = JSON.parse(m[0].replace(/[“”]/g, '"').replace(/,\s*([}\]])/g, "$1")); } catch { return { pass: false, problems: ["The fact checker did not give a clear answer."], unclear: true }; }
   }
-  const problems = (Array.isArray(j.problems) ? j.problems : []).map((p) => (typeof p === "string" ? p : JSON.stringify(p))).map((p) => p.slice(0, 300)).filter(Boolean).slice(0, 12);
+  const all = (Array.isArray(j.problems) ? j.problems : []).map((p) => (typeof p === "string" ? p : JSON.stringify(p))).map((p) => p.slice(0, 300)).filter(Boolean);
+  // Leaving a source fact out is allowed; checkers sometimes report it anyway
+  const problems = all.filter((p) => !OMISSION.test(p)).slice(0, 12);
   const verdict = String(j.verdict || "").toLowerCase();
+  if (verdict !== "pass" && all.length && !problems.length) return { pass: true, problems: [], ignored: all.length };
   return { pass: verdict === "pass" && problems.length === 0, problems: verdict === "pass" ? problems : problems.length ? problems : ["The fact checker failed the article without saying why."] };
 }
 

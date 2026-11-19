@@ -62,6 +62,7 @@ ok("copying the source is caught", () => {
   assert.ok(A.longestCopiedRun("the tour starts on april 2 in louisville and ends on april 28 in seattle", SOURCE.text) >= 14);
   const g = A.factGate({ ...copy, content: copy.content.replace(GOOD.content, "") + "\n\n" + GOOD.content }, { ...SOURCE, text: SOURCE.text + " The tour starts on April 2 in Louisville and ends on April 28 in Seattle with support from Show Me The Body and Kublai Khan TX and more." }, { minWords: 100 });
   assert.equal(g.ok, false); assert.match(g.problems.join(" "), /copied/);
+  assert.match(g.problems.join(" "), /"the tour starts on april 2 in louisville/); // the writer is shown the passage
 });
 ok("too short and AI talk are caught", () => {
   assert.equal(A.factGate({ ...GOOD, content: "Knocked Loose have news." }, SOURCE).ok, false);
@@ -73,6 +74,11 @@ ok("checker verdicts are parsed strictly", () => {
   assert.equal(A.parseVerdict("Looks good to me").pass, false);
   assert.equal(A.parseVerdict('{"verdict":"pass","problems":["date wrong"]}').pass, false);
   assert.equal(A.parseVerdict('{"verdict":"fail"}').problems.length, 1);
+  // production case: the checker listed facts the article left out; leaving facts out is allowed
+  const om = A.parseVerdict('{"verdict":"fail","problems":["The band is from San Diego, California — The ARTICLE does not mention this fact.","The band has released three full-length albums — The ARTICLE does not mention this fact."]}');
+  assert.equal(om.pass, true);
+  const mixed = A.parseVerdict('{"verdict":"fail","problems":["The article does not mention the label.","The release date 2026 is wrong; the source says 2027"]}');
+  assert.equal(mixed.pass, false); assert.equal(mixed.problems.length, 1);
 });
 ok("writer and checker come from different companies", () => {
   const r = A.pickRoles(["gemini", "workersai", "groq", "claude"]);
