@@ -14,7 +14,7 @@ An RSS item is published only when all checks pass:
 - Source name is present.
 - Link is HTTPS, has no embedded credentials, and is canonicalized by removing fragments and common tracking parameters.
 - Source publication date parses, is not more than five minutes in the future, and is no older than 48 hours.
-- RSS summary contains at least 20 words. Scene Radar currently truncates summaries to at most 45 words; the publisher does not invent missing context.
+- RSS summary contains at least 20 words and passes a conservative English-language heuristic. Scene Radar currently truncates summaries to at most 45 words; the publisher does not invent missing context.
 - At least one of the current Scene Radar genre tags matches.
 - The existing non-news filter excludes podcasts, roundups, giveaways, deals, polls and similar items.
 
