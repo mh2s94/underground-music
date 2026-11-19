@@ -92,7 +92,20 @@ html[data-theme="main-stage"] .ft { background: #000; }
   html[data-theme="main-stage"] .home .hero .rec { top: 22px; }
   html[data-theme="main-stage"] .nav-about { display: none !important; }
   html[data-theme="main-stage"] .view { padding: 20px 14px 84px; }
-  html[data-theme="main-stage"] .home .hero { margin: 0 -14px; min-height: 92dvh; padding: 80px 20px 40px; }
+  /* Phones: keep the stage identity, but don't let the full-screen hero hide the dashboard.
+     Let its content define the height so the first real dashboard cards appear immediately below. */
+  html[data-theme="main-stage"] .home .hero {
+    margin: 0 -14px;
+    min-height: 0;
+    padding: 76px 18px 26px;
+    justify-content: flex-start;
+    gap: 14px;
+  }
+  html[data-theme="main-stage"] .home .hero h1 { font-size: clamp(72px, 18vw, 112px); line-height: .84; }
+  html[data-theme="main-stage"] .home .hero p { font-size: 15.5px; line-height: 1.5; max-width: 560px; }
+  html[data-theme="main-stage"] .home .hero-row { gap: 12px; }
+  html[data-theme="main-stage"] .home .hero-vid { width: clamp(112px, 34vw, 148px); flex: 0 0 auto; }
+  html[data-theme="main-stage"] .home .hero-left { gap: 10px; }
   html[data-theme="main-stage"] .grid4 { margin: 0 -14px; }
   /* phones: page headers start at the top (no empty black band above them) */
   html[data-theme="main-stage"] #view-articles .lib-head, html[data-theme="main-stage"] .music-hero, html[data-theme="main-stage"] .charts-hero { min-height: 0; }
