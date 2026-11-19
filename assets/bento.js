@@ -124,9 +124,14 @@
   }
 
   // Markdown → HTML (escaped first)
-  const inline = (s) => s
-    .replace(/\[([^\]]{1,200})\]\((https:\/\/[^\s)]{4,500})\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer nofollow">$1</a>')
-    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/(^|[^*])\*(?!\s)(.+?)\*/g, "$1<em>$2</em>");
+  // Link addresses are set aside while bold/italic run, so a "*" in a URL can't break the href.
+  const inline = (s) => {
+    const urls = [];
+    return s
+      .replace(/\[([^\]]{1,200})\]\((https:\/\/[^\s)]{4,500})\)/g, (_, text, url) => `<a href="\u0000${urls.push(url) - 1}\u0000" target="_blank" rel="noopener noreferrer nofollow">${text}</a>`)
+      .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/(^|[^*])\*(?!\s)(.+?)\*/g, "$1<em>$2</em>")
+      .replace(/\u0000(\d+)\u0000/g, (m, i) => urls[i] ?? m);
+  };
   const ytEmbed = (id) => `<div class="yt"><iframe src="https://www.youtube-nocookie.com/embed/${id}" title="YouTube video player" loading="lazy" allow="accelerometer; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
   function md(src, skip) {
     let html = "", para = [], list = false;
@@ -690,6 +695,8 @@
   // ?q=… (Google sitelinks search box) opens the site search with that text
   const startQ = new URLSearchParams(location.search).get("q");
   if (startQ) { history.replaceState(null, "", location.pathname + location.hash); setTimeout(() => { openSearch(); $("searchInput").value = startQ; renderSearch(startQ); }, 1200); }
+  // A broken escape in the address (/a/%E0, /band/abc%) must not stop the router.
+  const safeDecode = (s) => { try { return decodeURIComponent(s); } catch { return s; } };
   function route() {
     const h = location.hash;
     const legacy = h.match(/^#\/a\/(.+)$/); // old share links: /#/a/slug → /a/slug
@@ -697,9 +704,9 @@
     const pm = location.pathname.match(/^\/a\/([^/]+)\/?$/);
     const bm = location.pathname.match(/^\/band\/([^/]+)\/?$/);
     const v = (h.match(/^#\/(\w+)/) || [])[1];
-    if (bm && !v) { closeReader(true); showView("band"); renderBand(decodeURIComponent(bm[1])); return; }
+    if (bm && !v) { closeReader(true); showView("band"); renderBand(safeDecode(bm[1])); return; }
     if (pm && v) { history.replaceState(null, "", "/" + h); } // a view was requested while on an article path
-    else if (pm) { if (!document.querySelector(".view.entered")) showView(view); openArticle(decodeURIComponent(pm[1])); return; }
+    else if (pm) { if (!document.querySelector(".view.entered")) showView(view); openArticle(safeDecode(pm[1])); return; }
     else if (location.pathname !== "/" && location.pathname !== "/index.html") { history.replaceState(null, "", "/" + h); document.title = "UNDERGROUND — Independent Extreme Music Magazine"; }
     closeReader(true);
     showView(v || "home");
@@ -1876,7 +1883,7 @@
     helpers: Object.freeze({ timeAgo, readTime, fmtDate, esc }),
     actions: Object.freeze({
       go: (target) => { if (typeof target === "string" && /^\/(?!\/)[\w\-/%.]*$/.test(target)) go(target); },
-      openArticle: (key) => { if (typeof key === "string" && key) go("/a/" + encodeURIComponent(decodeURIComponent(key))); },
+      openArticle: (key) => { if (typeof key === "string" && key) go("/a/" + encodeURIComponent(safeDecode(key))); },
       playTrack: (id) => { const list = filteredTracks(); const i = list.findIndex((t) => String(t.id) === String(id)); if (i >= 0) playFrom(list, i); },
       togglePlay: () => togglePlay(),
       next: () => step(1),

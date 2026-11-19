@@ -1338,7 +1338,7 @@ async function sendNewsletter(test) {
     const r = await fetch("/api/newsletter/send", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + (s?.access_token || "") }, body: JSON.stringify({ subject, intro: $("nlIntro").value, article_ids: ids, test }) });
     const j = await r.json().catch(() => ({}));
     if (!r.ok) toast(j.setup ? "info" : "error", j.setup ? "Email sending isn't set up yet" : "Not sent", j.error || "HTTP " + r.status, { duration: 12000 });
-    else toast("success", test ? "Test sent" : "Newsletter sent", test ? "Check your inbox (and spam folder)." : `Sent to ${j.sent} of ${j.total} subscribers.${j.errors && j.errors.length ? " Some failed: " + j.errors[0] : ""}`, { duration: 9000 });
+    else toast("success", test ? "Test sent" : "Newsletter sent", test ? "Check your inbox (and spam folder)." : `Sent to ${j.sent} of ${j.total} subscribers.${j.errors && j.errors.length ? " Some failed: " + j.errors[0] + ". Press Send again to send the rest (subscribers who already got it are skipped)." : ""}`, { duration: 9000 });
   } catch (e) { toast("error", "Network error", String(e.message || e)); }
   btn.disabled = false; btn.textContent = test ? label : "Send to all subscribers";
 }

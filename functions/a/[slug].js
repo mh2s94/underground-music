@@ -10,8 +10,10 @@ const plain = (md) => String(md || "").replace(/^https?:\/\/\S+$/gm, "").replace
   .replace(/[#>*_`~]+/g, "").replace(/\s+/g, " ").trim();
 const ytId = (s) => (String(s || "").match(/^https:\/\/(?:www\.|m\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]{11})/m) || [])[1] || "";
 
+const safeDecode = (s) => { try { return decodeURIComponent(s); } catch { return s; } };
+
 export async function onRequestGet({ request, env, params }) {
-  const slug = decodeURIComponent(String(params.slug || "")).slice(0, 200);
+  const slug = safeDecode(String(params.slug || "")).slice(0, 200);
   const shell = await env.ASSETS.fetch(new Request(new URL("/", request.url)));
   let article = null;
   try { article = await findArticle(env, slug); } catch { /* fall back to the plain page */ }
