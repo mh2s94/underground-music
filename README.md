@@ -155,7 +155,7 @@ Details, columns, functions and verification queries: [DATABASE.md](docs/DATABAS
 | `newsletter_subscribers` | Newsletter list + unsubscribe token | `extras.sql` |
 | `gigs` | Unused (feature removed) | `extras.sql` |
 | `telegram_radar` | Telegram digest state (server key only) |
-| `news_ingestion` | RSS publisher idempotency and publication tracking (server key only; migration pending) | `telegram.sql` |
+| `news_ingestion` | RSS publisher idempotency and publication tracking (server key only; migration pending) | `news-ingestion.sql` |
 | `site_theme_active`, `site_theme_configs`, `site_theme_history` | Theme Manager | `themes.sql` |
 
 Important relations: `profiles.id` → `auth.users` (cascade); comments, saves and demos → `profiles` and `articles`
@@ -254,6 +254,7 @@ change, and use the [release checklist](docs/DEVELOPMENT-GUIDE.md#testing-checkl
 | [docs/MUSIC-SYSTEM.md](docs/MUSIC-SYSTEM.md) | Upload limits, R2 vs Supabase, streaming, tags, player, charts and ratings |
 | [docs/THEMES.md](docs/THEMES.md) | Theme engine, edge middleware, Theme Manager, how to build a theme |
 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Pages settings, bindings, environment variables, DNS and email, GitHub Actions |
+| [docs/NEWS-PUBLISHER.md](docs/NEWS-PUBLISHER.md) | RSS publisher eligibility, limits, secrets, migration and rollback |
 | [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | Real problems and how to diagnose them safely |
 | [docs/DEVELOPMENT-GUIDE.md](docs/DEVELOPMENT-GUIDE.md) | Rules, owner preferences, workflow, conventions, release checklist |
 | [docs/PROJECT-STATUS.md](docs/PROJECT-STATUS.md) | Feature and security status, owner to-dos, known issues, audits and tests |
