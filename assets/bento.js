@@ -1282,7 +1282,7 @@
   // ---- Charts --------------------------------------------------------------
   // Community: members' star ratings on our own tracks (Supabase functions in charts.sql).
   // Global metal: Deezer popularity via /api/charts (cached 6 h).
-  let chartSrc = "community", chartPeriod = "week", globalChart = null, chartsBusy = 0;
+  let chartSrc = "global", chartPeriod = "week", globalChart = null, chartsBusy = 0;
   let chartGroup = null, chartGenre = null; // genre filter from assets/genres.js
   const globalCache = new Map();
   const groupObj = () => (UGG && chartGroup ? UGG.GROUPS.find((g) => g.name === chartGroup) : null);
