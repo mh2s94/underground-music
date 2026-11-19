@@ -15,8 +15,8 @@ export function supabaseProjectUrl(value) {
     if (!["https:", "http:"].includes(url.protocol) || url.username || url.password) return "";
     url.search = "";
     url.hash = "";
-    url.pathname = url.pathname.replace(/\/rest\/v1\/?$/i, "").replace(/\/+$/, "");
-    if (url.pathname && url.pathname !== "") return "";
+    const path = url.pathname.replace(/\/rest\/v1\/?$/i, "").replace(/\/+$/, "");
+    if (path) return "";
     return url.origin;
   } catch { return ""; }
 }
