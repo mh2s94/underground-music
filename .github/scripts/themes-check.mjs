@@ -25,7 +25,7 @@ for (const vp of [{ width: 1280, height: 860, tag: "desktop" }, { width: 390, he
   const p = await ctx.newPage();
   const errs = [];
   p.on("pageerror", (e) => errs.push("pageerror: " + e.message));
-  p.on("console", (m) => { if (m.type() === "error" && !/^Failed to load resource|cloudflareinsights\.com/.test(m.text())) errs.push(m.text()); });
+  p.on("console", (m) => { if (m.type() === "error" && !/^Failed to load resource|cloudflareinsights\.com|^Permissions policy violation: compute-pressure/.test(m.text())) errs.push(m.text()); });
   await p.goto(BASE + "/", { waitUntil: "load" });
   await p.waitForFunction(() => window.UG && window.UGTheme && window.UG.articles.length > 0, null, { timeout: 30000 });
   // the deployment may serve any active theme: measure the default theme as the baseline

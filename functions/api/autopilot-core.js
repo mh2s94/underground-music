@@ -232,9 +232,12 @@ export function startOfDayWIT(now = new Date()) {
 }
 
 // Writer and checker never come from the same company.
-export function pickRoles(enabled, writerOrder = ["gemini", "groq", "claude", "workersai"], checkerOrder = ["workersai", "groq", "claude", "gemini"]) {
+// cf* = other model families on Cloudflare Workers AI (same AI binding, no extra key), so a checker
+// from another company is always available even when Gemini's quota is used up or Claude has no credit.
+export const COMPANY = { groq: "llama", workersai: "llama", openrouter: "llama", gemini: "google", cfgemma: "google", claude: "anthropic", openai: "openai", mistral: "mistral", cfmistral: "mistral", deepseek: "deepseek", cfqwen: "alibaba" };
+export function pickRoles(enabled, writerOrder = ["gemini", "groq", "claude", "workersai", "cfmistral"], checkerOrder = ["workersai", "cfmistral", "cfqwen", "groq", "claude", "cfgemma", "gemini"]) {
   const on = (n) => enabled.includes(n);
   const writers = writerOrder.filter(on);
-  const company = { groq: "llama", workersai: "llama", openrouter: "llama", gemini: "google", claude: "anthropic", openai: "openai", mistral: "mistral", deepseek: "deepseek" };
+  const company = COMPANY;
   return { writers, checkersFor: (w) => checkerOrder.filter((c) => on(c) && c !== w && company[c] !== company[w]) };
 }

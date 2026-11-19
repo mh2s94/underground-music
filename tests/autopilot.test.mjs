@@ -80,6 +80,10 @@ ok("writer and checker come from different companies", () => {
   assert.deepEqual(r.checkersFor("gemini"), ["workersai", "groq", "claude"]);
   assert.deepEqual(r.checkersFor("groq"), ["claude", "gemini"]);
   assert.deepEqual(A.pickRoles(["groq", "workersai"]).checkersFor("groq"), []);
+  // Today's situation: Gemini over quota, Claude without credit -> Llama writes, Mistral/Qwen on Cloudflare check
+  const cf = A.pickRoles(["gemini", "workersai", "groq", "claude", "cfmistral", "cfqwen", "cfgemma"]);
+  assert.deepEqual(cf.checkersFor("workersai"), ["cfmistral", "cfqwen", "claude", "cfgemma", "gemini"]);
+  for (const w of cf.writers) for (const c of cf.checkersFor(w)) assert.notEqual(A.COMPANY[w], A.COMPANY[c]);
 });
 ok("source text extraction keeps paragraphs and drops boilerplate", () => {
   const html = `<html><head><script>var x=1</script></head><body><nav><p>Home News Reviews</p></nav>

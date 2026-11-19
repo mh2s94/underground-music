@@ -22,7 +22,26 @@ import { SITE, tg, esc } from "./lib.js";
 import { extractText, wordCount, factGate, writerPrompt, reviserPrompt, checkerPrompt, parseVerdict, youtubeMatches, startOfDayWIT, pickRoles } from "../autopilot-core.js";
 
 const json = (data, status = 200) => new Response(JSON.stringify(data, null, 2), { status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
-const NAMES = { gemini: "Gemini", workersai: "Llama (Cloudflare)", groq: "Llama (Groq)", claude: "Claude", openai: "OpenAI", mistral: "Mistral", deepseek: "DeepSeek", openrouter: "OpenRouter" };
+const NAMES = { gemini: "Gemini", workersai: "Llama (Cloudflare)", groq: "Llama (Groq)", claude: "Claude", openai: "OpenAI", mistral: "Mistral", deepseek: "DeepSeek", openrouter: "OpenRouter", cfmistral: "Mistral Small (Cloudflare)", cfqwen: "Qwen3 (Cloudflare)", cfgemma: "Gemma 4 (Cloudflare)" };
+// Extra Workers AI models from other companies (same AI binding, no extra key)
+const CF_EXTRA = { cfmistral: "@cf/mistralai/mistral-small-3.1-24b-instruct", cfqwen: "@cf/qwen/qwen3-30b-a3b-fp8", cfgemma: "@cf/google/gemma-4-26b-a4b-it" };
+function providersFor(env, prompt, system, opts = {}) {
+  const p = buildProviders(env, prompt, system, opts);
+  for (const [name, model] of Object.entries(CF_EXTRA)) {
+    p[name] = {
+      enabled: !!env.AI, model,
+      run: async (signal) => {
+        const res = await Promise.race([
+          env.AI.run(model, { messages: [{ role: "system", content: system }, { role: "user", content: prompt }], max_tokens: opts.maxTokens ?? 2000, temperature: opts.temperature ?? 0.3 }),
+          new Promise((_, rej) => signal.addEventListener("abort", () => rej(signal.reason || new Error("aborted")), { once: true }))
+        ]);
+        const out = res?.response ?? res?.choices?.[0]?.message?.content ?? "";
+        return (typeof out === "string" ? out : JSON.stringify(out)).replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+      }
+    };
+  }
+  return p;
+}
 const CALL_MS = 45000, BUDGET_MS = 200000;
 
 async function readSource(link) {
@@ -39,7 +58,7 @@ async function readSource(link) {
 
 // Ask providers in order (no racing: saves quota). Returns { text, provider } or throws.
 async function ask(env, names, prompt, system, opts, deadline) {
-  const providers = buildProviders(env, prompt, system, opts);
+  const providers = providersFor(env, prompt, system, opts);
   const errors = [];
   for (const name of names) {
     const left = deadline - Date.now();
@@ -50,7 +69,7 @@ async function ask(env, names, prompt, system, opts, deadline) {
       const text = await providers[name].run(ctrl.signal);
       if (text && text.trim()) return { text, provider: name };
       errors.push(name + ": empty answer");
-    } catch (e) { errors.push(name + ": " + String(e?.message || e).slice(0, 120)); }
+    } catch (e) { errors.push(name + ": " + String(e?.message || e).slice(0, 90)); }
     finally { clearTimeout(t); }
   }
   throw new Error("No AI answered (" + errors.join("; ") + ")");
@@ -102,6 +121,7 @@ export async function onRequestPost({ request, env }) {
   };
   const reject = async (reason, extra = {}) => {
     if (dry) return json({ dry: true, published: false, reason, ...extra, ...log });
+    reason = String(reason).slice(0, 300);
     await finish({ result: "rejected", reason: String(reason).slice(0, 400), ...extra }, "sent");
     await tg(env, "sendMessage", {
       chat_id: env.TELEGRAM_CHAT_ID, parse_mode: "HTML", link_preview_options: { is_disabled: true },
@@ -121,7 +141,7 @@ export async function onRequestPost({ request, env }) {
     const src = { title: n.title, summary: n.summary, text, source: n.source };
 
     // 4. Who writes, who checks
-    const all = buildProviders(env, "", "");
+    const all = providersFor(env, "", "");
     const enabled = Object.keys(all).filter((k) => all[k].enabled);
     const roles = pickRoles(enabled);
     if (!roles.writers.length) return await reject("Tidak ada AI penulis yang aktif.");
@@ -184,6 +204,6 @@ export async function onRequestPost({ request, env }) {
     });
     return json({ done: publishedToday + 1 >= daily, published: true, url, rounds: round, writer: w.provider, checker, ms: Date.now() - started, ...log });
   } catch (e) {
-    return await reject("Proses AI gagal: " + String(e?.message || e).slice(0, 200));
+    return await reject("Proses AI gagal: " + String(e?.message || e).slice(0, 600));
   }
 }
