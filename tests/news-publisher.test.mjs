@@ -26,7 +26,7 @@ test("RSS parser extracts validated YouTube video URLs from feed item XML", () =
   assert.match(feed, /youtube-nocookie\.com/);
   assert.match(feed, /youtubeVideoId: video\?\.id/);
   assert.match(feed, /youtube\.com\/watch\?v=/);
-  assert.match(feed, /Do not fetch the linked article page/);
+  assert.match(feed, /never fetch the linked article page/);
 });
 
 test("publisher embeds only a valid YouTube ID supplied by Scene Radar", () => {
