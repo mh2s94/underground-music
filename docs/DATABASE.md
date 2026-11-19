@@ -75,6 +75,9 @@ Used column: `user_id` (auth user id). Membership = admin. Owner-reported RLS: a
 ### Storage bucket `music` (`music.sql`)
 Public read, 25 MB per file (`26214400`), audio and image MIME types only, admin-only writes through `storage.objects` policies. Used only when R2 is not available.
 
+### `news_ingestion` (`supabase/news-ingestion.sql`)
+Tracks RSS source URL/hash, title, source, source publication date, status (`processing` / `published` / `failed` / `skipped`), optional `article_id` → `articles.id`, attempts, last error, and creation/update/publication/Telegram-notification timestamps. RLS is enabled; grants are revoked from `anon` and `authenticated`; only the server service key uses it. Apply only after the publisher PR is approved for release.
+
 ### `telegram_radar` (`supabase/telegram.sql`)
 Headlines the Telegram bot has sent: `hash` (pk, short SHA-256 of the link), `link`, `title`, `item` jsonb (headline, source, summary, date, image, band, genres), `status` (`sent` / `writing` / `drafted` / `skipped`), `article_id`, `sent_at`, `updated_at`. RLS on with **no policies** and grants revoked from `anon`/`authenticated`: only the server's service key uses it. Status: PENDING (owner must run the SQL).
 
