@@ -33,7 +33,7 @@ Audited 2026-11-17. Secret values are never written here.
 
 | Binding | Type | Used by | Status |
 | --- | --- | --- | --- |
-| `AI` | Workers AI | `generate.js`, `track-info.js` (provider `workersai`) | VERIFIED (the removed daily drafts used `workersai`) |
+| `AI` | Workers AI | `generate.js`, `track-info.js` (provider `workersai`) | VERIFIED (manual AI generation and metadata enrichment) |
 | `MUSIC` | R2 bucket `underground-music` | `/api/music/*` | VERIFIED in dashboard (2026-11-17) |
 | `ASSETS` | automatic | `a/[slug].js`, `band/[slug].js` (fetch `index.html`) | built in |
 
