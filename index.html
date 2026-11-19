@@ -31,7 +31,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap">
 <script src="/assets/theme/schema.js?v=t5"></script>
 <script src="/assets/theme/runtime.js?v=t4"></script>
-<link rel="stylesheet" href="/assets/bento.css?v=t2">
+<link rel="stylesheet" href="/assets/bento.css?v=tr1">
 <link rel="stylesheet" href="/assets/launch.css?v=t1">
 <link rel="stylesheet" href="/assets/account.css?v=t1">
 </head>
@@ -371,6 +371,7 @@
       <button class="isl-cover" id="plCover" type="button" aria-label="Open the now playing screen"></button>
       <button class="isl-open" id="plOpen" type="button" aria-label="Open the now playing screen"><span class="isl-title" id="plTitle">—</span><span class="isl-artist" id="plArtist"></span></button>
       <span class="isl-eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+      <button class="isl-full" type="button" id="plFull" aria-pressed="false" aria-label="Play the full song" hidden>Full</button>
       <button class="isl-btn isl-wide" type="button" id="plPrev" aria-label="Previous track"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg></button>
       <button class="isl-play" type="button" id="plPlay" aria-label="Play"><svg class="i-play" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"/></svg><svg class="i-pause" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg></button>
       <button class="isl-btn isl-wide" type="button" id="plNext" aria-label="Next track"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg></button>
@@ -381,6 +382,11 @@
       <button class="isl-btn isl-x" type="button" id="plClose" aria-label="Stop and close player"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
       <input class="isl-seek" id="plSeek" type="range" min="0" max="1000" value="0" step="1" aria-label="Seek">
       <span class="isl-times" hidden><span id="plCur">0:00</span><span id="plDur">0:00</span></span>
+    </div>
+    <div class="cut-end" id="plCutEnd" role="status" hidden>
+      <span class="cut-end-t">That was the cut</span>
+      <span class="cut-end-s">Want to hear the full song?</span>
+      <span class="cut-end-b"><button class="cut-end-full" type="button" id="plCutFull">Play full</button><button class="cut-end-next" type="button" id="plCutNext">Next song (8)</button></span>
     </div>
   </div>
   <audio id="audio" preload="none"></audio>
@@ -403,6 +409,7 @@
           <div class="np-title" id="npTitle">—</div>
           <a class="np-artist" id="npArtist" href="#/music"></a>
           <span class="np-chip" id="npChip"><i aria-hidden="true"></i><span id="npState">Paused</span></span>
+          <button class="np-full" type="button" id="npFull" aria-pressed="false" aria-label="Play the full song" hidden>Full</button>
         </div>
       </div>
       <input class="np-seek" id="npSeek" type="range" min="0" max="1000" value="0" step="1" aria-label="Seek">
@@ -487,7 +494,8 @@
 <script src="/assets/ui.js"></script>
 <script src="/assets/genres.js"></script>
 <script src="/assets/launch.js?v=lm2"></script>
-<script src="/assets/bento.js?v=t2"></script>
+<script src="/assets/trim.js?v=tr1"></script>
+<script src="/assets/bento.js?v=tr2"></script>
 <script src="/assets/readers.js?v=rc1" defer></script>
 </body>
 </html>
