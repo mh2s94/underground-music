@@ -2,6 +2,7 @@
 // Run: node tests/themes.test.mjs   (Node 20+, no packages, no network)
 import assert from "assert";
 import fs from "fs";
+import crypto from "crypto";
 
 const R = new URL("../", import.meta.url).pathname;
 await import(R + "assets/theme/schema.js");
@@ -38,7 +39,7 @@ function selectors(css, id, where = "") {
 // ---- catalogue
 t("catalogue: 12 themes, unique ids and numbers 00–11, neon-bento is the default and needs no files", () => {
   assert.strictEqual(S.THEMES.length, 12);
-  assert.strictEqual(new Set(S.THEMES.map((x) => x.id)).size, 11);
+  assert.strictEqual(new Set(S.THEMES.map((x) => x.id)).size, 12);
   assert.deepStrictEqual(S.THEMES.map((x) => x.no), ["00", "01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11"]);
   const nb = S.THEMES[0]; assert.strictEqual(nb.id, S.DEFAULT_THEME); assert.strictEqual(nb.css || nb.js, false); assert.deepStrictEqual({ ...nb.tokens }, {});
 });
@@ -110,8 +111,12 @@ t("performance budget: theme.css ≤ 20 KB and shell.js ≤ 6 KB each (loaded on
     if (th.js) assert.ok(fs.statSync(R + `assets/themes/${th.id}/shell.js`).size <= 6000, th.id + " js");
   }
 });
-t("ASSET_REV is bumped for the new theme assets", () => {
-  assert.strictEqual(S.ASSET_REV, "t-monochrome-modular-1");
+const themeFiles = () => S.THEMES.flatMap((th) => ["theme.css", "shell.js"].filter((f) => th[f === "theme.css" ? "css" : "js"]).map((f) => `assets/themes/${th.id}/${f}`)).sort();
+t("ASSET_REV changes whenever a theme file changes (browsers never keep an old theme file)", () => {
+  const h = crypto.createHash("sha256");
+  for (const f of themeFiles()) h.update(f + "\n" + fs.readFileSync(R + f, "utf8"));
+  const want = "t-" + h.digest("hex").slice(0, 10);
+  assert.strictEqual(S.ASSET_REV, want, `set ASSET_REV in assets/theme/schema.js to "${want}"`);
 });
 
 console.log(`\n${n} theme tests passed`);
