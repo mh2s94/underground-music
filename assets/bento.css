@@ -813,6 +813,20 @@ body.pl-loading .isl-play::before, body.pl-loading .np-play::before { opacity: 1
 .isl-seek::-moz-range-progress { height: 2px; background: var(--ok); }
 .isl-seek::-moz-range-thumb { width: 8px; height: 8px; border: 0; border-radius: 50%; background: var(--ok); }
 @media (max-width: 760px) { .isl-wide { display: none !important; } .player { width: min(400px, calc(100% - 24px)); bottom: 10px; } }
+/* Trimmed songs: "Full" toggle and the card shown when the cut ends (music-v3-trim) */
+.isl-full { flex: none; height: 26px; padding: 0 10px !important; border-radius: 13px !important; border: 1px solid var(--line-2) !important; color: var(--muted) !important; font: 700 10px/1 var(--mono) !important; letter-spacing: .06em; text-transform: uppercase; transition: color .2s, border-color .2s, background-color .2s; }
+.isl-full:hover, .isl-full[aria-pressed="true"] { color: var(--ok) !important; border-color: rgb(var(--ug-ok-rgb) / .5) !important; background: rgb(var(--ug-ok-rgb) / .1) !important; }
+.isl-full[hidden], .np-full[hidden], .cut-end[hidden] { display: none !important; }
+.cut-end { position: absolute; left: 8px; right: 8px; bottom: calc(100% + 10px); display: grid; gap: 4px; padding: 14px 16px; border-radius: 18px; background: #000; color: #fff; box-shadow: 0 0 0 1px var(--line-2), 0 18px 40px -12px rgba(0, 0, 0, .9); animation: cutIn .35s var(--ease-out) both; }
+@keyframes cutIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.cut-end-t { font-weight: 700; font-size: 14px; line-height: 1.2; }
+.cut-end-s { font-size: 12.5px; color: var(--muted); }
+.cut-end-b { display: flex; gap: 8px; margin-top: 8px; }
+.cut-end button { -webkit-appearance: none; appearance: none; flex: 1; min-width: 0; min-height: 40px; padding: 0 12px; border-radius: 20px; border: 1px solid var(--line-2); background: transparent; color: #fff; font-family: inherit; font-weight: 600; font-size: 13px; line-height: 1; cursor: pointer; white-space: nowrap; }
+.cut-end .cut-end-full { background: var(--ok); border-color: var(--ok); color: #000; }
+.cut-end button:focus-visible, .isl-full:focus-visible, .np-full:focus-visible { outline: 2px solid var(--ok); outline-offset: 2px; }
+.np .np-full { -webkit-appearance: none; appearance: none; margin-top: 6px; padding: 5px 12px; border-radius: 20px; border: 1px solid var(--line-2); background: transparent; color: var(--muted); font: 700 10px/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; cursor: pointer; }
+.np .np-full[aria-pressed="true"], .np .np-full:hover { color: var(--ok); border-color: rgb(var(--ug-ok-rgb) / .5); }
 
 /* Now playing: card */
 .np { position: fixed; inset: 0; z-index: 450; display: grid; place-items: center; background: var(--void); }
@@ -875,7 +889,7 @@ body:not(.is-playing) .np-chip i { background: var(--muted); }
 .track:hover .tr-play svg, .mini-track:hover .tr-play svg { transform: scale(1); }
 .track.current .tr-cover, .mini-track.current .tr-cover, .chart-row.current .c-cover { box-shadow: 0 0 0 2px var(--ok), 0 0 16px -2px rgb(var(--ug-ok-rgb) / .7); }
 .ripple { position: absolute; z-index: 5; border-radius: 50%; background: radial-gradient(circle, rgba(255, 255, 255, .35), rgb(var(--ug-ok-rgb) / .18) 60%, transparent 70%); pointer-events: none; animation: ripple .65s ease-out forwards; }
-@media (prefers-reduced-motion: reduce) { .isl-cover, .np-cover, .isl-eq i, .np-sheet, .np-info, .np-item, .player { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { .isl-cover, .np-cover, .isl-eq i, .np-sheet, .np-info, .np-item, .player, .cut-end { animation: none !important; } }
 
 /* ---------- Motion polish (2026-11-17) ---------- */
 /* C. Hero headline settles in when the home view opens */
