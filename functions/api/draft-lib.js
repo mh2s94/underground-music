@@ -15,7 +15,7 @@ export function supabaseProjectUrl(value) {
     if (!["https:", "http:"].includes(url.protocol) || url.username || url.password) return "";
     url.search = "";
     url.hash = "";
-    url.pathname = url.pathname.replace(/\\/rest\\/v1\\/?$/i, "").replace(/\\/+$/, "");
+    url.pathname = url.pathname.replace(/\/rest\/v1\/?$/i, "").replace(/\/+$/, "");
     if (url.pathname && url.pathname !== "") return "";
     return url.origin;
   } catch { return ""; }
@@ -25,7 +25,8 @@ export function supabaseProjectUrl(value) {
 export function serviceRest(env) {
   const NAMES = ["SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_SECRET_KEY", "SUPABASE_SERVICE_KEY", "SUPABASE_SERVICE_ROLE", "SERVICE_ROLE_KEY"];
   const keyName = NAMES.find((n) => env[n] && String(env[n]).trim());
-  const projectUrl = supabaseProjectUrl(env.SUPABASE_URL);\n  if (!projectUrl || !keyName) {
+  const projectUrl = supabaseProjectUrl(env.SUPABASE_URL);
+  if (!projectUrl || !keyName) {
     const seen = Object.keys(env).filter((k) => /SUPA|SERVICE|SECRET/i.test(k)); // names only, never values
     return { error: "The Supabase secret key is not set in Cloudflare Pages (Production). Add it as SUPABASE_SERVICE_ROLE_KEY and redeploy.", seen };
   }
