@@ -136,7 +136,7 @@ Digests and deals are filtered by `NOT_NEWS` in `draft-lib.js`. Adjust the regex
 **Symptom:** "unavailable: New Noise" under the radar.
 
 **Cause (VERIFIED 2026-11-17):** New Noise serves a captcha (SiteGround anti-bot) to all automated requests, including its RSS feed.
-**Fix (2026-11-19):** New Noise was replaced by Lambgoat in `functions/api/news.js`. A source can list `alt` feed URLs; they are tried in order. The smoke test now prints the error text of a failing source.
+**Fix (2026-11-19):** New Noise was replaced by IDIOTEQ and Boolin Tunes in `functions/api/news.js`. A source can list `alt` feed URLs; they are tried in order. The smoke test now prints the error text of a failing source.
 
 **Fix:** none on our side. Do not try to bypass it. Remove the source from `SOURCES` in `functions/api/news.js`, or replace it with another feed.
 

@@ -12,7 +12,8 @@ const SOURCES = [
   { name: "Decibel", url: "https://www.decibelmagazine.com/feed/" },
   { name: "Loudwire", url: "https://loudwire.com/category/metal/feed/" },
   // New Noise was removed: its site answers every automated request with a captcha (2026-11-17).
-  { name: "Lambgoat", url: "https://lambgoat.com/rss/", alt: ["https://lambgoat.com/feed/", "https://lambgoat.com/news/rss/", "https://lambgoat.com/rss.xml"] },
+  { name: "IDIOTEQ", url: "https://idioteq.com/feed/", alt: ["https://www.idioteq.com/feed/"] },
+  { name: "Boolin Tunes", url: "https://boolintunes.com/feed/", alt: ["https://www.boolintunes.com/feed/"] },
   { name: "Distorted Sound", url: "https://distortedsoundmag.com/feed/" }
 ];
 

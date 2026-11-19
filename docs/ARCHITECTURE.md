@@ -137,7 +137,7 @@ The database layer is the one that matters. The other two give good error messag
 | `/api/theme/refresh` | POST | admin + aal2 | Clears the cached active theme after Apply / Restore / Reset | VERIFIED (PR #49, #50) |
 | `/sitemap.xml` | GET | public | Home, legal pages, published articles, band pages | IMPLEMENTED, NOT VERIFIED |
 | `/unsubscribe?t=` | GET, POST | public | Calls `ug_unsubscribe(token)`; POST supports one-click unsubscribe | IMPLEMENTED, NOT VERIFIED |
-| `/api/news` | GET | public | Scene Radar RSS aggregator, 15 min edge cache | VERIFIED (New Noise replaced by Lambgoat, 2026-11-19) |
+| `/api/news` | GET | public | Scene Radar RSS aggregator, 15 min edge cache | VERIFIED (New Noise replaced by IDIOTEQ and Boolin Tunes, 2026-11-19) |
 | `/api/telegram/digest` | POST | `AUTODRAFT_TOKEN` | Telegram radar digest 3x a day; registers the webhook | IMPLEMENTED, NOT VERIFIED |
 | `/api/telegram/webhook` | POST | Telegram secret header + `TELEGRAM_CHAT_ID` | Bot buttons: write / publish / delete drafts | IMPLEMENTED, NOT VERIFIED |
 | `/api/readers` | GET | public | Footer "Where our readers are": top 5 countries + other as rounded percentages of page views, last 30 days, from Cloudflare Web Analytics (GraphQL `rumPageloadEventsAdaptiveGroups`, filtered by `requestHost`). 1 h edge cache. Answers `{ok:false}` when `CF_ACCOUNT_ID`/`CF_ANALYTICS_TOKEN` are missing, the query fails, or there are fewer than 50 page views; the box then stays hidden. Never returns counts. | IMPLEMENTED, NOT VERIFIED (needs the token) |

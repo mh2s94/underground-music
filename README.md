@@ -227,7 +227,7 @@ Details: [DEPLOYMENT.md](docs/DEPLOYMENT.md) (every environment variable), [TROU
 - **Pending (owner)**: rotate `AUTODRAFT_TOKEN`, export the base schema for `supabase/base.sql`, Turnstile site
   key, a Cloudflare rate-limit rule for `/api/*`.
 - **Known limits**: repo files (docs, SQL) are publicly downloadable because the output
-  directory is the repo root (no secrets in them); New Noise (captcha) was replaced by Lambgoat in Scene Radar.
+  directory is the repo root (no secrets in them); New Noise (captcha) was replaced by IDIOTEQ and Boolin Tunes in Scene Radar.
 
 **Recent milestones**
 
