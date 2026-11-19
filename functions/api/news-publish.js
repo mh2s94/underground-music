@@ -81,7 +81,7 @@ export async function onRequestPost({ request, env }) {
     const slug = slugify(item.title).slice(0, 78).replace(/-+$/g, "") + "-" + suffix;
     const sourceDate = new Date(item.date).toISOString();
     const summary = String(item.summary).trim();
-    const youtubeId = /^[\\w-]{11}$/.test(String(item.youtubeVideoId || "")) ? String(item.youtubeVideoId) : "";
+    const youtubeId = /^[\w-]{11}$/.test(String(item.youtubeVideoId || "")) ? String(item.youtubeVideoId) : "";
     const content = [
       summary,
       "",
