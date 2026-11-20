@@ -182,7 +182,7 @@
     if (res.error || !res.data) { toast("error", "Draf tidak tersimpan", errText(res.error) || "Coba lagi."); return null; }
     st.configId = res.data.id; st.name = row.name;
     if (!silent) toast("success", "Draf tersimpan", "Belum diterapkan ke website.");
-    var list = await sb.from("site_theme_configs").select("id,theme_id,name,tokens,note,updated_at").order("updated_at", { ascending: false }).limit(50);
+    var list = await sb.from("site_theme_configs").select("id,theme_id,name,tokens,note,updated_at").eq("theme_id", S.DEFAULT_THEME).order("updated_at", { ascending: false }).limit(50);
     if (!list.error) st.configs = list.data || [];
     render();
     return st.configId;
