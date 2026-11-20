@@ -21,6 +21,9 @@ set search_path = public, pg_temp
 as $function$
 declare
   v_existing public.ai_ingestion%rowtype;
+  v_has_existing boolean := false;
+  v_ingestion_id uuid;
+  v_outcome text;
   v_count integer := 0;
   v_now timestamptz := now();
   v_day_start timestamptz := date_trunc('day', timezone('UTC', v_now)) at time zone 'UTC';
@@ -39,7 +42,9 @@ begin
   limit 1
   for update;
 
-  if found then
+  v_has_existing := found;
+
+  if v_has_existing then
     if v_existing.status = 'processed' then
       return query select v_existing.id, 'duplicate'::text, 0;
       return;
@@ -75,15 +80,15 @@ begin
     end if;
   end if;
 
-  if found and v_existing.id is not null then
+  if v_has_existing then
     update public.ai_ingestion
     set title = p_title, title_key = p_title_key, source_url = p_source_url,
         status = 'processing', article_id = null, band = p_band, release = p_release,
         genre = p_genre, article_type = p_article_type, score = p_score,
         last_error = null, updated_at = v_now, processed_at = null
     where id = v_existing.id
-    returning id into ingestion_id;
-    outcome := 'retry';
+    returning id into v_ingestion_id;
+    v_outcome := 'retry';
   else
     insert into public.ai_ingestion (
       title, title_key, source_url, status, band, release, genre, article_type, score,
@@ -92,11 +97,11 @@ begin
       p_title, p_title_key, p_source_url, 'processing', p_band, p_release, p_genre, p_article_type, p_score,
       v_now, v_now
     )
-    returning id into ingestion_id;
-    outcome := 'claimed';
+    returning id into v_ingestion_id;
+    v_outcome := 'claimed';
   end if;
 
-  return query select ingestion_id, outcome, v_count;
+  return query select v_ingestion_id, v_outcome, v_count;
 end;
 $function$;
 
