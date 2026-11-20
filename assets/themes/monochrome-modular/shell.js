@@ -4,7 +4,7 @@
 (function () {
   "use strict";
   var ID = "monochrome-modular";
-  var MARK = '<img class="mm-mark" src="/assets/icon-512.png" alt="" width="38" height="38" aria-hidden="true">';
+  var MARK = '<svg class="mm-mark" width="38" height="24" viewBox="0 0 64 40" fill="none" role="img" aria-hidden="true" focusable="false"><path d="M2 20h7l5-11 7 22 7-17 6 10 7-16 7 24 6-12h10" stroke="currentColor" stroke-width="3.2" stroke-linecap="square" stroke-linejoin="miter"/></svg>';
 
   function mount() {
     var undo = [];
