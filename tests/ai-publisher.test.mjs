@@ -71,7 +71,11 @@ test("daily quota defaults to ten and validates an explicit environment override
   assert.match(parseDailyLimit("10.5").error, /integer from 1 to 1000/);
   assert.ok(endpoint.includes("AI_PUBLISH_DAILY_LIMIT"));
   assert.ok(endpoint.includes("Daily AI publish limit reached."));
+  assert.ok(endpoint.indexOf('claimResult?.outcome === "daily_limit"') < endpoint.indexOf('!claimResult?.ingestion_id'), "daily-limit result must be handled even when no ingestion id is returned");
   assert.match(hardening, /pg_advisory_xact_lock/);
+  assert.match(hardening, /v_has_existing := found/);
+  assert.match(hardening, /if v_has_existing then/);
+  assert.doesNotMatch(hardening, /if found and v_existing\.id/);
   assert.match(hardening, /daily_count/);
 });
 
