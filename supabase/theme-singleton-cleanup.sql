@@ -9,9 +9,9 @@ returns boolean
 language sql
 immutable
 set search_path = ''
-as $
+as $fn$
   select p_id = 'monochrome-modular';
-$;
+$fn$;
 revoke all on function public.ug_theme_id_ok(text) from public, anon, service_role;
 grant execute on function public.ug_theme_id_ok(text) to authenticated;
 
@@ -41,8 +41,14 @@ insert into public.site_theme_history
   (action, theme_id, tokens, version, config_id, applied_by, note)
 select 'reset', theme_id, tokens, version, null, null,
        'Cleanup: Monochrome Modular is the only supported theme'
-from public.site_theme_active
-where id = 1;
+from public.site_theme_active a
+where a.id = 1
+  and not exists (
+    select 1 from public.site_theme_history h
+    where h.action = 'reset'
+      and h.theme_id = 'monochrome-modular'
+      and h.note = 'Cleanup: Monochrome Modular is the only supported theme'
+  );
 
 commit;
 
