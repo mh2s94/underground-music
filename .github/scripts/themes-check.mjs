@@ -29,7 +29,7 @@ for (const vp of [{ width: 1280, height: 860, tag: "desktop" }, { width: 390, he
   await p.goto(BASE + "/", { waitUntil: "load" });
   await p.waitForFunction(() => window.UG && window.UGTheme && window.UG.articles.length > 0, null, { timeout: 30000 });
   // the deployment may serve any active theme: measure the default theme as the baseline
-  await p.evaluate(() => window.UGTheme.load("neon-bento", { version: "check" }));
+  await p.evaluate(() => window.UGTheme.load("monochrome-modular", { version: "check" }));
   await p.waitForTimeout(300);
   const baseline = await p.evaluate(() => ({
     accent: getComputedStyle(document.documentElement).getPropertyValue("--ug-accent").trim(),
@@ -59,7 +59,7 @@ for (const vp of [{ width: 1280, height: 860, tag: "desktop" }, { width: 390, he
           .slice(0, 3).map((e) => e.tagName.toLowerCase() + "." + String(e.className.baseVal ?? e.className).split(" ")[0] + "@" + Math.round(e.getBoundingClientRect().right)) : [];
         return { view: window.UG.view, over, wide };
       });
-      if (id === "neon-bento") {
+      if (id === "monochrome-modular") {
         neonOver[v] = r.over;
         if (r.over > 1) console.log(`KNOWN ${tag}: view ${v} overflows by ${r.over}px in the default theme too (existing layout issue, not from a theme)`);
         ok(r.view === v, `${tag}: view ${v} opens`, JSON.stringify(r));
@@ -97,10 +97,10 @@ for (const vp of [{ width: 1280, height: 860, tag: "desktop" }, { width: 390, he
   }
 
   // back to the default: nothing may be left behind
-  for (const from of themes.filter((x) => x !== "neon-bento").slice(0, 3).concat(themes.includes("scene-atlas") ? ["scene-atlas"] : [])) {
+  for (const from of themes.filter((x) => x !== "monochrome-modular").slice(0, 3).concat(themes.includes("scene-atlas") ? ["scene-atlas"] : [])) {
     await p.evaluate((id) => window.UGTheme.load(id, { version: "check" }), from);
     await p.waitForTimeout(300);
-    await p.evaluate(() => window.UGTheme.load("neon-bento", { version: "check" }));
+    await p.evaluate(() => window.UGTheme.load("monochrome-modular", { version: "check" }));
     await p.waitForTimeout(300);
     await p.evaluate(() => window.UG.actions.go("/home"));
     const left = await p.evaluate(() => ({
@@ -113,14 +113,9 @@ for (const vp of [{ width: 1280, height: 860, tag: "desktop" }, { width: 390, he
       classes: document.querySelector(".sidebar").className + "|" + document.getElementById("main").className,
     }));
     ok(left.shell === 0 && left.assets === 0 && !left.inline && !left.mounted && left.accent === baseline.accent && left.side === baseline.side && !/mg-open|ms-snap/.test(left.classes),
-      `[${vp.tag}] ${from} → neon-bento: nothing left behind, Neon Bento unchanged`, JSON.stringify(left));
+      `[${vp.tag}] ${from} → monochrome-modular: nothing left behind, Neon Bento unchanged`, JSON.stringify(left));
   }
-  // theme to theme
-  await p.evaluate(() => window.UGTheme.load("the-pit", { version: "check" })); await p.waitForTimeout(300);
-  await p.evaluate(() => window.UGTheme.load("index", { version: "check" })); await p.waitForTimeout(300);
-  const tt = await p.evaluate(() => ({ pit: document.querySelectorAll(".pit-bar, .pit-menu").length, ix: document.querySelectorAll(".ix-head").length, css: [...document.querySelectorAll("link[data-ug-theme-asset]")].map((l) => l.getAttribute("href").split("?")[0]) }));
-  ok(tt.pit === 0 && tt.ix === 1 && tt.css.length === 1 && tt.css[0].endsWith("/index/theme.css"), `[${vp.tag}] the-pit → index: only the new theme is present`, JSON.stringify(tt));
-  await p.evaluate(() => window.UGTheme.load("neon-bento"));
+  await p.evaluate(() => window.UGTheme.load("monochrome-modular"));
   await ctx.close();
 }
 await b.close();

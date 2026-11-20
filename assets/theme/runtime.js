@@ -3,7 +3,7 @@
 
    Responsibilities
    - Read the active theme from <html data-theme="…"> (set by the edge middleware from Tahap 2;
-     absent today, which means the default theme "neon-bento").
+     absent today, which means the default theme "monochrome-modular").
    - Apply validated design tokens as custom properties on <html>.
    - Load a theme's own files (assets/themes/<id>/theme.css, shell.js) and fall back to the
      default theme if any of them fails or takes too long. The site must never end up blank.
@@ -61,7 +61,7 @@
     else run();
   }
   function registerShell(id, fn) {
-    if (!S.THEME_ID.test(String(id)) || typeof fn !== "function") return;
+    if (String(id) !== S.DEFAULT_THEME || typeof fn !== "function") return;
     shells[id] = fn;
     if (root.getAttribute("data-theme") === id) mountShell(id);
   }
@@ -80,6 +80,7 @@
     clearTheme();
     state.theme = S.DEFAULT_THEME;
     state.fallback = String(reason || "error").slice(0, 40);
+    setTokens(S.DEFAULTS);
     root.setAttribute("data-theme-fallback", state.fallback);
     emit("theme-fallback", { reason: state.fallback });
   }
@@ -122,8 +123,8 @@
   function load(id, opts) {
     opts = opts || {};
     var version = String(opts.version || "0").replace(/[^0-9a-zA-Z.-]/g, "").slice(0, 32) || "0";
-    var m = S.THEME_ID.test(String(id)) ? meta(id) : null;
-    if (!m || m.status !== "ready") { fallback("unknown-theme"); return Promise.resolve(S.DEFAULT_THEME); }
+    var m = String(id) === S.DEFAULT_THEME ? meta(id) : meta(S.DEFAULT_THEME);
+    if (!m || m.status !== "ready") { fallback("default-theme-unavailable"); return Promise.resolve(S.DEFAULT_THEME); }
 
     clearTheme();
     root.removeAttribute("data-theme-fallback");
@@ -167,9 +168,9 @@
   // Boot: accept the theme named in the HTML only if it is a ready theme.
   (function boot() {
     var id = root.getAttribute("data-theme");
-    if (!id) { root.setAttribute("data-theme", S.DEFAULT_THEME); return; }
-    var m = S.THEME_ID.test(id) ? meta(id) : null;
-    if (!m || m.status !== "ready") { fallback("unknown-theme"); return; }
+    if (!id) { load(S.DEFAULT_THEME, { version: "0" }); return; }
+    var m = id === S.DEFAULT_THEME ? meta(id) : null;
+    if (!m || m.status !== "ready") { load(S.DEFAULT_THEME, { version: "0" }); return; }
     state.theme = m.id;
     state.version = root.getAttribute("data-theme-version") || "0";
   })();

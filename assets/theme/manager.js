@@ -16,22 +16,7 @@
   var COLOURS = [["accent", "Warna utama"], ["accent2", "Warna aksen"], ["bg", "Background"], ["surface", "Permukaan kartu"], ["ink", "Teks utama"], ["muted", "Teks sekunder"]];
   var FONT_KEYS = [["fontDisplay", "Font judul"], ["fontBody", "Font isi"]];
   var FONT_LABEL = { "bebas-neue": "Bebas Neue", "inter": "Inter", "space-mono": "Space Mono", "fraunces": "Fraunces (serif)", "archivo-black": "Archivo Black", "inter-tight": "Inter Tight", "big-shoulders": "Big Shoulders Stencil", "special-elite": "Special Elite (mesin ketik)", "system": "System UI", "serif": "Serif sistem", "mono": "Mono sistem" };
-  // Small layout sketch per theme: [columns, rows, kind] in a 6 x 4 grid ("x" = empty space).
-  var MINI = {
-    "neon-bento": [[1, 4, "b"], [3, 2, "a"], [2, 2, ""], [2, 2, ""], [3, 2, ""]],
-    "front-page": [[6, 1, "b"], [3, 3, "a"], [2, 3, ""], [1, 3, ""]],
-    "the-pit": [[6, 1, ""], [6, 1, "a"], [6, 1, ""], [6, 1, ""]],
-    "setlist": [[1, 4, "x"], [4, 1, "a"], [1, 4, "x"], [4, 1, ""], [4, 1, ""], [4, 1, "b"]],
-    "mosh-grid": [[4, 2, "a"], [2, 1, ""], [2, 3, "b"], [2, 1, ""], [2, 2, ""], [2, 2, ""]],
-    "control-room": [[1, 4, "b"], [3, 2, "a"], [2, 4, ""], [3, 2, ""]],
-    "main-stage": [[6, 3, "a"], [2, 1, ""], [2, 1, ""], [2, 1, ""]],
-    "xerox-zine": [[5, 2, "a"], [1, 4, "b"], [2, 2, ""], [3, 2, ""]],
-    "index": [[6, 1, "b"], [4, 2, "a"], [2, 2, ""], [6, 1, ""]],
-    "frequency": [[6, 2, "a"], [6, 1, ""], [6, 1, "b"]],
-    "scene-atlas": [[4, 4, "a"], [2, 4, "b"]],
-    "monochrome-modular": [[1,4,""],[5,1,"a"],[5,2,""],[2,2,"b"],[3,2,""],[3,1,""]]
-  };
-
+  // Theme selection is intentionally fixed to the sole supported theme.
   var st = { loaded: false, busy: false, missing: false, active: null, activeRow: null, configs: [], history: [], themeId: S.DEFAULT_THEME, values: {}, extra: {}, configId: null, name: "", note: "" };
 
   function isMissing(err) {
@@ -43,7 +28,7 @@
     if (err.code === "42501" || /not allowed/i.test(err.message || "")) return "Butuh admin dengan verifikasi dua langkah. Muat ulang panel dan masukkan kode 6 digit.";
     return err.message || String(err);
   }
-  function themeName(id) { var t = S.THEMES.find(function (x) { return x.id === id; }); return t ? t.no + " · " + t.name : id; }
+  function themeName() { return "Monochrome Modular"; }
   function fmt(ts) { try { return new Date(ts).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" }); } catch (e) { return ts || ""; } }
   // Every theme has its own token set (S.base: defaults + the theme's tokens); edits are made on top
   // of it and only what differs from it is stored.
@@ -77,8 +62,8 @@
     var r = await Promise.all([
       sb.rpc("ug_active_theme"),
       sb.from("site_theme_active").select("theme_id,version,applied_at,config_id").eq("id", 1).maybeSingle(),
-      sb.from("site_theme_configs").select("id,theme_id,name,tokens,note,updated_at").order("updated_at", { ascending: false }).limit(50),
-      sb.from("site_theme_history").select("id,action,theme_id,tokens,version,applied_at,note").order("version", { ascending: false }).limit(30)
+      sb.from("site_theme_configs").select("id,theme_id,name,tokens,note,updated_at").eq("theme_id", S.DEFAULT_THEME).order("updated_at", { ascending: false }).limit(50),
+      sb.from("site_theme_history").select("id,action,theme_id,tokens,version,applied_at,note").eq("theme_id", S.DEFAULT_THEME).order("version", { ascending: false }).limit(30)
     ]);
     st.missing = r.some(function (x) { return isMissing(x.error); });
     if (st.missing) {
@@ -99,7 +84,7 @@
   }
 
   function startFrom(themeId, tokens, configId, name, note) {
-    st.themeId = S.READY.indexOf(themeId) > -1 ? themeId : S.DEFAULT_THEME;
+    st.themeId = S.DEFAULT_THEME;
     var f = full(tokens, st.themeId);
     st.values = {}; st.extra = {};
     Object.keys(f).forEach(function (k) {
@@ -121,29 +106,16 @@
     $("tmStatus").innerHTML =
       '<span class="sw" aria-hidden="true"><i style="background:' + f.accent + '"></i><i style="background:' + f.accent2 + '"></i><i style="background:' + f.bg + '"></i><i style="background:' + f.surface + '"></i></span>' +
       "<div><span class=\"tm-live\">Aktif untuk semua pengunjung</span><b>" + esc(themeName(a.theme)) + "</b><small>" +
-      (st.missing ? "Belum ada tabel tema: semua pengunjung memakai Neon Bento (bawaan)." :
+      (st.missing ? "Belum ada tabel tema: Monochrome Modular digunakan sebagai bawaan permanen." :
         "Versi " + esc(a.version) + (st.activeRow ? " · diterapkan " + esc(fmt(st.activeRow.applied_at)) : "") + " · " + Object.keys(a.tokens || {}).length + " pengaturan berbeda dari bawaan") +
       "</small></div>" +
       '<button class="btn btn-sm btn-ghost" type="button" id="tmReload">Muat ulang</button>';
     $("tmReload").onclick = function () { load(); };
   }
 
-  function mini(id) {
-    return '<span class="tm-mini" aria-hidden="true" style="grid-template-columns:repeat(6,1fr);grid-template-rows:repeat(4,1fr)">' +
-      (MINI[id] || []).map(function (b) { return '<i class="' + b[2] + '" style="grid-column:span ' + b[0] + ";grid-row:span " + b[1] + (b[2] === "x" ? ";background:none" : "") + '"></i>'; }).join("") + "</span>";
-  }
-
   function renderGrid() {
-    var activeId = st.active ? st.active.theme : S.DEFAULT_THEME;
-    $("tmGrid").innerHTML = S.THEMES.map(function (t) {
-      var ready = t.status === "ready";
-      var badges = [];
-      if (t.id === activeId) badges.push('<span class="tm-badge active">Aktif</span>');
-      badges.push(ready ? '<span class="tm-badge ready">Siap</span>' : '<span class="tm-badge">Tahap berikutnya</span>');
-      if (t.experimental) badges.push('<span class="tm-badge exp">Eksperimental</span>');
-      return '<button type="button" class="tm-card" data-theme="' + esc(t.id) + '" aria-pressed="' + (t.id === st.themeId) + '"' + (ready ? "" : ' aria-disabled="true"') + ">" +
-        mini(t.id) + '<span class="no">' + esc(t.no) + '</span><span class="nm">' + esc(t.name) + '</span><span class="ds">' + esc(t.desc) + '</span><span class="tm-badges">' + badges.join("") + "</span></button>";
-    }).join("");
+    var el = $("tmGrid");
+    if (el) el.innerHTML = '<div class="tm-card" aria-current="true"><span class="nm">Monochrome Modular</span><span class="ds">Tema default permanen · satu-satunya tema yang tersedia</span><span class="tm-badges"><span class="tm-badge active">Aktif</span></span></div>';
   }
 
   function renderEditor() {
@@ -210,7 +182,7 @@
     if (res.error || !res.data) { toast("error", "Draf tidak tersimpan", errText(res.error) || "Coba lagi."); return null; }
     st.configId = res.data.id; st.name = row.name;
     if (!silent) toast("success", "Draf tersimpan", "Belum diterapkan ke website.");
-    var list = await sb.from("site_theme_configs").select("id,theme_id,name,tokens,note,updated_at").order("updated_at", { ascending: false }).limit(50);
+    var list = await sb.from("site_theme_configs").select("id,theme_id,name,tokens,note,updated_at").eq("theme_id", S.DEFAULT_THEME).order("updated_at", { ascending: false }).limit(50);
     if (!list.error) st.configs = list.data || [];
     render();
     return st.configId;
@@ -260,7 +232,7 @@
   }
 
   async function reset() {
-    var ok = await ask("Kembali ke Neon Bento bawaan?", "Semua pengunjung akan melihat tampilan bawaan tanpa pengaturan tambahan. Versi saat ini tetap ada di Riwayat dan bisa di-Restore.", "Reset ke bawaan", true);
+    var ok = await ask("Kembalikan pengaturan Monochrome Modular ke nilai bawaan?", "Semua pengunjung akan melihat tampilan bawaan tanpa pengaturan tambahan. Versi saat ini tetap ada di Riwayat dan bisa di-Restore.", "Reset ke bawaan", true);
     if (!ok) return;
     await run("Reset gagal", async function () {
       var r = await sb.rpc("ug_reset_theme", { p_note: "Reset dari Theme Manager" });
@@ -281,15 +253,6 @@
 
   /* ---------------- events ---------------- */
   function bind() {
-    $("tmGrid").addEventListener("click", function (e) {
-      var b = e.target.closest(".tm-card"); if (!b) return;
-      if (b.getAttribute("aria-disabled") === "true") { toast("info", b.querySelector(".nm").textContent, "Tema ini dibangun pada tahap berikutnya dan belum bisa diterapkan."); return; }
-      if (b.dataset.theme !== st.themeId) {
-        startFrom(b.dataset.theme, {}, null, "", "");      // each theme starts from its own colours and fonts
-        toast("info", b.querySelector(".nm").textContent, "Editor memakai warna dan font bawaan tema ini.");
-      }
-      render();
-    });
     COLOURS.forEach(function (c) {
       $("tmc-" + c[0]).addEventListener("input", function (e) { st.values[c[0]] = e.target.value.toUpperCase(); $("tmt-" + c[0]).value = st.values[c[0]]; contrast(); renderSample(); });
       $("tmt-" + c[0]).addEventListener("change", function (e) {

@@ -6,7 +6,7 @@
   // Official address is music.mikasa.me: move visitors from the old pages.dev address (keeps the page they asked for)
   if (location.hostname === "underground-music.pages.dev") location.replace("https://music.mikasa.me" + location.pathname + location.search + location.hash);
 </script>
-<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<link rel="icon" type="image/png" sizes="192x192" href="/assets/icon-192.png">
 <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -493,12 +493,12 @@
     <div class="tab-panel" id="panel-settings" role="tabpanel" aria-labelledby="tab-settings" data-panel="settings" hidden>
       <section class="panel card-pad tm" id="themeManager" aria-labelledby="tmTitle" style="margin-bottom:20px">
         <div class="card-head"><h2 id="tmTitle">Appearance · Theme Manager</h2></div>
-        <p class="muted" style="margin:0">Pilih dan atur tampilan music.mikasa.me untuk semua pengunjung. Preview hanya terlihat oleh kamu; Apply berlaku global dalam maksimal 60 detik, tanpa deploy. Setiap perubahan tersimpan di Riwayat dan bisa di-Restore.</p>
-        <div class="alert warning" id="tmSetup" hidden><span style="color:var(--warning)">!</span><div><strong>Database tema belum dipasang</strong><span class="muted">Jalankan <span class="mono">supabase/themes.sql</span> di Supabase → SQL Editor, lalu muat ulang. Sampai saat itu semua pengunjung memakai Neon Bento (bawaan) dan tombol simpan/terapkan dinonaktifkan.</span></div></div>
+        <p class="muted" style="margin:0">Monochrome Modular adalah satu-satunya tema dan digunakan sebagai default permanen. Kamu tetap dapat menyesuaikan token warna, tipografi, dan detail tampilannya.</p>
+        <div class="alert warning" id="tmSetup" hidden><span style="color:var(--warning)">!</span><div><strong>Database tema belum dipasang</strong><span class="muted">Jalankan <span class="mono">supabase/themes.sql</span> di Supabase → SQL Editor, lalu muat ulang. Sampai saat itu semua pengunjung memakai Monochrome Modular (bawaan permanen) dan tombol simpan/terapkan dinonaktifkan.</span></div></div>
         <div class="tm-status" id="tmStatus" aria-live="polite"></div>
-        <h3>1. Pilih tema</h3>
+        <h3>Tema default terkunci</h3>
         <div class="tm-grid" id="tmGrid"></div>
-        <h3>2. Atur tampilan · <span id="tmTheme"></span> · <span class="muted" id="tmEditing" style="font-weight:400"></span></h3>
+        <h3>Atur tampilan · <span id="tmTheme"></span> · <span class="muted" id="tmEditing" style="font-weight:400"></span></h3>
         <div class="tm-editor">
           <div class="tm-fields">
             <div class="wide tm-fields" id="tmColours" style="padding:0"></div>
@@ -514,7 +514,7 @@
             <div class="tm-contrast" id="tmContrast"></div>
           </div>
         </div>
-        <h3>3. Simpan, preview, terapkan</h3>
+        <h3>Simpan, preview, terapkan</h3>
         <div class="tm-actions">
           <button class="btn" type="button" id="tmSave">Simpan draf</button>
           <button class="btn" type="button" id="tmPrevDesk">Preview desktop (tab baru)</button>
@@ -525,7 +525,7 @@
         <ul class="tm-list" id="tmConfigs"></ul>
         <h3>Riwayat perubahan</h3>
         <ul class="tm-list" id="tmHistory"></ul>
-        <div class="tm-actions"><button class="btn btn-danger" type="button" id="tmReset">Reset ke Neon Bento (bawaan)</button></div>
+        <div class="tm-actions"><button class="btn btn-danger" type="button" id="tmReset">Reset token Monochrome Modular</button></div>
         <dialog class="tm-dialog" id="tmDialog" aria-labelledby="tmDlgTitle"><form method="dialog">
           <h3 id="tmDlgTitle"></h3><p id="tmDlgBody"></p>
           <div class="tm-actions"><button class="btn btn-ghost" value="cancel">Batal</button><button class="btn btn-primary" id="tmDlgOk" value="ok">Lanjutkan</button></div>
