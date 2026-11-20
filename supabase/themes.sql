@@ -130,6 +130,7 @@ create table if not exists public.site_theme_active (
   applied_by  uuid,
   applied_at  timestamptz not null default now()
 );
+alter table public.site_theme_active alter column theme_id set default 'monochrome-modular';
 insert into public.site_theme_active (id) values (1) on conflict (id) do nothing;
 
 create table if not exists public.site_theme_history (
