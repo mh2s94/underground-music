@@ -66,7 +66,7 @@ await t("malicious RPC data is neutralised", async () => {
   assert.ok(!body.includes("ug-theme-tokens"));
   assert.strictEqual(res.headers.get("x-ug-theme"), "monochrome-modular@0;fallback");
 });
-await t("theme id outside the catalogue → monochrome-modular, no theme files", async () => {
+await t("legacy theme id falls back to the sole supported theme and its assets", async () => {
   reset(); rpc = { status: 200, body: { theme: "zz-theme", tokens: {}, version: 3 }, calls: 0 };
   const { body } = await mw("/"); assert.match(body, /data-theme="monochrome-modular"/); assert.ok(body.includes("/assets/themes/monochrome-modular/theme.css"));
 });
