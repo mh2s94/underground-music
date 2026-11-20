@@ -28,12 +28,13 @@ set theme_id = 'monochrome-modular',
     config_id = null,
     applied_at = now();
 
--- Old configs are drafts, not required for runtime. Deleting them also nulls any remaining FK refs.
-delete from public.site_theme_configs
+-- Delete legacy history first: its config_id FK uses ON DELETE SET NULL, which would
+-- otherwise try to update legacy theme rows after the singleton allow-list is installed.
+delete from public.site_theme_history
 where theme_id <> 'monochrome-modular';
 
--- Legacy history entries can no longer be restored under the single-theme policy.
-delete from public.site_theme_history
+-- Old configs are drafts, not required for runtime. Remaining FK references are nulled.
+delete from public.site_theme_configs
 where theme_id <> 'monochrome-modular';
 
 -- Record the cleanup as the latest reset event.
