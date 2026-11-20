@@ -253,15 +253,6 @@
 
   /* ---------------- events ---------------- */
   function bind() {
-    $("tmGrid").addEventListener("click", function (e) {
-      var b = e.target.closest(".tm-card"); if (!b) return;
-      if (b.getAttribute("aria-disabled") === "true") { toast("info", b.querySelector(".nm").textContent, "Tema ini dibangun pada tahap berikutnya dan belum bisa diterapkan."); return; }
-      if (b.dataset.theme !== st.themeId) {
-        startFrom(b.dataset.theme, {}, null, "", "");      // each theme starts from its own colours and fonts
-        toast("info", b.querySelector(".nm").textContent, "Editor memakai warna dan font bawaan tema ini.");
-      }
-      render();
-    });
     COLOURS.forEach(function (c) {
       $("tmc-" + c[0]).addEventListener("input", function (e) { st.values[c[0]] = e.target.value.toUpperCase(); $("tmt-" + c[0]).value = st.values[c[0]]; contrast(); renderSample(); });
       $("tmt-" + c[0]).addEventListener("change", function (e) {
