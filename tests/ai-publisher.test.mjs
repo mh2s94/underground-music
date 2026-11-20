@@ -1,40 +1,36 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import {
-  canonicalSourceUrl, normaliseTitle, sourceFromContent, validatePayload, wordCount
-} from "../functions/api/ai-publish.js";
+import { canonicalSourceUrl, normaliseTitle, sourceFromContent, validatePayload, wordCount } from "../functions/api/ai-publish.js";
 
 const endpoint = await readFile(new URL("../functions/api/ai-publish.js", import.meta.url), "utf8");
 const migration = await readFile(new URL("../supabase/20261120103205_create_ai_ingestion.sql", import.meta.url), "utf8");
 
 function payload(words = 355) {
   return {
-    BAND: "Example Band",
-    RELEASE: "Example Release",
+    BAND: "Example Band", RELEASE: "Example Release",
     TITLE: "Example Band announces new release",
     EXCERPT: "A concise summary of the release.",
-    TAGS: ["metalcore", "new release"],
-    GENRE: "Metalcore",
-    TYPE: "News",
-    SCORE: null,
+    TAGS: ["metalcore", "new release"], GENRE: "Metalcore",
+    TYPE: "News", SCORE: null,
     CONTENT: Array(words).fill("metalcore").join(" ") + "\n\nSource: [Official Site](https://example.com/news)"
   };
 }
 
 test("AI publisher is POST-only and requires the dedicated bearer token", () => {
-  assert.match(endpoint, /export async function onRequestPost/);
-  assert.match(endpoint, /AI_PUBLISH_TOKEN/);
-  assert.match(endpoint, /Bearer\\s/);
-  assert.match(endpoint, /return json\\(\\{ error: "Not allowed\\." \\}, 401\\)/);
+  assert.ok(endpoint.includes("export async function onRequestPost"));
+  assert.ok(endpoint.includes("AI_PUBLISH_TOKEN"));
+  assert.ok(endpoint.includes("Bearer"));
+  assert.ok(endpoint.includes('return json({ error: "Not allowed." }, 401)'));
 });
 
 test("publisher checks all three duplicate stores and the latest 300 articles", () => {
-  assert.match(endpoint, /query\\("articles".*ARTICLE_LIMIT/s);
-  assert.match(endpoint, /query\\("news_ingestion"/);
-  assert.match(endpoint, /query\\("ai_ingestion"/);
-  assert.match(endpoint, /normaliseTitle\\(item\\.title\\)/);
-  assert.match(endpoint, /contentHasSource\\(item\\.content, sourceUrl\\)/);
+  assert.ok(endpoint.includes('query("articles"'));
+  assert.ok(endpoint.includes("ARTICLE_LIMIT = 300"));
+  assert.ok(endpoint.includes('query("news_ingestion"'));
+  assert.ok(endpoint.includes('query("ai_ingestion"'));
+  assert.ok(endpoint.includes("normaliseTitle(item.title)"));
+  assert.ok(endpoint.includes("contentHasSource(item.content, sourceUrl)"));
 });
 
 test("content must be 350–500 words and end with an HTTPS Source Markdown line", () => {
@@ -58,15 +54,15 @@ test("titles are normalized consistently for duplicate detection", () => {
 });
 
 test("mode defaults to draft and only draft, review, published are accepted", () => {
-  assert.match(endpoint, /env\\.AI_PUBLISH_MODE \\|\\| "draft"/);
-  assert.match(endpoint, /\["draft", "review", "published"\]/);
+  assert.ok(endpoint.includes('env.AI_PUBLISH_MODE || "draft"'));
+  assert.ok(endpoint.includes('["draft", "review", "published"]'));
 });
 
 test("ingestion migration is RLS-enabled and denies client roles while granting service_role", () => {
-  assert.match(migration, /create table if not exists public\\.ai_ingestion/i);
+  assert.ok(migration.includes("create table if not exists public.ai_ingestion"));
   assert.ok(migration.toLowerCase().includes("enable row level security"));
-  assert.match(migration, /revoke all on table public\\.ai_ingestion from public, anon, authenticated/i);
-  assert.match(migration, /grant select, insert, update, delete on table public\\.ai_ingestion to service_role/i);
+  assert.ok(migration.includes("revoke all on table public.ai_ingestion from public, anon, authenticated"));
+  assert.ok(migration.includes("grant select, insert, update, delete on table public.ai_ingestion to service_role"));
   assert.ok(migration.includes("ai_ingestion_source_url_uidx"));
   assert.ok(migration.includes("ai_ingestion_title_key_uidx"));
 });
