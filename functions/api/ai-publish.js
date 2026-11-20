@@ -28,7 +28,7 @@ export async function onRequestPost({ request, env }) {
   const svc = serviceRest(env);
   if (svc.error) return json({ error: svc.error }, 503);
   const { rest } = svc;
-  const duplicate = await findDuplicate(rest, titleKey, sourceUrl);
+  const duplicate = await findDuplicate(rest, article.TITLE, titleKey, sourceUrl);
   if (duplicate.error) return json({ error: "Could not complete duplicate checks.", detail: duplicate.error }, 503);
   if (duplicate.match) return json({ error: "Duplicate article rejected.", duplicate: duplicate.match }, 409);
 
@@ -93,7 +93,7 @@ export async function onRequestPost({ request, env }) {
   return json({ ok: true, article_id: articleId, ingestion_id: ingestionId, status: mode, telegram }, 201);
 }
 
-async function findDuplicate(rest, titleKey, sourceUrl) {
+async function findDuplicate(rest, title, titleKey, sourceUrl) {
   const query = async (table, filters, select, limit = 5) => {
     const params = new URLSearchParams({ select, ...filters, limit: String(limit) });
     const response = await rest(table + "?" + params.toString());
@@ -103,7 +103,7 @@ async function findDuplicate(rest, titleKey, sourceUrl) {
   const [recent, newsByUrl, newsByTitle, aiByUrl, aiByTitle] = await Promise.all([
     query("articles", { order: "created_at.desc" }, "title,content", ARTICLE_LIMIT),
     query("news_ingestion", { source_url: "eq." + sourceUrl }, "title,source_url"),
-    query("news_ingestion", { title: "ilike." + titleKey.replace(/\s+/g, " ") }, "title,source_url"),
+    query("news_ingestion", { title: "ilike." + title }, "title,source_url"),
     query("ai_ingestion", { source_url: "eq." + sourceUrl }, "title,source_url"),
     query("ai_ingestion", { title_key: "eq." + titleKey }, "title,title_key,source_url")
   ]);
