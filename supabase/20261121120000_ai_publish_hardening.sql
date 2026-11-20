@@ -16,7 +16,7 @@ create or replace function public.ug_claim_ai_publish(
 )
 returns table(ingestion_id uuid, outcome text, daily_count integer)
 language plpgsql
-security definer
+security invoker
 set search_path = public, pg_temp
 as $function$
 declare
