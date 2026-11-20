@@ -10,7 +10,7 @@
 --   ug_active_theme()             public read of the active theme (only id, tokens, version)
 --   ug_apply_theme(...)           Apply (admins with 2FA only), atomic, writes history
 --   ug_restore_theme(id)          Restore a history entry (admins with 2FA only)
---   ug_reset_theme()              Back to the default theme "neon-bento" (admins with 2FA only)
+--   ug_reset_theme()              Back to the permanent default theme "monochrome-modular" (admins with 2FA only)
 --
 -- Security model
 --   * RLS is on for all three tables. Visitors have NO table access at all (privileges revoked);
@@ -95,14 +95,14 @@ revoke all on function public.ug_clean_theme_tokens(jsonb) from public, anon, se
 grant execute on function public.ug_clean_theme_tokens(jsonb) to authenticated;
 
 -- Theme ids in the catalogue (assets/theme/schema.js THEMES). Whether a theme is "ready" is
--- decided by the code; the edge and the browser fall back to neon-bento for any theme that is not.
+-- decided by the code; the edge and the browser fall back to monochrome-modular for any theme that is not.
 create or replace function public.ug_theme_id_ok(p_id text)
 returns boolean
 language sql
 immutable
 set search_path = ''
 as $$
-  select p_id = any (array['neon-bento','front-page','the-pit','setlist','mosh-grid','control-room',
+  select p_id = any (array['monochrome-modular','front-page','the-pit','setlist','mosh-grid','control-room',
     'main-stage','xerox-zine','index','frequency','scene-atlas','monochrome-modular']);
 $$;
 revoke all on function public.ug_theme_id_ok(text) from public, anon, service_role;
@@ -124,7 +124,7 @@ create table if not exists public.site_theme_configs (
 
 create table if not exists public.site_theme_active (
   id          smallint primary key default 1 check (id = 1),
-  theme_id    text not null default 'neon-bento' check (public.ug_theme_id_ok(theme_id)),
+  theme_id    text not null default 'monochrome-modular' check (public.ug_theme_id_ok(theme_id)),
   tokens      jsonb not null default '{}'::jsonb,
   version     bigint not null default 1 check (version > 0),
   config_id   uuid references public.site_theme_configs(id) on delete set null,
@@ -221,11 +221,11 @@ set search_path = ''
 as $$
   select coalesce(
     (select pg_catalog.jsonb_build_object(
-              'theme',   case when public.ug_theme_id_ok(a.theme_id) then a.theme_id else 'neon-bento' end,
+              'theme',   case when public.ug_theme_id_ok(a.theme_id) then a.theme_id else 'monochrome-modular' end,
               'tokens',  public.ug_clean_theme_tokens(a.tokens),
               'version', a.version)
        from public.site_theme_active a where a.id = 1),
-    '{"theme":"neon-bento","tokens":{},"version":0}'::jsonb);
+    '{"theme":"monochrome-modular","tokens":{},"version":0}'::jsonb);
 $$;
 revoke all on function public.ug_active_theme() from public;
 grant execute on function public.ug_active_theme() to anon, authenticated, service_role;
@@ -308,7 +308,7 @@ language sql
 security definer
 set search_path = ''
 as $$
-  select public.ug_theme_write('reset', 'neon-bento', '{}'::jsonb, null, coalesce(nullif(p_note, ''), 'Reset to default'));
+  select public.ug_theme_write('reset', 'monochrome-modular', '{}'::jsonb, null, coalesce(nullif(p_note, ''), 'Reset to default'));
 $$;
 
 revoke all on function public.ug_apply_theme(text, jsonb, uuid, text) from public, anon, service_role;
@@ -326,7 +326,7 @@ notify pgrst, 'reload schema';
 -- Verification (run after the migration; read-only)
 -- ---------------------------------------------------------------------------------------------
 -- 1. RLS on:        select relname, relrowsecurity from pg_class where relname like 'site_theme_%';
--- 2. Public read:   select public.ug_active_theme();      -- {"theme":"neon-bento","tokens":{},"version":1}
+-- 2. Public read:   select public.ug_active_theme();      -- {"theme":"monochrome-modular","tokens":{},"version":1}
 -- 3. Policies:      select tablename, policyname, cmd, roles from pg_policies where tablename like 'site_theme_%';
 -- 4. Grants:        select table_name, grantee, privilege_type from information_schema.role_table_grants
 --                   where table_name like 'site_theme_%' and grantee in ('anon','authenticated','service_role') order by 1,2,3;
