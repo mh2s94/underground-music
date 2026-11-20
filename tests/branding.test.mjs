@@ -17,6 +17,10 @@ assert.match(home, /class="splash-inner"[\s\S]*?src="\/assets\/icon-512\.png"/, 
 assert.match(home, /class="profile-emblem"[\s\S]*?src="\/assets\/icon-512\.png"/, "About profile emblem must use Glitch Wave");
 assert.match(home, /class="ft-brand"[\s\S]*?src="\/assets\/icon-512\.png"/, "footer brand must use Glitch Wave");
 
+const shell = read("assets/themes/monochrome-modular/shell.js");
+assert.match(shell, /class="mm-mark" src="\/assets\/icon-512\.png"/, "Monochrome Modular top-bar mark must use Glitch Wave");
+assert.doesNotMatch(shell, /<svg class="mm-mark"/, "legacy geometric top-bar mark must be removed");
+
 const launch = read("assets/launch.js");
 assert.match(launch, /class="lm-logo"[\s\S]*?src="\/assets\/icon-512\.png"/, "animated launch overlay must use Glitch Wave");
 
