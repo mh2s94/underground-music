@@ -201,7 +201,7 @@ export function injectTheme(html, cfg) {
   const q = `?v=${version}.${S.ASSET_REV}`;
   if (meta && meta.css) parts.push(`<link rel="stylesheet" href="/assets/themes/${theme}/theme.css${q}" data-ug-theme-asset>`);
   // The theme's own tokens (schema) with the admin's overrides on top; both validated again here.
-  const all = S.sanitizeTokens(Object.assign({}, meta && meta.tokens, cfg.tokens));
+  const all = S.sanitizeTokens(cfg.tokens);
   const css = S.cssText(all.css, ":root:root:root");
   if (css) parts.push(`<style id="ug-theme-tokens">${css.replace(/</g, "\\3c ")}</style>`);
   const fonts = S.fontHref(all.tokens);
