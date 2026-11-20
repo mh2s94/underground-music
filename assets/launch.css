@@ -4,7 +4,7 @@
 
 #lm { position: fixed; inset: 0; z-index: 650; pointer-events: none; overflow: hidden; }
 #lm .lm-logo { position: absolute; inset: 0; display: grid; place-items: center; align-content: center; gap: 16px; }
-#lm .lm-logo svg { width: 84px; height: 84px; filter: drop-shadow(0 0 10px var(--neon)) drop-shadow(0 0 28px var(--neon)); }
+#lm .lm-logo svg { display: block; width: 112px; height: 70px; color: var(--ink); filter: drop-shadow(0 0 12px currentColor); }
 #lm .lm-word { font: 400 clamp(20px, 6.4vw, 30px)/1 var(--display); letter-spacing: .38em; padding-left: .38em; color: var(--ug-accent-2-tint); text-shadow: var(--uv-glow); }
 
 /* Shared item timing: --lm-base waits for the overlay on first open. */
@@ -20,7 +20,7 @@ body[data-lm="09"].lm-intro { --lm-base: 520ms; --lm-step: 55ms; }
 body[data-lm="09"].lm-intro .main { animation: lm04shake .35s .3s both; }
 #lm.m09 { background: var(--void); animation: lmFade .3s .45s ease both; }
 #lm.m09 .lm-word { font-size: clamp(30px, 10vw, 80px); letter-spacing: .2em; padding-left: .2em; white-space: nowrap; color: #fff; text-shadow: var(--neon-glow); animation: lm09slam .4s cubic-bezier(.6, 0, .9, .5) both; }
-#lm.m09 .lm-logo svg { display: none; }
+#lm.m09 .lm-logo svg { width: clamp(112px, 28vw, 220px); height: auto; }
 @keyframes lm09slam { from { transform: scale(3.2) rotate(-6deg); opacity: 0; } 70% { opacity: 1; } to { transform: none; } }
 @keyframes lm09l { from { opacity: 0; translate: -140px 0; rotate: -14deg; } to { opacity: 1; translate: 0 0; rotate: 0deg; } } /* translate/rotate keep hover transform working */
 @keyframes lm09r { from { opacity: 0; translate: 140px 0; rotate: 12deg; } to { opacity: 1; translate: 0 0; rotate: 0deg; } }

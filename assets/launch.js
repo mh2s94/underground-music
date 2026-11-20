@@ -6,7 +6,7 @@
   let introUntil = 0, timer = 0;
   if (!reduce) document.body.dataset.lm = ID;
 
-  const LOGO = '<div class="lm-logo"><div class="lm-word">UNDERGROUND</div></div>';
+  const LOGO = '<div class="lm-logo"><svg class="glitch-wave-mark" width="112" height="70" viewBox="0 0 64 40" fill="none" role="img" aria-hidden="true" focusable="false"><path d="M2 20h7l5-11 7 22 7-17 6 10 7-16 7 24 6-12h10" stroke="currentColor" stroke-width="3.2" stroke-linecap="square" stroke-linejoin="miter"/></svg></div>';
   window.UGLaunch = {
     intro(splash) {
       if (splash) splash.remove();

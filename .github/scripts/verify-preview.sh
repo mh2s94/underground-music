@@ -32,13 +32,16 @@ done
 echo "Deployment stable after $i checks"; sleep 10; echo
 
 echo "== 1. Build output = repository root, static files untouched, _routes.json exclusions"
-for f in assets/bento.css assets/theme/schema.js assets/theme/runtime.js assets/favicon.svg robots.txt manifest.webmanifest; do
+for f in assets/bento.css assets/theme/schema.js assets/theme/runtime.js robots.txt manifest.webmanifest; do
   n=$(echo "$f" | tr '/.' '__'); get "$PREV/$f" "$n"
   s=$(status "$n")
   if [[ "$s" == 200 && "$(sha "$T/$n.b")" == "$(sha "$f")" ]]; then ok "/$f 200, byte-identical to repo file"; else bad "/$f status $s or body differs from repo"; fi
   has "$n" x-ug-theme && bad "/$f has x-ug-theme (middleware touched a static file)" || ok "/$f no x-ug-theme"
   [[ "$(hval "$n" x-frame-options)" == "deny" ]] && ok "/$f X-Frame-Options DENY (from _headers)" || bad "/$f X-Frame-Options missing"
 done
+get "$PREV/assets/favicon.svg" legacy_svg
+legacy_type=$(hval legacy_svg content-type)
+if [[ "$(status legacy_svg)" == 404 || "$legacy_type" == text/html* ]]; then ok "/assets/favicon.svg no longer served as an image (legacy favicon removed)"; else bad "/assets/favicon.svg still served as $legacy_type"; fi
 get "$PREV/favicon.ico" ico; get "$PROD/favicon.ico" ico_p
 [[ "$(status ico)" == "$(status ico_p)" ]] && ok "/favicon.ico status $(status ico) same as production" || bad "/favicon.ico $(status ico) vs production $(status ico_p)"
 has ico x-ug-theme && bad "/favicon.ico has x-ug-theme" || ok "/favicon.ico no x-ug-theme"

@@ -33,6 +33,8 @@ jobs:
         run: node tests/trim.test.mjs
       - name: Bug fixes (unsubscribe, newsletter retry, broken URLs, reader shares, band 404, markdown links)
         run: node tests/bugfixes.test.mjs
+      - name: Glitch Wave branding (header, splash, launch, favicon on every page)
+        run: node tests/branding.test.mjs
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 15
