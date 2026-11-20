@@ -80,6 +80,7 @@
     clearTheme();
     state.theme = S.DEFAULT_THEME;
     state.fallback = String(reason || "error").slice(0, 40);
+    setTokens(S.DEFAULTS);
     root.setAttribute("data-theme-fallback", state.fallback);
     emit("theme-fallback", { reason: state.fallback });
   }
@@ -122,8 +123,8 @@
   function load(id, opts) {
     opts = opts || {};
     var version = String(opts.version || "0").replace(/[^0-9a-zA-Z.-]/g, "").slice(0, 32) || "0";
-    var m = String(id) === S.DEFAULT_THEME ? meta(id) : null;
-    if (!m || m.status !== "ready") { fallback("unknown-theme"); return Promise.resolve(S.DEFAULT_THEME); }
+    var m = String(id) === S.DEFAULT_THEME ? meta(id) : meta(S.DEFAULT_THEME);
+    if (!m || m.status !== "ready") { fallback("default-theme-unavailable"); return Promise.resolve(S.DEFAULT_THEME); }
 
     clearTheme();
     root.removeAttribute("data-theme-fallback");
@@ -167,9 +168,9 @@
   // Boot: accept the theme named in the HTML only if it is a ready theme.
   (function boot() {
     var id = root.getAttribute("data-theme");
-    if (!id) { root.setAttribute("data-theme", S.DEFAULT_THEME); return; }
+    if (!id) { load(S.DEFAULT_THEME, { version: "0" }); return; }
     var m = id === S.DEFAULT_THEME ? meta(id) : null;
-    if (!m || m.status !== "ready") { fallback("unknown-theme"); return; }
+    if (!m || m.status !== "ready") { load(S.DEFAULT_THEME, { version: "0" }); return; }
     state.theme = m.id;
     state.version = root.getAttribute("data-theme-version") || "0";
   })();
