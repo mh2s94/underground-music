@@ -11,7 +11,7 @@ const E = await import(R + "functions/api/theme/edge.js");
 const MW = await import(R + "functions/_middleware.js");
 let n = 0; const t = async (name, fn) => { await fn(); n++; console.log("ok -", name); };
 const reset = () => { globalThis.caches.default = new MemCache(); E._resetMemoryForTests(); };
-let rpc = { status: 200, body: { theme: "neon-bento", tokens: {}, version: 1 }, delay: 0, calls: 0 };
+let rpc = { status: 200, body: { theme: "monochrome-modular", tokens: {}, version: 1 }, delay: 0, calls: 0 };
 const realFetch = globalThis.fetch;
 globalThis.fetch = async (url, init = {}) => {
   if (String(url).includes("/rest/v1/rpc/ug_active_theme")) {
@@ -38,19 +38,19 @@ await t("security headers identical to _headers /* block", () => {
   assert.deepStrictEqual(fromFile, { ...E.SECURITY_HEADERS });
 });
 await t("default theme: html attrs set, no style block, headers on", async () => {
-  reset(); rpc = { status: 200, body: { theme: "neon-bento", tokens: {}, version: 7 }, calls: 0 };
+  reset(); rpc = { status: 200, body: { theme: "monochrome-modular", tokens: {}, version: 7 }, calls: 0 };
   const { res, body } = await mw("/");
-  assert.match(body, /<html lang="en" data-theme="neon-bento" data-theme-version="7">/);
+  assert.match(body, /<html lang="en" data-theme="monochrome-modular" data-theme-version="7">/);
   assert.ok(!body.includes("ug-theme-tokens"));
   assert.strictEqual(res.headers.get("x-frame-options"), "DENY");
   assert.ok(res.headers.get("content-security-policy").includes("frame-ancestors 'none'"));
   assert.ok(res.headers.get("strict-transport-security"));
   assert.strictEqual(res.headers.get("etag"), null); assert.strictEqual(res.headers.get("content-length"), null);
   assert.strictEqual(res.headers.get("cache-control"), "public, max-age=0, must-revalidate");
-  assert.strictEqual(res.headers.get("x-ug-theme"), "neon-bento@7;rpc");
+  assert.strictEqual(res.headers.get("x-ug-theme"), "monochrome-modular@7;rpc");
 });
 await t("tokens injected as validated CSS before </head>", async () => {
-  reset(); rpc = { status: 200, body: { theme: "neon-bento", tokens: { accent: "#00ff88", radius: 8, fontDisplay: "fraunces" }, version: 9 }, calls: 0 };
+  reset(); rpc = { status: 200, body: { theme: "monochrome-modular", tokens: { accent: "#00ff88", radius: 8, fontDisplay: "fraunces" }, version: 9 }, calls: 0 };
   const { body } = await mw("/");
   const st = body.match(/<style id="ug-theme-tokens">([^<]*)<\/style>/)[1];
   for (const part of ["--ug-accent:#00FF88", "--ug-accent-rgb:0 255 136", '--ug-font-display:"Fraunces", Georgia, serif', "--ug-radius:8px"]) assert.ok(st.includes(part), part + " in " + st);
@@ -59,39 +59,39 @@ await t("tokens injected as validated CSS before </head>", async () => {
   assert.ok(body.indexOf("ug-theme-tokens") < body.indexOf("</head>") && body.indexOf("ug-theme-tokens") > body.indexOf("bento.css"));
 });
 await t("malicious RPC data is neutralised", async () => {
-  reset(); rpc = { status: 200, body: { theme: 'neon-bento"><script>alert(1)</script>', tokens: { accent: "red;}</style><script>x()</script>", "--ug-accent": "#000000", bg: "#000000\"/>" }, version: "1; drop" }, calls: 0 };
+  reset(); rpc = { status: 200, body: { theme: 'monochrome-modular"><script>alert(1)</script>', tokens: { accent: "red;}</style><script>x()</script>", "--ug-accent": "#000000", bg: "#000000\"/>" }, version: "1; drop" }, calls: 0 };
   const { body, res } = await mw("/");
   assert.ok(!/alert\(1\)|x\(\)|<\/style><script/.test(body));
-  assert.match(body, /data-theme="neon-bento" data-theme-version="0"/);
+  assert.match(body, /data-theme="monochrome-modular" data-theme-version="0"/);
   assert.ok(!body.includes("ug-theme-tokens"));
-  assert.strictEqual(res.headers.get("x-ug-theme"), "neon-bento@0;fallback");
+  assert.strictEqual(res.headers.get("x-ug-theme"), "monochrome-modular@0;fallback");
 });
-await t("theme id outside the catalogue → neon-bento, no theme files", async () => {
+await t("theme id outside the catalogue → monochrome-modular, no theme files", async () => {
   reset(); rpc = { status: 200, body: { theme: "zz-theme", tokens: {}, version: 3 }, calls: 0 };
-  const { body } = await mw("/"); assert.match(body, /data-theme="neon-bento"/); assert.ok(!body.includes("/assets/themes/"));
+  const { body } = await mw("/"); assert.match(body, /data-theme="monochrome-modular"/); assert.ok(!body.includes("/assets/themes/"));
 });
 for (const [name, setup] of [["RPC 404 (migration not applied)", () => ({ status: 404, body: { code: "PGRST202" } })], ["RPC 500", () => ({ status: 500, body: "x" })],
   ["network error", () => ({ status: 200, throw: true })], ["non-JSON body", () => ({ status: 200, body: "<html>oops" })], ["JSON array", () => ({ status: 200, body: [1, 2] })],
-  ["null", () => ({ status: 200, body: "null" })], ["huge body", () => ({ status: 200, body: JSON.stringify({ theme: "neon-bento", pad: "x".repeat(30000) }) })]]) {
+  ["null", () => ({ status: 200, body: "null" })], ["huge body", () => ({ status: 200, body: JSON.stringify({ theme: "monochrome-modular", pad: "x".repeat(30000) }) })]]) {
   await t("fallback: " + name, async () => { reset(); rpc = { ...setup(), calls: 0 }; const { res, body } = await mw("/");
-    assert.match(body, /data-theme="neon-bento" data-theme-version="0"/); assert.strictEqual(res.status, 200); assert.ok(body.includes("</html>")); assert.ok(res.headers.get("content-security-policy")); });
+    assert.match(body, /data-theme="monochrome-modular" data-theme-version="0"/); assert.strictEqual(res.status, 200); assert.ok(body.includes("</html>")); assert.ok(res.headers.get("content-security-policy")); });
 }
-await t("fallback: cold cache + timeout after 2000 ms → neon-bento, page still served", async () => {
-  reset(); rpc = { status: 200, body: { theme: "neon-bento", tokens: { accent: "#00ff88" }, version: 5 }, delay: 3000, calls: 0 };
+await t("fallback: cold cache + timeout after 2000 ms → monochrome-modular, page still served", async () => {
+  reset(); rpc = { status: 200, body: { theme: "monochrome-modular", tokens: { accent: "#00ff88" }, version: 5 }, delay: 3000, calls: 0 };
   const t0 = Date.now(); const { body, res } = await mw("/"); const ms = Date.now() - t0;
   assert.ok(ms >= 1900 && ms < 2600, "took " + ms); assert.match(body, /data-theme-version="0"/); assert.match(res.headers.get("x-ug-theme"), /;fallback$/);
 });
 await t("cache: second request uses edge cache (1 RPC call)", async () => {
-  reset(); rpc = { status: 200, body: { theme: "neon-bento", tokens: { accent: "#00ff88" }, version: 4 }, calls: 0 };
-  await mw("/"); const { res } = await mw("/privacy.html"); assert.strictEqual(rpc.calls, 1); assert.strictEqual(res.headers.get("x-ug-theme"), "neon-bento@4;cache");
+  reset(); rpc = { status: 200, body: { theme: "monochrome-modular", tokens: { accent: "#00ff88" }, version: 4 }, calls: 0 };
+  await mw("/"); const { res } = await mw("/privacy.html"); assert.strictEqual(rpc.calls, 1); assert.strictEqual(res.headers.get("x-ug-theme"), "monochrome-modular@4;cache");
 });
 await t("cache: failures remembered briefly (no hammering)", async () => {
   reset(); rpc = { status: 404, body: {}, calls: 0 }; await mw("/"); await mw("/"); await mw("/terms.html"); assert.strictEqual(rpc.calls, 1);
 });
 await t("cache TTLs: 30 s ok, 15 s fail; purge works", async () => {
   assert.strictEqual(E.CACHE_TTL, 30); assert.strictEqual(E.CACHE_TTL_FAIL, 15);
-  reset(); rpc = { status: 200, body: { theme: "neon-bento", tokens: {}, version: 1 }, calls: 0 };
-  await mw("/"); rpc.body = { theme: "neon-bento", tokens: { accent: "#123456" }, version: 2 };
+  reset(); rpc = { status: 200, body: { theme: "monochrome-modular", tokens: {}, version: 1 }, calls: 0 };
+  await mw("/"); rpc.body = { theme: "monochrome-modular", tokens: { accent: "#123456" }, version: 2 };
   assert.match((await mw("/")).body, /data-theme-version="1"/);
   assert.ok(await E.purgeActiveTheme("https://music.mikasa.me/api/theme/refresh"));
   assert.match((await mw("/")).body, /data-theme-version="2"/);
@@ -104,7 +104,7 @@ await t("conditional headers stripped so the browser never gets a stale 304", as
   assert.strictEqual(seen.headers.get("if-none-match"), null); assert.strictEqual(seen.headers.get("if-modified-since"), null); assert.strictEqual(seen.headers.get("x-keep"), "1");
 });
 await t("admin.html: security headers, no theme", async () => {
-  reset(); rpc = { status: 200, body: { theme: "neon-bento", tokens: { accent: "#00ff88" }, version: 4 }, calls: 0 };
+  reset(); rpc = { status: 200, body: { theme: "monochrome-modular", tokens: { accent: "#00ff88" }, version: 4 }, calls: 0 };
   const html = fs.readFileSync(R + "admin.html", "utf8");
   for (const p of ["/admin.html", "/admin"]) { const { res, body } = await mw(p, { html }); assert.strictEqual(body, html); assert.strictEqual(res.headers.get("x-frame-options"), "DENY"); assert.strictEqual(res.headers.get("x-ug-theme"), null); }
   assert.strictEqual(rpc.calls, 0);
@@ -116,27 +116,27 @@ await t("non-HTML and API responses untouched", async () => {
   assert.strictEqual(rpc.calls, 0);
 });
 await t("SSR page (/a/…) themed, keeps no-store when asked", async () => {
-  reset(); rpc = { status: 200, body: { theme: "neon-bento", tokens: { accent: "#00ff88" }, version: 4 }, calls: 0 };
+  reset(); rpc = { status: 200, body: { theme: "monochrome-modular", tokens: { accent: "#00ff88" }, version: 4 }, calls: 0 };
   const a = await mw("/a/some-story", { resHeaders: { "cache-control": "public, max-age=0, s-maxage=300" } });
   assert.match(a.body, /data-theme-version="4"/); assert.strictEqual(a.res.headers.get("cache-control"), "public, max-age=0, must-revalidate");
   const u = await mw("/unsubscribe", { html: "<!doctype html><html lang=en><head></head><body>x</body></html>", resHeaders: { "cache-control": "no-store" } });
-  assert.strictEqual(u.res.headers.get("cache-control"), "no-store"); assert.match(u.body, /data-theme="neon-bento"/); assert.ok(u.res.headers.get("content-security-policy"));
+  assert.strictEqual(u.res.headers.get("cache-control"), "no-store"); assert.match(u.body, /data-theme="monochrome-modular"/); assert.ok(u.res.headers.get("content-security-policy"));
 });
 await t("HEAD, 404 themed, 5xx and redirects headers only", async () => {
   reset(); rpc.calls = 0;
   const h = await mw("/", { method: "HEAD" }); assert.ok(h.res.headers.get("content-security-policy")); assert.strictEqual(rpc.calls, 0);
-  const nf = await mw("/missing", { status: 404, html: "<html><head></head><body>404</body></html>" }); assert.match(nf.body, /data-theme="neon-bento"/); assert.strictEqual(nf.res.status, 404); assert.ok(nf.res.headers.get("x-frame-options"));
+  const nf = await mw("/missing", { status: 404, html: "<html><head></head><body>404</body></html>" }); assert.match(nf.body, /data-theme="monochrome-modular"/); assert.strictEqual(nf.res.status, 404); assert.ok(nf.res.headers.get("x-frame-options"));
   const se = await mw("/x", { status: 500, html: "<html><head></head><body>e</body></html>" }); assert.ok(!se.body.includes("data-theme")); assert.ok(se.res.headers.get("content-security-policy"));
   const rd = await mw("/old", { status: 301, html: "" }); assert.ok(rd.res.headers.get("x-frame-options"));
   const post = await mw("/", { method: "POST" }); assert.strictEqual(post.res.headers.get("x-ug-theme"), null);
 });
 await t("existing data-theme attributes are replaced, not duplicated", () => {
-  const out = E.injectTheme('<html lang="en" data-theme="x" data-theme-fallback=1 data-theme-version=\'9\'><head></head></html>', { theme: "neon-bento", tokens: {}, version: "3" });
+  const out = E.injectTheme('<html lang="en" data-theme="x" data-theme-fallback=1 data-theme-version=\'9\'><head></head></html>', { theme: "monochrome-modular", tokens: {}, version: "3" });
   assert.strictEqual((out.match(/data-theme=/g) || []).length, 1); assert.ok(!out.includes("fallback")); assert.match(out, /data-theme-version="3"/);
 });
-await t("fragment without <html> left alone", () => { assert.strictEqual(E.injectTheme("<p>hi</p>", { theme: "neon-bento", tokens: { accent: "#000000" }, version: "1" }), "<p>hi</p>"); });
+await t("fragment without <html> left alone", () => { assert.strictEqual(E.injectTheme("<p>hi</p>", { theme: "monochrome-modular", tokens: { accent: "#000000" }, version: "1" }), "<p>hi</p>"); });
 await t("RPC called with publishable key in apikey only (no Bearer for sb_ keys), POST, timeout signal", async () => {
-  reset(); rpc = { status: 200, body: { theme: "neon-bento", tokens: {}, version: 1 }, calls: 0 }; await mw("/");
+  reset(); rpc = { status: 200, body: { theme: "monochrome-modular", tokens: {}, version: 1 }, calls: 0 }; await mw("/");
   assert.strictEqual(rpc.lastInit.method, "POST"); assert.ok(rpc.lastInit.headers.apikey.startsWith("sb_publishable_")); assert.strictEqual(rpc.lastInit.headers.Authorization, undefined); assert.ok(rpc.lastInit.signal);
 });
 await t("isPageRequest / isThemedPath", () => {
@@ -147,7 +147,7 @@ await t("isPageRequest / isThemedPath", () => {
 });
 
 // ---------------------------------------------------------------- resilience (last good theme)
-const GOOD = { theme: "neon-bento", tokens: { accent: "#00FF88", radius: 12.5 }, version: 7 };
+const GOOD = { theme: "monochrome-modular", tokens: { accent: "#00FF88", radius: 12.5 }, version: 7 };
 const expire = (path) => { const c = globalThis.caches.default; const k = "https://music.mikasa.me" + path; const e = c.m.get(k); if (e) e.exp = 0; };
 const hdr = async (p = "/") => (await mw(p)).res.headers.get("x-ug-theme");
 const accentOf = (body) => (/--ug-accent:(#[0-9A-F]{6})/.exec(body) || [])[1];
@@ -158,7 +158,7 @@ await t("timeout is 2000 ms; cache TTLs unchanged (30 s / 15 s); last good kept 
 await t("cold cache: RPC read, stored as active (30 s) and as last good (7 days)", async () => {
   reset(); rpc = { status: 200, body: GOOD, calls: 0 };
   const { body, res } = await mw("/");
-  assert.strictEqual(res.headers.get("x-ug-theme"), "neon-bento@7;rpc"); assert.strictEqual(accentOf(body), "#00FF88");
+  assert.strictEqual(res.headers.get("x-ug-theme"), "monochrome-modular@7;rpc"); assert.strictEqual(accentOf(body), "#00FF88");
   const c = globalThis.caches.default;
   const lg = c.m.get("https://music.mikasa.me/__ug/theme-last-good"); assert.ok(lg); assert.deepStrictEqual(JSON.parse(lg.body), GOOD);
   assert.ok(lg.exp - Date.now() > 604000 * 1000);
@@ -167,29 +167,29 @@ await t("cold cache: RPC read, stored as active (30 s) and as last good (7 days)
 await t("cache hit: no RPC call, source cache", async () => {
   reset(); rpc = { status: 200, body: GOOD, calls: 0 };
   await mw("/"); const { res, body } = await mw("/terms"); assert.strictEqual(rpc.calls, 1);
-  assert.strictEqual(res.headers.get("x-ug-theme"), "neon-bento@7;cache"); assert.strictEqual(accentOf(body), "#00FF88");
+  assert.strictEqual(res.headers.get("x-ug-theme"), "monochrome-modular@7;cache"); assert.strictEqual(accentOf(body), "#00FF88");
 });
 await t("high-latency location: RPC answering in 1.5 s is used (was a fallback at 800 ms)", async () => {
   reset(); rpc = { status: 200, body: GOOD, delay: 1500, calls: 0 };
-  const t0 = Date.now(); const h = await hdr(); assert.strictEqual(h, "neon-bento@7;rpc"); assert.ok(Date.now() - t0 >= 1450);
+  const t0 = Date.now(); const h = await hdr(); assert.strictEqual(h, "monochrome-modular@7;rpc"); assert.ok(Date.now() - t0 >= 1450);
 });
-await t("RPC timeout after a good read → last good theme (stale), not neon-bento defaults", async () => {
+await t("RPC timeout after a good read → last good theme (stale), not monochrome-modular defaults", async () => {
   reset(); rpc = { status: 200, body: GOOD, calls: 0 }; await mw("/"); expire("/__ug/theme-active");
   rpc = { status: 200, body: { ...GOOD, version: 8 }, delay: 3000, calls: 0 };
   const t0 = Date.now(); const { res, body } = await mw("/"); const ms = Date.now() - t0;
-  assert.strictEqual(res.headers.get("x-ug-theme"), "neon-bento@7;stale"); assert.strictEqual(accentOf(body), "#00FF88"); assert.ok(ms < 2600, "took " + ms);
+  assert.strictEqual(res.headers.get("x-ug-theme"), "monochrome-modular@7;stale"); assert.strictEqual(accentOf(body), "#00FF88"); assert.ok(ms < 2600, "took " + ms);
 });
 for (const [name, set] of [["HTTP 500", { status: 500, body: "x" }], ["HTTP 404 (function missing)", { status: 404, body: { code: "PGRST202" } }],
   ["network error", { status: 200, throw: true }], ["non-JSON", { status: 200, body: "<html>" }], ["unknown theme id", { status: 200, body: { theme: "evil", tokens: {}, version: 9 } }],
-  ["one invalid token", { status: 200, body: { theme: "neon-bento", tokens: { accent: "#00FF88", bg: "red" }, version: 9 } }],
-  ["version not an integer", { status: 200, body: { theme: "neon-bento", tokens: {}, version: "9; x" } }],
-  ["injection attempt", { status: 200, body: { theme: 'neon-bento"><script>', tokens: { accent: "</style><script>" }, version: 9 } }]]) {
+  ["one invalid token", { status: 200, body: { theme: "monochrome-modular", tokens: { accent: "#00FF88", bg: "red" }, version: 9 } }],
+  ["version not an integer", { status: 200, body: { theme: "monochrome-modular", tokens: {}, version: "9; x" } }],
+  ["injection attempt", { status: 200, body: { theme: 'monochrome-modular"><script>', tokens: { accent: "</style><script>" }, version: 9 } }]]) {
   await t("RPC error → last good: " + name, async () => {
     reset(); rpc = { status: 200, body: GOOD, calls: 0 }; await mw("/"); expire("/__ug/theme-active");
     rpc = { ...set, calls: 0 };
     const { res, body } = await mw("/");
-    assert.strictEqual(res.headers.get("x-ug-theme"), "neon-bento@7;stale"); assert.strictEqual(accentOf(body), "#00FF88");
-    assert.match(body, /<html lang="en" data-theme="neon-bento" data-theme-version="7">/);
+    assert.strictEqual(res.headers.get("x-ug-theme"), "monochrome-modular@7;stale"); assert.strictEqual(accentOf(body), "#00FF88");
+    assert.match(body, /<html lang="en" data-theme="monochrome-modular" data-theme-version="7">/);
     const st = /<style id="ug-theme-tokens">([^<]*)<\/style>/.exec(body)[1]; assert.ok(!/evil|red|script|style/.test(st), st);
     assert.ok(!body.includes("evil") && !body.includes("</style><script>"), "no bad value in the page");
     assert.deepStrictEqual(JSON.parse(globalThis.caches.default.m.get("https://music.mikasa.me/__ug/theme-last-good").body), GOOD, "invalid data never becomes last good");
@@ -198,28 +198,28 @@ for (const [name, set] of [["HTTP 500", { status: 500, body: "x" }], ["HTTP 404 
 await t("failure is remembered 15 s and still serves last good (cache-stale), 1 RPC call", async () => {
   reset(); rpc = { status: 200, body: GOOD, calls: 0 }; await mw("/"); expire("/__ug/theme-active");
   rpc = { status: 500, body: "x", calls: 0 }; await mw("/");
-  assert.strictEqual(await hdr("/privacy"), "neon-bento@7;cache-stale"); assert.strictEqual(rpc.calls, 1);
+  assert.strictEqual(await hdr("/privacy"), "monochrome-modular@7;cache-stale"); assert.strictEqual(rpc.calls, 1);
   const f = globalThis.caches.default.m.get("https://music.mikasa.me/__ug/theme-active"); assert.ok(f.exp - Date.now() <= 15000);
 });
-await t("no valid config ever read → neon-bento defaults (fallback / cache-fallback)", async () => {
+await t("no valid config ever read → monochrome-modular defaults (fallback / cache-fallback)", async () => {
   reset(); rpc = { status: 500, body: "x", calls: 0 };
-  assert.strictEqual(await hdr(), "neon-bento@0;fallback"); assert.strictEqual(await hdr(), "neon-bento@0;cache-fallback");
+  assert.strictEqual(await hdr(), "monochrome-modular@0;fallback"); assert.strictEqual(await hdr(), "monochrome-modular@0;cache-fallback");
 });
 await t("isolate restart (memory lost): last good comes from the edge cache", async () => {
   reset(); rpc = { status: 200, body: GOOD, calls: 0 }; await mw("/"); expire("/__ug/theme-active"); E._resetMemoryForTests();
-  rpc = { status: 200, throw: true, calls: 0 }; assert.strictEqual(await hdr(), "neon-bento@7;stale");
+  rpc = { status: 200, throw: true, calls: 0 }; assert.strictEqual(await hdr(), "monochrome-modular@7;stale");
 });
 await t("edge cache lost but same isolate: last good comes from memory", async () => {
   reset(); rpc = { status: 200, body: GOOD, calls: 0 }; await mw("/"); globalThis.caches.default = new MemCache();
-  rpc = { status: 200, throw: true, calls: 0 }; assert.strictEqual(await hdr(), "neon-bento@7;stale");
+  rpc = { status: 200, throw: true, calls: 0 }; assert.strictEqual(await hdr(), "monochrome-modular@7;stale");
 });
 await t("tampered last-good cache entry is validated again and ignored", async () => {
   reset(); const c = globalThis.caches.default;
-  await c.put(E.lastGoodKey("https://music.mikasa.me/"), new Response(JSON.stringify({ theme: "neon-bento", tokens: { accent: "</style>" }, version: 3 }), { headers: { "cache-control": "max-age=999" } }));
+  await c.put(E.lastGoodKey("https://music.mikasa.me/"), new Response(JSON.stringify({ theme: "monochrome-modular", tokens: { accent: "</style>" }, version: 3 }), { headers: { "cache-control": "max-age=999" } }));
   rpc = { status: 500, body: "x", calls: 0 }; const { body, res } = await mw("/");
-  assert.strictEqual(res.headers.get("x-ug-theme"), "neon-bento@0;fallback"); assert.ok(!body.includes("</style>\""));
+  assert.strictEqual(res.headers.get("x-ug-theme"), "monochrome-modular@0;fallback"); assert.ok(!body.includes("</style>\""));
   await c.put(E.cacheKey("https://music.mikasa.me/"), new Response(JSON.stringify({ ok: true, value: { theme: "x<y", tokens: {}, version: 1 } }), { headers: { "cache-control": "max-age=999" } }));
-  assert.strictEqual(await hdr(), "neon-bento@0;cache-fallback");
+  assert.strictEqual(await hdr(), "monochrome-modular@0;cache-fallback");
 });
 await t("last good is per host (a preview never serves the production theme)", async () => {
   reset(); rpc = { status: 200, body: GOOD, calls: 0 }; await mw("/");
@@ -229,62 +229,31 @@ await t("last good is per host (a preview never serves the production theme)", a
 });
 await t("Apply/Restore/Reset flow: refresh replaces last good; purge keeps it for outages", async () => {
   reset(); rpc = { status: 200, body: GOOD, calls: 0 }; await mw("/");
-  const RESET = { theme: "neon-bento", tokens: {}, version: 8 };
+  const RESET = { theme: "monochrome-modular", tokens: {}, version: 8 };
   rpc = { status: 200, body: RESET, calls: 0 };
   assert.ok(await E.purgeActiveTheme("https://music.mikasa.me/api/theme/refresh"));
   const now = await E.readActiveTheme({}, "https://music.mikasa.me/api/theme/refresh", { bypassCache: true });
   assert.strictEqual(now.version, "8"); assert.strictEqual(now.source, "rpc");
   assert.deepStrictEqual(JSON.parse(globalThis.caches.default.m.get("https://music.mikasa.me/__ug/theme-last-good").body), RESET);
   await E.purgeActiveTheme("https://music.mikasa.me/"); rpc = { status: 500, body: "x", calls: 0 };
-  const { body, res } = await mw("/"); assert.strictEqual(res.headers.get("x-ug-theme"), "neon-bento@8;stale"); assert.ok(!body.includes("ug-theme-tokens"));
+  const { body, res } = await mw("/"); assert.strictEqual(res.headers.get("x-ug-theme"), "monochrome-modular@8;stale"); assert.ok(!body.includes("ug-theme-tokens"));
 });
-await t("a non-default theme is kept as last good and still served, with its files, when the RPC fails", async () => {
-  reset(); rpc = { status: 200, body: { theme: "front-page", tokens: {}, version: 4 }, calls: 0 };
-  assert.strictEqual(await hdr(), "front-page@4;rpc");
-  assert.ok(globalThis.caches.default.m.get("https://music.mikasa.me/__ug/theme-last-good"));
-  expire("/__ug/theme-active"); rpc = { status: 500, body: "x", calls: 0 };
-  const { body, res } = await mw("/");
-  assert.strictEqual(res.headers.get("x-ug-theme"), "front-page@4;stale");
-  assert.ok(body.includes("/assets/themes/front-page/theme.css") && body.includes("--ug-bg:#F3EFE6"));
-});
-await t("subrequests per page: cache hit = 1 cache read; miss = 1 read + 1 RPC + 1–2 writes; failure + last good = 1 read + 1 RPC + 1 write (+1 read after restart)", async () => {
-  reset(); const c = () => globalThis.caches.default.ops; rpc = { status: 200, body: GOOD, calls: 0 };
-  await mw("/"); assert.deepStrictEqual([c().match, rpc.calls, c().put], [1, 1, 2], "first miss");
-  await mw("/"); assert.deepStrictEqual([c().match, rpc.calls, c().put], [2, 1, 2], "hit");
-  expire("/__ug/theme-active"); await mw("/"); assert.deepStrictEqual([c().match, rpc.calls, c().put], [3, 2, 3], "miss, unchanged theme: no last-good write");
-  expire("/__ug/theme-active"); rpc.status = 500; rpc.body = "x"; await mw("/"); assert.deepStrictEqual([c().match, rpc.calls, c().put], [4, 3, 4], "failure, last good from memory");
-  E._resetMemoryForTests(); expire("/__ug/theme-active"); await mw("/"); assert.deepStrictEqual([c().match, rpc.calls, c().put], [6, 4, 5], "failure after restart: +1 read for last good");
-});
-
-// ---------------------------------------------------------------- themes 01–10 at the edge
-await t("ready theme: edge links theme.css + shell.js with ?v=<version>.<ASSET_REV>, base tokens injected", async () => {
-  reset(); rpc = { status: 200, body: { theme: "front-page", tokens: {}, version: 12 }, calls: 0 };
+await t("only Monochrome Modular is injected with its CSS and shell", async () => {
+  reset(); rpc = { status: 200, body: { theme: "monochrome-modular", tokens: {}, version: 12 }, calls: 0 };
   const { body, res } = await mw("/");
   const q = "?v=12." + globalThis.UGThemeSchema.ASSET_REV;
-  assert.match(body, /data-theme="front-page" data-theme-version="12"/);
-  assert.ok(body.includes('href="/assets/themes/front-page/theme.css' + q + '" data-ug-theme-asset'), "theme.css link");
-  assert.ok(body.includes('src="/assets/themes/front-page/shell.js' + q + '" defer data-ug-theme-asset'), "shell.js script");
-  const st = body.match(/<style id="ug-theme-tokens">([^<]*)<\/style>/)[1];
-  assert.ok(st.includes("--ug-bg:#F3EFE6") && st.includes("--ug-accent:#B80F2A"), "theme base tokens");
-  assert.ok(body.indexOf("theme.css") < body.indexOf("ug-theme-tokens"), "tokens after the theme file");
-  assert.ok(body.includes("fonts.googleapis.com/css2?family=Fraunces"), "theme font loaded");
-  assert.strictEqual(res.headers.get("x-ug-theme"), "front-page@12;rpc");
+  assert.match(body, /data-theme="monochrome-modular" data-theme-version="12"/);
+  assert.ok(body.includes('/assets/themes/monochrome-modular/theme.css' + q));
+  assert.ok(body.includes('/assets/themes/monochrome-modular/shell.js' + q));
+  assert.ok(body.includes("--ug-bg:#080808") && body.includes("--ug-accent:#F4F4F4"));
+  assert.strictEqual(res.headers.get("x-ug-theme"), "monochrome-modular@12;rpc");
 });
-await t("admin overrides win over the theme's own tokens", async () => {
-  reset(); rpc = { status: 200, body: { theme: "index", tokens: { accent: "#123456" }, version: 3 }, calls: 0 };
-  const st = (await mw("/")).body.match(/<style id="ug-theme-tokens">([^<]*)<\/style>/)[1];
-  assert.ok(st.includes("--ug-accent:#123456") && !st.includes("--ug-accent:#D7000F"));
-  assert.ok(st.includes("--ug-bg:#FFFFFF"), "other theme tokens stay");
+await t("legacy theme ids are rejected and use the permanent default", async () => {
+  reset(); rpc = { status: 200, body: { theme: "front-page", tokens: {}, version: 2 }, calls: 0 };
+  const { body, res } = await mw("/");
+  assert.match(body, /data-theme="monochrome-modular"/);
+  assert.strictEqual(res.headers.get("x-ug-theme"), "monochrome-modular@0;fallback");
+  assert.ok(!body.includes("/assets/themes/front-page/"));
 });
-await t("every ready theme renders at the edge with its files and a valid token block", async () => {
-  for (const th of globalThis.UGThemeSchema.THEMES) {
-    reset(); rpc = { status: 200, body: { theme: th.id, tokens: {}, version: 1 }, calls: 0 };
-    const { body, res } = await mw("/");
-    assert.strictEqual(res.headers.get("x-ug-theme"), th.id + "@1;rpc", th.id);
-    assert.strictEqual(body.includes("/assets/themes/" + th.id + "/theme.css"), th.css, th.id + " css");
-    assert.strictEqual(body.includes("/assets/themes/" + th.id + "/shell.js"), th.js, th.id + " js");
-    assert.strictEqual(body.includes('id="ug-theme-tokens"'), Object.keys(th.tokens).length > 0, th.id + " tokens");
-  }
-});
-console.log(`\n${n} edge/middleware tests passed`);
+console.log(`\\n${n} edge/middleware tests passed`);
 globalThis.fetch = realFetch;
