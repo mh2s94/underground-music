@@ -3,6 +3,21 @@
 -- Safe to re-run. Does not touch articles, users, or unrelated data.
 begin;
 
+-- Tighten the database allow-list as well as cleaning existing rows.
+create or replace function public.ug_theme_id_ok(p_id text)
+returns boolean
+language sql
+immutable
+set search_path = ''
+as $
+  select p_id = 'monochrome-modular';
+$;
+revoke all on function public.ug_theme_id_ok(text) from public, anon, service_role;
+grant execute on function public.ug_theme_id_ok(text) to authenticated;
+
+alter table public.site_theme_active
+  alter column theme_id set default 'monochrome-modular';
+
 -- Ensure there is exactly one active row and that it points to the sole supported theme.
 insert into public.site_theme_active (id, theme_id, tokens, version, config_id, applied_at)
 values (1, 'monochrome-modular', '{}'::jsonb, 1, null, now())
