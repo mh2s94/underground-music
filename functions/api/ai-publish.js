@@ -232,11 +232,3 @@ function contentHasSource(content, sourceUrl) {
   for (const match of matches) if (canonicalSourceUrl(match[1]) === sourceUrl) return true;
   return false;
 }
-function slugify(value) {
-  return String(value || "").toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "ai-article";
-}
-async function sha256(value) {
-  const bytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
-  return [...new Uint8Array(bytes)].map((b) => b.toString(16).padStart(2, "0")).join("");
-}
