@@ -61,11 +61,14 @@ begin
   end if;
 
   if lower(coalesce(p_mode, 'draft')) = 'published' then
-    select count(*)::integer into v_count
+    select count(distinct i.id)::integer into v_count
     from public.ai_ingestion i
-    join public.articles a on a.id = i.article_id
-    where a.status = 'published'
-      and a.published_at >= v_day_start;
+    where exists (
+      select 1 from public.articles a
+      where a.status = 'published'
+        and a.published_at >= v_day_start
+        and (a.id = i.article_id or (i.article_id is null and a.title = i.title))
+    );
     if v_count >= p_daily_limit then
       return query select coalesce(v_existing.id, null::uuid), 'daily_limit'::text, v_count;
       return;
