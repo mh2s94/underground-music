@@ -21,6 +21,8 @@ jobs:
           node-version: 22
       - name: RSS publisher safety tests
         run: node tests/news-publisher.test.mjs
+      - name: AI publisher validation, idempotency and RLS tests
+        run: node tests/ai-publisher.test.mjs
       - name: Theme edge tests (middleware, cache, last good, timeouts)
         run: node tests/theme-edge.test.mjs
       - name: supabase-js pinned version + SRI hash
