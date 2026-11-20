@@ -2,15 +2,15 @@
 
 ## Scope
 
-The publisher creates short English news briefs from the public RSS/Atom data already exposed by Scene Radar. It does not call an AI provider, translate text, fetch or scrape the original article page, or reuse arbitrary RSS images. The source publication remains the authoritative report; each brief links directly to it.
+The publisher stores short English news briefs from the public RSS/Atom data already exposed by Scene Radar. It does not call an AI provider, translate text, fetch or scrape the original article page, or reuse arbitrary RSS images. The source publication remains the authoritative report; each brief links directly to it.
 
 Scene Radar extracts direct YouTube video URLs present inside each RSS item (including `watch`, `youtu.be`, `embed`, `shorts`, and `live` URL forms). It validates the 11-character video ID and passes it to the publisher. The publisher appends a standalone YouTube URL to the article content, which the existing article reader renders as an embedded player, and sets the matching YouTube thumbnail. It does not infer videos from headlines or open source article pages to search for a video. If an RSS item has no direct YouTube URL, the article is published without a video and without a cover image.
 
-Each article uses `kind = 'News'`, `status = 'published'`, `author_id = null`, and the actual site publication time in `published_at`. The source's publication timestamp is preserved separately in `news_ingestion.source_published_at` and printed in the attribution.
+Each raw RSS brief uses `kind = 'News'`, `status = 'draft'`, `author_id = null`, and `published_at = null`. Drafts are excluded from public article listings, article routes, and `sitemap.xml` until published separately. The source's publication timestamp is preserved separately in `news_ingestion.source_published_at` and printed in the attribution.
 
 ## Editorial eligibility
 
-An RSS item is published only when all checks pass:
+An RSS item is saved as a draft only when all checks pass:
 
 - Title is 12–180 characters.
 - Source name is present.
@@ -25,13 +25,13 @@ A brief contains the RSS summary, source name/date, and an explicit link to the 
 ## Limits and schedule
 
 - GitHub Actions runs every 30 minutes.
-- Maximum 3 successful publications per invocation.
-- Maximum 10 publisher-tracked publications per UTC calendar day.
+- Maximum 3 successful draft saves per invocation.
+- Maximum 10 publisher-tracked drafts per UTC calendar day.
 - GitHub Actions concurrency prevents overlapping scheduled runs.
 - A failed item can be retried after 20 minutes; successful and already-claimed items are not duplicated.
 - The manual workflow-dispatch trigger uses the same limits and production endpoint.
 
-The 10/day cap is enforced against the publisher tracking table. Do not run multiple independent publisher clients in parallel.
+The 10/day cap is enforced against draft and published records in the publisher tracking table. Do not run multiple independent publisher clients in parallel.
 
 ## Database
 
@@ -51,11 +51,11 @@ The endpoint is disabled unless `NEWS_PUBLISH_TOKEN` is set.
 
 If the GitHub secret is absent, the scheduled workflow exits without calling the endpoint. If the Cloudflare secret is absent or mismatched, the endpoint returns 401. If the table is missing, it returns 503 and publishes nothing.
 
-The existing Telegram digest remains separate and information-only. After a new article is published, the publisher sends the editor a Telegram notification when `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` are configured. A Telegram notification failure does not unpublish the article.
+The existing Telegram digest remains separate and information-only. After a new draft is saved, the publisher sends the editor a Telegram notification when `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` are configured. A Telegram notification failure does not unpublish the article.
 
 ## Rollback
 
-Disable the GitHub Actions workflow or remove its `NEWS_PUBLISH_TOKEN` secret to stop scheduled publishing. Do not delete `news_ingestion`; it is the idempotency record and audit trail. Existing articles remain published and must be unpublished manually by an editor if necessary.
+Disable the GitHub Actions workflow or remove its `NEWS_PUBLISH_TOKEN` secret to stop scheduled publishing. Do not delete `news_ingestion`; it is the idempotency record and audit trail. Existing articles already published by the previous behavior remain published and must be unpublished manually by an editor if necessary. New RSS briefs are drafts.
 
 ## Verification
 
