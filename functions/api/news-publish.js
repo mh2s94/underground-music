@@ -38,8 +38,8 @@ export async function onRequestPost({ request, env }) {
   const dayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())).toISOString();
   const dailyParams = new URLSearchParams({
     select: "source_hash",
-    status: "eq.published",
-    published_at: "gte." + dayStart,
+    status: "in.(draft,published)",
+    created_at: "gte." + dayStart,
     limit: String(DAILY_LIMIT + 1)
   });
   const dailyRes = await rest("news_ingestion?" + dailyParams.toString());
@@ -57,11 +57,11 @@ export async function onRequestPost({ request, env }) {
     .filter((item) => qualityGate(item, now.getTime()))
     .sort((a, b) => Date.parse(b.date) - Date.parse(a.date));
 
-  let published = 0;
+  let drafted = 0;
   let skipped = items.length - candidates.length;
   const outcomes = [];
   for (const item of candidates) {
-    if (published >= RUN_LIMIT || dailyCount >= DAILY_LIMIT) break;
+    if (drafted >= RUN_LIMIT || dailyCount >= DAILY_LIMIT) break;
     const sourceUrl = canonicalUrl(item.link);
     if (!sourceUrl) { skipped++; continue; }
     const sourceHash = await sha256(sourceUrl);
@@ -97,9 +97,9 @@ export async function onRequestPost({ request, env }) {
       excerpt: summary.slice(0, 500),
       content,
       kind: "News",
-      status: "published",
+      status: "draft",
       author_id: null,
-      published_at: now.toISOString(),
+      published_at: null,
       category_id: categoryId,
       genre: genres.join(", ").slice(0, 120) || null,
       tags: genres,
@@ -121,21 +121,21 @@ export async function onRequestPost({ request, env }) {
     const done = await rest("news_ingestion?source_hash=eq." + sourceHash, {
       method: "PATCH",
       headers: { Prefer: "return=minimal" },
-      body: JSON.stringify({ status: "published", article_id: articleId, published_at: now.toISOString(), updated_at: now.toISOString(), last_error: null })
+      body: JSON.stringify({ status: "draft", article_id: articleId, updated_at: now.toISOString(), last_error: null })
     });
     if (!done.ok) {
       // The article exists; leave an explicit operational signal rather than trying to insert it again.
-      outcomes.push({ title: article.title, status: "published_tracking_update_failed" });
+      outcomes.push({ title: article.title, status: "draft_tracking_update_failed" });
     } else {
-      outcomes.push({ title: article.title, status: "published", article_id: articleId });
+      outcomes.push({ title: article.title, status: "draft", article_id: articleId });
     }
-    published++;
+    drafted++;
     dailyCount++;
 
     if (env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_CHAT_ID) {
-      const message = "<b>UNDERGROUND · News published</b>\n" +
+      const message = "<b>UNDERGROUND · News draft saved</b>\n" +
         esc(article.title) + "\n" +
-        "<a href=\"" + SITE + "/a/" + encodeURIComponent(slug) + "\">Open article</a> · " +
+        "Saved as draft; not visible on the public site.\n" +
         "<a href=\"" + esc(sourceUrl) + "\">Original source</a>";
       const sent = await tg(env, "sendMessage", {
         chat_id: env.TELEGRAM_CHAT_ID,
@@ -156,12 +156,12 @@ export async function onRequestPost({ request, env }) {
   }
 
   return json({
-    published,
+    drafted,
     skipped,
     failed: outcomes.filter((x) => x.status === "failed").length,
     run_limit: RUN_LIMIT,
-    daily_limit: DAILY_LIMIT,
-    daily_total: dailyCount,
+    daily_draft_limit: DAILY_LIMIT,
+    daily_draft_total: dailyCount,
     outcomes
   });
 }
