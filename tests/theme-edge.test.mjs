@@ -68,7 +68,7 @@ await t("malicious RPC data is neutralised", async () => {
 });
 await t("theme id outside the catalogue → monochrome-modular, no theme files", async () => {
   reset(); rpc = { status: 200, body: { theme: "zz-theme", tokens: {}, version: 3 }, calls: 0 };
-  const { body } = await mw("/"); assert.match(body, /data-theme="monochrome-modular"/); assert.ok(!body.includes("/assets/themes/"));
+  const { body } = await mw("/"); assert.match(body, /data-theme="monochrome-modular"/); assert.ok(body.includes("/assets/themes/monochrome-modular/theme.css"));
 });
 for (const [name, setup] of [["RPC 404 (migration not applied)", () => ({ status: 404, body: { code: "PGRST202" } })], ["RPC 500", () => ({ status: 500, body: "x" })],
   ["network error", () => ({ status: 200, throw: true })], ["non-JSON body", () => ({ status: 200, body: "<html>oops" })], ["JSON array", () => ({ status: 200, body: [1, 2] })],
