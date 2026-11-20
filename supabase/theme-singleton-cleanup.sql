@@ -8,7 +8,7 @@ insert into public.site_theme_active (id, theme_id, tokens, version, config_id, 
 values (1, 'monochrome-modular', '{}'::jsonb, 1, null, now())
 on conflict (id) do update
 set theme_id = 'monochrome-modular',
-    tokens = public.ug_clean_theme_tokens(public.site_theme_active.tokens),
+    tokens = '{}'::jsonb,
     version = public.site_theme_active.version + 1,
     config_id = null,
     applied_at = now();
