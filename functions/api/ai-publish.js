@@ -2,6 +2,7 @@
 // Protected by AI_PUBLISH_TOKEN. The caller supplies the article; this endpoint does not call an AI provider.
 import { same, serviceRest } from "./draft-lib.js";
 import { tg, esc, SITE } from "./telegram/lib.js";
+import { canonicalGenre } from "./genres-data.js";
 
 const ARTICLE_LIMIT = 300;
 const ALLOWED_TYPES = new Set(["Review", "News", "Feature", "Interview"]);
@@ -20,10 +21,12 @@ export async function onRequestPost({ request, env }) {
   const validation = validatePayload(payload);
   if (validation.error) return json({ error: validation.error }, 400);
   const article = validation.article;
+  const dailyLimit = parseDailyLimit(env.AI_PUBLISH_DAILY_LIMIT);
   const sourceUrl = canonicalSourceUrl(sourceFromContent(article.CONTENT).url);
   const titleKey = normaliseTitle(article.TITLE);
   const mode = String(env.AI_PUBLISH_MODE || "draft").trim().toLowerCase();
   if (!["draft", "review", "published"].includes(mode)) return json({ error: "AI_PUBLISH_MODE must be draft, review, or published." }, 503);
+  if (dailyLimit.error) return json({ error: dailyLimit.error }, 503);
 
   const svc = serviceRest(env);
   if (svc.error) return json({ error: svc.error }, 503);
@@ -32,38 +35,55 @@ export async function onRequestPost({ request, env }) {
   if (duplicate.error) return json({ error: "Could not complete duplicate checks.", detail: duplicate.error }, 503);
   if (duplicate.match) return json({ error: "Duplicate article rejected.", duplicate: duplicate.match }, 409);
 
-  const claim = await rest("ai_ingestion", {
+  const claim = await rest("rpc/ug_claim_ai_publish", {
     method: "POST", headers: { Prefer: "return=representation" },
     body: JSON.stringify({
-      title: article.TITLE, title_key: titleKey, source_url: sourceUrl, status: "processing",
-      band: article.BAND || null, release: article.RELEASE || null, genre: article.GENRE,
-      article_type: article.TYPE, score: article.SCORE ?? null
+      p_title: article.TITLE, p_title_key: titleKey, p_source_url: sourceUrl,
+      p_band: article.BAND || null, p_release: article.RELEASE || null,
+      p_genre: article.GENRE, p_article_type: article.TYPE, p_score: article.SCORE ?? null,
+      p_mode: mode, p_daily_limit: dailyLimit.value
     })
   });
   if (!claim.ok) {
-    const detail = (await claim.text()).slice(0, 240);
-    if (claim.status === 409 || /duplicate key|unique constraint/i.test(detail)) return json({ error: "Duplicate article rejected.", duplicate: "ai_ingestion" }, 409);
-    return json({ error: "Could not claim this article in ai_ingestion.", detail }, 503);
+    const detail = (await claim.text()).slice(0, 300);
+    return json({ error: "Could not reserve this AI publish attempt.", detail }, 503);
   }
-  const ingestionId = (await claim.json())?.[0]?.id;
-  if (!ingestionId) return json({ error: "ai_ingestion did not return a claim id." }, 503);
+  const claimResult = (await claim.json())?.[0];
+  if (claimResult?.outcome === "daily_limit") return json({ error: "Daily AI publish limit reached.", limit: dailyLimit.value, published_today: claimResult.daily_count }, 429);
+  if (!claimResult?.ingestion_id) return json({ error: "AI publish claim returned no id." }, 503);
+  if (["duplicate", "in_progress", "already_saved"].includes(claimResult.outcome)) {
+    return json({ error: claimResult.outcome === "in_progress" ? "This article is already being processed." : "Duplicate article rejected.", duplicate: claimResult.outcome }, 409);
+  }
+  if (!["claimed", "retry"].includes(claimResult.outcome)) return json({ error: "Unexpected AI publish claim result.", detail: claimResult.outcome || null }, 503);
+  const ingestionId = claimResult.ingestion_id;
 
   const now = new Date();
-  const suffix = await sha256(sourceUrl);
-  const slug = slugify(article.TITLE).slice(0, 78).replace(/-+$/g, "") + "-" + suffix.slice(0, 10);
-  const row = {
-    title: article.TITLE, slug, excerpt: article.EXCERPT, content: article.CONTENT.trim(),
-    band_name: article.BAND || null, album_name: article.RELEASE || null, tags: article.TAGS,
-    genre: article.GENRE, kind: article.TYPE, score: article.SCORE ?? null,
-    status: mode, author_id: null, published_at: mode === "published" ? now.toISOString() : null
-  };
-  const inserted = await rest("articles", {
-    method: "POST", headers: { Prefer: "return=representation" }, body: JSON.stringify(row)
-  });
-  if (!inserted.ok) {
-    const detail = (await inserted.text()).slice(0, 500);
-    await updateClaim(rest, ingestionId, { status: "failed", last_error: detail, updated_at: new Date().toISOString() });
-    return json({ error: "Article insert failed.", detail }, 502);
+  let slug = "";
+  let inserted = null;
+  let insertDetail = "";
+  for (let attempt = 0; attempt < 6; attempt++) {
+    try {
+      slug = await nextAvailableSlug(rest, article.TITLE);
+    } catch (error) {
+      insertDetail = String(error?.message || error).slice(0, 500);
+      break;
+    }
+    const row = {
+      title: article.TITLE, slug, excerpt: article.EXCERPT, content: article.CONTENT.trim(),
+      band_name: article.BAND || null, album_name: article.RELEASE || null, tags: article.TAGS,
+      genre: article.GENRE, kind: article.TYPE, score: article.SCORE ?? null,
+      status: mode, author_id: null, published_at: mode === "published" ? now.toISOString() : null
+    };
+    inserted = await rest("articles", {
+      method: "POST", headers: { Prefer: "return=representation" }, body: JSON.stringify(row)
+    });
+    if (inserted.ok) break;
+    insertDetail = (await inserted.text()).slice(0, 500);
+    if (!isSlugConflict(insertDetail)) break;
+  }
+  if (!inserted?.ok) {
+    await updateClaim(rest, ingestionId, { status: "failed", last_error: insertDetail || "Article insert failed.", updated_at: new Date().toISOString() });
+    return json({ error: "Article insert failed.", detail: insertDetail }, 502);
   }
   const articleId = (await inserted.json())?.[0]?.id || null;
   if (!articleId) {
@@ -80,7 +100,7 @@ export async function onRequestPost({ request, env }) {
   if (env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_CHAT_ID) {
     try {
       const message = "<b>UNDERGROUND · AI article " + esc(mode) + "</b>\n" +
-        esc(row.title) + "\n" +
+        esc(article.TITLE) + "\n" +
         "<a href=\""+SITE+"/a/"+encodeURIComponent(slug)+"\">Open article</a> · " +
         "<a href=\""+esc(sourceUrl)+"\">Source</a>";
       const sent = await tg(env, "sendMessage", {
@@ -102,10 +122,10 @@ async function findDuplicate(rest, title, titleKey, sourceUrl) {
   };
   const [recent, newsByUrl, newsByTitle, aiByUrl, aiByTitle] = await Promise.all([
     query("articles", { order: "created_at.desc" }, "title,content", ARTICLE_LIMIT),
-    query("news_ingestion", { source_url: "eq." + sourceUrl }, "title,source_url"),
-    query("news_ingestion", { title: "ilike." + title }, "title,source_url"),
-    query("ai_ingestion", { source_url: "eq." + sourceUrl }, "title,source_url"),
-    query("ai_ingestion", { title_key: "eq." + titleKey }, "title,title_key,source_url")
+    query("news_ingestion", { source_url: "eq." + sourceUrl, status: "in.(draft,published)" }, "title,source_url"),
+    query("news_ingestion", { title: "ilike." + title, status: "in.(draft,published)" }, "title,source_url"),
+    query("ai_ingestion", { source_url: "eq." + sourceUrl, status: "eq.processed" }, "title,source_url"),
+    query("ai_ingestion", { title_key: "eq." + titleKey, status: "eq.processed" }, "title,title_key,source_url")
   ]);
   for (const result of [recent, newsByUrl, newsByTitle, aiByUrl, aiByTitle]) if (result.error) return { error: result.error };
   const articleMatch = recent.rows.find((item) =>
@@ -138,7 +158,9 @@ export function validatePayload(value) {
   };
   const invalid = Object.values(fields).find((v) => typeof v === "string" && v.includes(" must be a non-empty string"));
   if (invalid) return { error: invalid };
-  const { BAND, RELEASE, TITLE, EXCERPT, GENRE, TYPE, CONTENT } = fields;
+  const { BAND, RELEASE, TITLE, EXCERPT, TYPE, CONTENT } = fields;
+  const GENRE = canonicalGenre(fields.GENRE);
+  if (!GENRE) return { error: "GENRE must match an official site genre. Use the most specific supported sub-genre." };
   if (TITLE.length < 12) return { error: "TITLE must contain at least 12 characters." };
   if (!ALLOWED_TYPES.has(TYPE)) return { error: "TYPE must be Review, News, Feature, or Interview." };
   if (!Array.isArray(value.TAGS) || value.TAGS.length > 12 || value.TAGS.some((tag) => typeof tag !== "string" || !tag.trim() || tag.trim().length > 40)) {
@@ -155,6 +177,33 @@ export function validatePayload(value) {
   if (!source) return { error: "CONTENT must end with a final line in the form Source: [site](https://source-link)." };
   if (!canonicalSourceUrl(source.url)) return { error: "Source link must be a valid HTTPS URL." };
   return { article: { BAND, RELEASE, TITLE, EXCERPT, TAGS: [...new Set(value.TAGS.map((tag) => tag.trim()))], GENRE, TYPE, SCORE, CONTENT } };
+}
+
+export function parseDailyLimit(value) {
+  if (value == null || String(value).trim() === "") return { value: 10 };
+  const n = Number(value);
+  return Number.isSafeInteger(n) && n >= 1 && n <= 1000 ? { value: n } : { error: "AI_PUBLISH_DAILY_LIMIT must be an integer from 1 to 1000." };
+}
+
+export function slugify(value) {
+  return String(value || "").toLowerCase().normalize("NFKD").replace(/[\\u0300-\\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "ai-article";
+}
+
+export async function nextAvailableSlug(rest, title) {
+  const base = slugify(title).slice(0, 90).replace(/-+$/g, "") || "ai-article";
+  for (let n = 1; n <= 100; n++) {
+    const candidate = n === 1 ? base : base + "-" + n;
+    const params = new URLSearchParams({ select: "id", slug: "eq." + candidate, limit: "1" });
+    const response = await rest("articles?" + params.toString());
+    if (!response.ok) throw new Error("Could not check article slug availability: " + (await response.text()).slice(0, 180));
+    if (!(await response.json()).length) return candidate;
+  }
+  throw new Error("Could not allocate a unique article slug.");
+}
+
+function isSlugConflict(detail) {
+  return /duplicate key|unique constraint|articles_slug_key|slug.*already exists/i.test(String(detail || ""));
 }
 
 export function wordCount(value) {
@@ -182,12 +231,4 @@ function contentHasSource(content, sourceUrl) {
   const matches = String(content || "").matchAll(/^Source:\s*\[[^\]]+\]\((https:\/\/[^)\s]+)\)\s*$/gm);
   for (const match of matches) if (canonicalSourceUrl(match[1]) === sourceUrl) return true;
   return false;
-}
-function slugify(value) {
-  return String(value || "").toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "ai-article";
-}
-async function sha256(value) {
-  const bytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
-  return [...new Uint8Array(bytes)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
