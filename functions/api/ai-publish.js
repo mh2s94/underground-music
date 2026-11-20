@@ -49,8 +49,8 @@ export async function onRequestPost({ request, env }) {
     return json({ error: "Could not reserve this AI publish attempt.", detail }, 503);
   }
   const claimResult = (await claim.json())?.[0];
+  if (claimResult?.outcome === "daily_limit") return json({ error: "Daily AI publish limit reached.", limit: dailyLimit.value, published_today: claimResult.daily_count }, 429);
   if (!claimResult?.ingestion_id) return json({ error: "AI publish claim returned no id." }, 503);
-  if (claimResult.outcome === "daily_limit") return json({ error: "Daily AI publish limit reached.", limit: dailyLimit.value, published_today: claimResult.daily_count }, 429);
   if (["duplicate", "in_progress", "already_saved"].includes(claimResult.outcome)) {
     return json({ error: claimResult.outcome === "in_progress" ? "This article is already being processed." : "Duplicate article rejected.", duplicate: claimResult.outcome }, 409);
   }
