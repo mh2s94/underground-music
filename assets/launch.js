@@ -6,7 +6,7 @@
   let introUntil = 0, timer = 0;
   if (!reduce) document.body.dataset.lm = ID;
 
-  const LOGO = '<div class="lm-logo"><div class="lm-word">UNDERGROUND</div></div>';
+  const LOGO = '<div class="lm-logo"><img src="/assets/icon-512.png" alt="" width="112" height="112"><div class="lm-word">UNDERGROUND</div></div>';
   window.UGLaunch = {
     intro(splash) {
       if (splash) splash.remove();
