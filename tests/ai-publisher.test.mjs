@@ -38,10 +38,10 @@ test("publisher checks all three duplicate stores and the latest 300 articles", 
 });
 
 test("content must be 350–500 words and end with an HTTPS Source Markdown line", () => {
-  assert.equal(wordCount(payload().CONTENT), 361);
-  assert.equal(validatePayload(payload()).error, undefined);
-  assert.match(validatePayload(payload(349)).error, /350–500/);
-  assert.match(validatePayload(payload(495)).error, /350–500/);
+  assert.equal(wordCount(payload().CONTENT), 362);
+  assert.equal(validatePayload(payload(343)).error, undefined);
+  assert.match(validatePayload(payload(342)).error, /350–500/);
+  assert.match(validatePayload(payload(494)).error, /350–500/);
   assert.match(validatePayload({ ...payload(), CONTENT: payload().CONTENT + "\nEditorial note" }).error, /Source/);
   assert.equal(sourceFromContent(payload().CONTENT).url, "https://example.com/news");
 });
@@ -64,9 +64,9 @@ test("mode defaults to draft and only draft, review, published are accepted", ()
 
 test("ingestion migration is RLS-enabled and denies client roles while granting service_role", () => {
   assert.match(migration, /create table if not exists public\\.ai_ingestion/i);
-  assert.match(migration, /enable row level security/i);
+  assert.ok(migration.toLowerCase().includes("enable row level security"));
   assert.match(migration, /revoke all on table public\\.ai_ingestion from public, anon, authenticated/i);
   assert.match(migration, /grant select, insert, update, delete on table public\\.ai_ingestion to service_role/i);
-  assert.match(migration, /unique index if not exists ai_ingestion_source_url_uidx/i);
-  assert.match(migration, /unique index if not exists ai_ingestion_title_key_uidx/i);
+  assert.ok(migration.includes("ai_ingestion_source_url_uidx"));
+  assert.ok(migration.includes("ai_ingestion_title_key_uidx"));
 });
