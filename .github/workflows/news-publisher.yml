@@ -1,4 +1,4 @@
-name: RSS news publisher
+name: Scene Radar RSS draft ingester
 
 on:
   schedule:
@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Publish eligible RSS briefs
+      - name: Save eligible RSS briefs as drafts
         env:
           TOKEN: ${{ secrets.NEWS_PUBLISH_TOKEN }}
         run: |

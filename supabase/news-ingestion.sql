@@ -7,7 +7,7 @@ create table if not exists public.news_ingestion (
   source text not null,
   source_published_at timestamptz not null,
   status text not null default 'processing'
-    check (status in ('processing', 'published', 'failed', 'skipped')),
+    check (status in ('processing', 'draft', 'published', 'failed', 'skipped')),
   article_id uuid references public.articles(id) on delete set null,
   attempts integer not null default 1 check (attempts >= 1),
   last_error text,
@@ -16,6 +16,11 @@ create table if not exists public.news_ingestion (
   published_at timestamptz,
   telegram_notified_at timestamptz
 );
+
+-- Keep existing production installations compatible with the new draft state.
+alter table public.news_ingestion drop constraint if exists news_ingestion_status_check;
+alter table public.news_ingestion add constraint news_ingestion_status_check
+  check (status in ('processing', 'draft', 'published', 'failed', 'skipped'));
 
 create index if not exists news_ingestion_published_at_idx
   on public.news_ingestion (published_at desc) where status = 'published';

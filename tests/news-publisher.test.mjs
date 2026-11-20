@@ -45,6 +45,14 @@ test("YouTube RSS extraction supports watch, short, embed, shorts and nocookie U
   assert.equal(findYoutubeVideo("<description>https://www.youtube.com/channel/UC123</description>"), null);
 });
 
+test("Scene Radar briefs are stored as drafts, not public articles", () => {
+  assert.match(source, /status: "draft"/);
+  assert.match(source, /published_at: null/);
+  assert.ok(source.includes('status: "in.(draft,published)"'));
+  assert.ok(source.includes('created_at: "gte." + dayStart'));
+  assert.equal(source.includes('status: "published",\n      author_id: null'), false);
+});
+
 test("publisher embeds only a valid YouTube ID supplied by Scene Radar", () => {
   assert.doesNotMatch(source, /\/api\/generate|OPENAI_API_KEY|GEMINI_API_KEY|ANTHROPIC_API_KEY/);
   assert.doesNotMatch(source, /cover_image_url:\s*item\.image/);
