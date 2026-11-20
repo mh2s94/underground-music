@@ -39,9 +39,15 @@ for f in assets/bento.css assets/theme/schema.js assets/theme/runtime.js robots.
   has "$n" x-ug-theme && bad "/$f has x-ug-theme (middleware touched a static file)" || ok "/$f no x-ug-theme"
   [[ "$(hval "$n" x-frame-options)" == "deny" ]] && ok "/$f X-Frame-Options DENY (from _headers)" || bad "/$f X-Frame-Options missing"
 done
-get "$PREV/assets/favicon.svg" legacy_svg
-legacy_type=$(hval legacy_svg content-type)
-if [[ "$(status legacy_svg)" == 404 || "$legacy_type" == text/html* ]]; then ok "/assets/favicon.svg no longer served as an image (legacy favicon removed)"; else bad "/assets/favicon.svg still served as $legacy_type"; fi
+get "$PREV/assets/favicon.svg" glitch_wave_svg
+favicon_type=$(hval glitch_wave_svg content-type | cut -d';' -f1)
+favicon_cache=$(hval glitch_wave_svg cache-control)
+if [[ "$(status glitch_wave_svg)" == 200 && "$favicon_type" == "image/svg+xml" ]]; then
+  ok "/assets/favicon.svg served as image/svg+xml"
+else
+  bad "/assets/favicon.svg status $(status glitch_wave_svg), content-type $favicon_type"
+fi
+[[ "$favicon_cache" == *"max-age=300"* && "$favicon_cache" == *"must-revalidate"* ]] && ok "/assets/favicon.svg has short revalidation cache policy" || bad "/assets/favicon.svg cache-control: $favicon_cache"
 get "$PREV/favicon.ico" ico; get "$PROD/favicon.ico" ico_p
 [[ "$(status ico)" == "$(status ico_p)" ]] && ok "/favicon.ico status $(status ico) same as production" || bad "/favicon.ico $(status ico) vs production $(status ico_p)"
 has ico x-ug-theme && bad "/favicon.ico has x-ug-theme" || ok "/favicon.ico no x-ug-theme"
