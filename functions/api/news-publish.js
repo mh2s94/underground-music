@@ -1,4 +1,4 @@
-// POST /api/news-publish — publish short, attributed briefs from Scene Radar RSS.
+// POST /api/news-publish — save short, attributed Scene Radar RSS briefs as drafts.
 // No AI, no translation, no full-article scraping. Protected by NEWS_PUBLISH_TOKEN.
 
 import { isNews, same, serviceRest } from "./draft-lib.js";
