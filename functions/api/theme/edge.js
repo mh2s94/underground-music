@@ -10,7 +10,7 @@
 //   4. Sets the security headers explicitly: Cloudflare does not apply _headers to responses that
 //      go through Pages Functions, so without this every page would lose CSP, HSTS, X-Frame-Options.
 // Any failure (database down, migration not applied, timeout, bad data) means: the last theme that
-// was read and validated successfully ("last good"), or neon-bento when there is none. Page intact.
+// was read and validated successfully ("last good"), or monochrome-modular when there is none. Page intact.
 
 import "../../../assets/theme/schema.js";
 
@@ -69,7 +69,7 @@ export function normalise(raw) {
 
 // Strict check of an RPC answer. Only an answer that passes completely may become "last good":
 // a known theme id, a non-negative integer version, and tokens of which the sanitizer rejected none.
-// (A known but not yet ready theme is valid data; it is shown as neon-bento by normalise().)
+// Only Monochrome Modular is accepted; every legacy or unknown id normalises to the sole default.
 export function validConfig(raw) {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
   if (typeof raw.theme !== "string" || !S.THEMES.some((t) => t.id === raw.theme)) return null;
