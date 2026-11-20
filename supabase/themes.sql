@@ -102,8 +102,7 @@ language sql
 immutable
 set search_path = ''
 as $$
-  select p_id = any (array['monochrome-modular','front-page','the-pit','setlist','mosh-grid','control-room',
-    'main-stage','xerox-zine','index','frequency','scene-atlas','monochrome-modular']);
+  select p_id = 'monochrome-modular';
 $$;
 revoke all on function public.ug_theme_id_ok(text) from public, anon, service_role;
 grant execute on function public.ug_theme_id_ok(text) to authenticated;
