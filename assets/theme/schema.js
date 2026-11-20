@@ -73,7 +73,11 @@
   // values on top of DEFAULTS: the edge and the runtime apply them, and admin overrides from the
   // Theme Manager are stored as differences from them. The default theme needs no files.
   var THEMES = [
-    { id: "monochrome-modular", no: "01", name: "Monochrome Modular", status: "ready", css: true, js: true, desc: "Tema default permanen: hitam-putih industrial, logo modular, hero grayscale, panel modular.", tokens: {} }
+    { id: "monochrome-modular", no: "01", name: "Monochrome Modular", status: "ready", css: true, js: true, desc: "Tema default permanen: hitam-putih industrial, logo modular, hero grayscale, panel modular.",
+      tokens: { void: "#000000", bg: "#080808", shell: "#090909", surface: "#111111", surface2: "#171717", surface3: "#202020", line: "#303030", line2: "#555555",
+        ink: "#F4F4F4", inkSoft: "#E4E4E4", muted: "#B0B0B0", faint: "#858585", accent: "#F4F4F4", accentHi: "#FFFFFF", accentTint: "#D8D8D8", onAccent: "#080808",
+        accent2: "#A8A8A8", accent2Hi: "#C8C8C8", accent2Tint: "#E6E6E6", ok: "#D8D8D8", warn: "#B8B8B8",
+        fontDisplay: "bebas-neue", fontBody: "inter", fontMono: "space-mono", radius: 8, scanlines: 0 } }
   ];
   // Bump when any file in assets/themes/ changes: theme files are requested as ?v=<version>.<ASSET_REV>.
   var ASSET_REV = "t-mm-single-01";
