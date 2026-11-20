@@ -32,7 +32,7 @@ export async function onRequestPost({ request, env }) {
   let feed;
   try { feed = await feedResponse.json(); } catch { return json({ error: "Scene Radar returned invalid JSON." }, 502); }
   const items = Array.isArray(feed.items) ? feed.items : [];
-  if (!items.length) return json({ published: 0, skipped: 0, note: "No RSS items available." });
+  if (!items.length) return json({ drafted: 0, skipped: 0, note: "No RSS items available." });
 
   const now = new Date();
   const dayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())).toISOString();
@@ -46,7 +46,7 @@ export async function onRequestPost({ request, env }) {
   if (!dailyRes.ok) return json({ error: "news_ingestion table is unavailable. Apply supabase/news-ingestion.sql first.", detail: (await dailyRes.text()).slice(0, 240) }, 503);
   const dailyRows = await dailyRes.json();
   let dailyCount = dailyRows.length;
-  if (dailyCount >= DAILY_LIMIT) return json({ published: 0, skipped: 0, daily_limit: DAILY_LIMIT, note: "Daily publication limit reached." });
+  if (dailyCount >= DAILY_LIMIT) return json({ drafted: 0, skipped: 0, daily_draft_limit: DAILY_LIMIT, note: "Daily draft limit reached." });
 
   const categoriesRes = await rest("categories?select=id,slug&slug=in.(metalcore,deathcore,hardcore,darkcore)");
   if (!categoriesRes.ok) return json({ error: "Could not read article categories.", detail: (await categoriesRes.text()).slice(0, 200) }, 502);
