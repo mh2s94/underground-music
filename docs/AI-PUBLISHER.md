@@ -63,3 +63,14 @@ Apply `supabase/20261120103205_create_ai_ingestion.sql` after the base `articles
 ## Smoke test
 
 Use a valid 350–500-word article with a test source URL and `AI_PUBLISH_MODE=draft`. Confirm HTTP 201, a draft in the admin article list, a matching `processed` row in `ai_ingestion`, and the Telegram notification. Submit the exact payload again; it must return HTTP 409 and create no second article.
+
+
+## Publisher hardening
+
+The endpoint now normalizes `GENRE` through the same official catalogue used by the admin generator (`functions/api/genres-data.js`). Values that cannot be mapped to an official genre are rejected; generic values such as `Metal` must be replaced with a supported specific genre.
+
+Published-mode requests are subject to an atomic UTC-day quota. Configure `AI_PUBLISH_DAILY_LIMIT` in Cloudflare Pages environment variables (integer 1–1000); the default is `10`. The quota counts AI-publisher articles whose linked article row is actually `published`. Draft and review mode do not consume the published-article quota.
+
+Apply `supabase/20261121120000_ai_publish_hardening.sql` after the original `ai_ingestion` migration. It adds the service-role-only `ug_claim_ai_publish` RPC, which serializes claims, enforces the daily quota, rejects completed duplicates, and reopens failed or stale claims for retry. Failed article inserts remain failed in the audit table and may be retried with the same source/title.
+
+Article slugs are now title-derived and human-readable. Existing collisions receive numeric suffixes (`-2`, `-3`, …); source hashes are no longer appended.
