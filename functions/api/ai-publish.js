@@ -10,7 +10,7 @@ const json = (data, status = 200) => new Response(JSON.stringify(data, null, 2),
 });
 
 export async function onRequestPost({ request, env }) {
-  const match = /^Bearer\\s+(.+)$/i.exec(request.headers.get("Authorization") || "");
+  const match = /^Bearer\s+(.+)$/i.exec(request.headers.get("Authorization") || "");
   const supplied = match?.[1]?.trim() || "";
   if (!env.AI_PUBLISH_TOKEN || !supplied || !same(supplied, String(env.AI_PUBLISH_TOKEN))) return json({ error: "Not allowed." }, 401);
 
@@ -79,10 +79,10 @@ export async function onRequestPost({ request, env }) {
   let telegram = "not_configured";
   if (env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_CHAT_ID) {
     try {
-      const message = "<b>UNDERGROUND · AI article " + esc(mode) + "</b>\\n" +
-        esc(row.title) + "\\n" +
-        "<a href=\\""+SITE+"/a/"+encodeURIComponent(slug)+"\\">Open article</a> · " +
-        "<a href=\\""+esc(sourceUrl)+"\\">Source</a>";
+      const message = "<b>UNDERGROUND · AI article " + esc(mode) + "</b>\n" +
+        esc(row.title) + "\n" +
+        "<a href=\""+SITE+"/a/"+encodeURIComponent(slug)+"\">Open article</a> · " +
+        "<a href=\""+esc(sourceUrl)+"\">Source</a>";
       const sent = await tg(env, "sendMessage", {
         chat_id: env.TELEGRAM_CHAT_ID, text: message, parse_mode: "HTML",
         link_preview_options: { is_disabled: true }
@@ -103,7 +103,7 @@ async function findDuplicate(rest, titleKey, sourceUrl) {
   const [recent, newsByUrl, newsByTitle, aiByUrl, aiByTitle] = await Promise.all([
     query("articles", { order: "created_at.desc" }, "title,content", ARTICLE_LIMIT),
     query("news_ingestion", { source_url: "eq." + sourceUrl }, "title,source_url"),
-    query("news_ingestion", { title: "ilike." + titleKey.replace(/\\s+/g, " ") }, "title,source_url"),
+    query("news_ingestion", { title: "ilike." + titleKey.replace(/\s+/g, " ") }, "title,source_url"),
     query("ai_ingestion", { source_url: "eq." + sourceUrl }, "title,source_url"),
     query("ai_ingestion", { title_key: "eq." + titleKey }, "title,title_key,source_url")
   ]);
@@ -158,11 +158,11 @@ export function validatePayload(value) {
 }
 
 export function wordCount(value) {
-  return (String(value || "").match(/[\\p{L}\\p{N}]+(?:['’\\-][\\p{L}\\p{N}]+)*/gu) || []).length;
+  return (String(value || "").match(/[\p{L}\p{N}]+(?:['’\-][\p{L}\p{N}]+)*/gu) || []).length;
 }
 export function normaliseTitle(value) {
   return String(value || "").normalize("NFKC").toLocaleLowerCase("en")
-    .replace(/[^\\p{L}\\p{N}]+/gu, " ").trim().replace(/\\s+/g, " ");
+    .replace(/[^\p{L}\p{N}]+/gu, " ").trim().replace(/\s+/g, " ");
 }
 export function canonicalSourceUrl(value) {
   try {
@@ -174,17 +174,17 @@ export function canonicalSourceUrl(value) {
   } catch { return ""; }
 }
 export function sourceFromContent(content) {
-  const lastLine = String(content || "").trim().split(/\\r?\\n/).at(-1) || "";
-  const match = /^Source:\\s*\\[([^\\]\\n]{1,120})\\]\\((https:\\/\\/[^)\\s]+)\\)$/.exec(lastLine);
+  const lastLine = String(content || "").trim().split(/\r?\n/).at(-1) || "";
+  const match = /^Source:\s*\[([^\]\n]{1,120})\]\((https:\/\/[^)\s]+)\)$/.exec(lastLine);
   return match ? { site: match[1], url: match[2] } : null;
 }
 function contentHasSource(content, sourceUrl) {
-  const matches = String(content || "").matchAll(/^Source:\\s*\\[[^\\]]+\\]\\((https:\\/\\/[^)\\s]+)\\)\\s*$/gm);
+  const matches = String(content || "").matchAll(/^Source:\s*\[[^\]]+\]\((https:\/\/[^)\s]+)\)\s*$/gm);
   for (const match of matches) if (canonicalSourceUrl(match[1]) === sourceUrl) return true;
   return false;
 }
 function slugify(value) {
-  return String(value || "").toLowerCase().normalize("NFKD").replace(/[\\u0300-\\u036f]/g, "")
+  return String(value || "").toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "ai-article";
 }
 async function sha256(value) {
