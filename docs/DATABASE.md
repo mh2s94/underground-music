@@ -31,6 +31,8 @@ Owner-reported state: files 6 and 7 applied on 2026-11-17 (2FA working; "Admins 
 
 ⚠️ `community.sql`, `music.sql` and `security.sql` all define `ug_is_admin()`. Since 2026-11-17 **all three contain the 2FA version**. Never re-introduce the old body (admin membership only) in any file, or a re-run would silently drop the 2FA requirement.
 
+| 12 | `supabase/20261120103205_create_ai_ingestion.sql` | VPS AI publisher idempotency and article audit trail (`ai_ingestion`); RLS on, client roles revoked, service-role only | Base `articles` table |
+
 ## 2. Tables
 
 ### `articles` *(base schema, not in repo)*
@@ -76,6 +78,9 @@ Used column: `user_id` (auth user id). Membership = admin. Owner-reported RLS: a
 
 ### Storage bucket `music` (`music.sql`)
 Public read, 25 MB per file (`26214400`), audio and image MIME types only, admin-only writes through `storage.objects` policies. Used only when R2 is not available.
+
+### `ai_ingestion` (`supabase/20261120103205_create_ai_ingestion.sql`)
+Tracks VPS-generated article claims with normalized title, canonical source URL, processing status, article reference, band/release/genre/type/score metadata and timestamps. Unique indexes on `source_url` and `title_key` provide race-safe idempotency. RLS is enabled, no client policies exist, privileges are revoked from `PUBLIC`, `anon` and `authenticated`, and CRUD is granted only to `service_role`. The endpoint contract and VPS setup are documented in [AI-PUBLISHER.md](AI-PUBLISHER.md).
 
 ### `news_ingestion` (`supabase/news-ingestion.sql`)
 Tracks RSS source URL/hash, title, source, source publication date, status (`processing` / `published` / `failed` / `skipped`), optional `article_id` → `articles.id`, attempts, last error, and creation/update/publication/Telegram-notification timestamps. RLS is enabled; grants are revoked from `anon` and `authenticated`; only the server service key uses it. Apply only after the publisher PR is approved for release.

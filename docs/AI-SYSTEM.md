@@ -99,3 +99,8 @@ No AI. iTunes, then Deezer, cached 7 days. Admin → Music → **Find missing co
 ## Cost and quota notes
 - Workers AI has a free daily allocation (10,000 neurons per day at the time of writing). One article costs roughly 2,500 input and 900 output tokens.
 - Provider keys and quotas are the owner's. The router does not create accounts or quota.
+
+
+## VPS AI auto-publisher: `POST /api/ai-publish`
+
+The external VPS submits structured article output (`BAND`, `RELEASE`, `TITLE`, `EXCERPT`, `TAGS`, `GENRE`, `TYPE`, `SCORE`, `CONTENT`) using `Authorization: Bearer <AI_PUBLISH_TOKEN>`. The endpoint validates a 350–500-word Markdown body with a final `Source: [site](link)` attribution, checks the 300 newest articles plus `news_ingestion` and `ai_ingestion` for duplicate titles/source links, claims a unique ingestion record, inserts the article, marks the claim processed, and notifies Telegram. `AI_PUBLISH_MODE` is `draft` by default; supported values are `draft`, `review`, and `published`. It does not call an AI provider. See [AI-PUBLISHER.md](AI-PUBLISHER.md) for the request contract, secrets, status codes and smoke test.
