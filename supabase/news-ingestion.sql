@@ -7,7 +7,7 @@ create table if not exists public.news_ingestion (
   source text not null,
   source_published_at timestamptz not null,
   status text not null default 'processing'
-    check (status in ('processing', 'published', 'failed', 'skipped')),
+    check (status in ('processing', 'draft', 'published', 'failed', 'skipped')),
   article_id uuid references public.articles(id) on delete set null,
   attempts integer not null default 1 check (attempts >= 1),
   last_error text,
