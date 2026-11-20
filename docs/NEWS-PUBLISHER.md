@@ -1,4 +1,4 @@
-# Automatic RSS news publisher
+# Automatic Scene Radar RSS draft ingester
 
 ## Scope
 
@@ -51,7 +51,7 @@ The endpoint is disabled unless `NEWS_PUBLISH_TOKEN` is set.
 
 If the GitHub secret is absent, the scheduled workflow exits without calling the endpoint. If the Cloudflare secret is absent or mismatched, the endpoint returns 401. If the table is missing, it returns 503 and publishes nothing.
 
-The existing Telegram digest remains separate and information-only. After a new draft is saved, the publisher sends the editor a Telegram notification when `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` are configured. A Telegram notification failure does not unpublish the article.
+The existing Telegram digest remains separate and information-only. After a new draft is saved, the publisher sends the editor a Telegram notification when `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` are configured. A Telegram notification failure does not affect the saved draft.
 
 ## Rollback
 
