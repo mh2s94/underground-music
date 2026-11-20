@@ -62,7 +62,12 @@ export async function onRequestPost({ request, env }) {
   let inserted = null;
   let insertDetail = "";
   for (let attempt = 0; attempt < 6; attempt++) {
-    slug = await nextAvailableSlug(rest, article.TITLE);
+    try {
+      slug = await nextAvailableSlug(rest, article.TITLE);
+    } catch (error) {
+      insertDetail = String(error?.message || error).slice(0, 500);
+      break;
+    }
     const row = {
       title: article.TITLE, slug, excerpt: article.EXCERPT, content: article.CONTENT.trim(),
       band_name: article.BAND || null, album_name: article.RELEASE || null, tags: article.TAGS,
