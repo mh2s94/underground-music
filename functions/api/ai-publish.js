@@ -100,7 +100,7 @@ export async function onRequestPost({ request, env }) {
   if (env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_CHAT_ID) {
     try {
       const message = "<b>UNDERGROUND · AI article " + esc(mode) + "</b>\n" +
-        esc(row.title) + "\n" +
+        esc(article.TITLE) + "\n" +
         "<a href=\""+SITE+"/a/"+encodeURIComponent(slug)+"\">Open article</a> · " +
         "<a href=\""+esc(sourceUrl)+"\">Source</a>";
       const sent = await tg(env, "sendMessage", {
