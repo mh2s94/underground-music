@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 import { onRequestGet as sitemap } from "../functions/sitemap.xml.js";
 import { onRequestGet as rss } from "../functions/rss.xml.js";
 
-const env = { SUPABASE_URL: "https://project.example", SUPABASE_ANON_KEY: "test-key" };
+const env = { SUPABASE_URL: "https://project.example/rest/v1/", SUPABASE_SERVICE_ROLE_KEY: "test-service-key" };
 const articles = [
   {
     id: 1, slug: "latest-track", title: "Latest Track & News", excerpt: "A <fresh> release",
@@ -41,6 +41,9 @@ test("sitemap is XML, cached for 15 minutes, and lists static routes plus publis
     assert.ok(body.includes("<lastmod>2026-11-20T10:00:00.000Z</lastmod>"));
     assert.equal(calls.length, 1);
     assert.equal(calls[0].init.method, undefined);
+    assert.equal(calls[0].url.origin, "https://project.example");
+    assert.equal(calls[0].url.pathname, "/rest/v1/articles");
+    assert.equal(calls[0].init.headers.apikey, "test-service-key");
     assert.equal(calls[0].url.searchParams.get("select"), "slug,published_at");
     assert.equal(calls[0].url.searchParams.get("status"), "eq.published");
     assert.equal(calls[0].url.searchParams.get("order"), "published_at.desc");
@@ -63,20 +66,23 @@ test("RSS is valid RSS 2.0 with article metadata and cover/YouTube enclosures", 
     assert.match(body, /url="https:\/\/i\.ytimg\.com\/vi\/yE16u9uyW28\/hqdefault\.jpg"/);
     assert.match(body, /<pubDate>Fri, 20 Nov 2026 10:00:00 GMT<\/pubDate>/);
     assert.equal(calls.length, 1);
+    assert.equal(calls[0].url.pathname, "/rest/v1/articles");
+    assert.equal(calls[0].init.headers.apikey, "test-service-key");
     assert.equal(calls[0].url.searchParams.get("status"), "eq.published");
     assert.equal(calls[0].url.searchParams.get("order"), "published_at.desc");
     assert.equal(calls[0].url.searchParams.get("limit"), "50");
   });
 });
 
-test("article route emits crawler-readable OG/Twitter tags from published article data", async () => {
+test("article route uses the shared server credential helper for published article OG metadata", async () => {
   const source = await readFile(new URL("../functions/a/[slug].js", import.meta.url), "utf8");
   for (const marker of [
+    'import { serviceRest } from "../api/draft-lib.js"',
     'meta property="og:title"', 'meta property="og:description"', 'meta property="og:url"',
     'meta property="og:type" content="article"', 'meta property="og:image"',
     'meta name="twitter:card" content="summary_large_image"', 'meta name="twitter:title"',
     'meta name="twitter:description"', 'meta name="twitter:image"', 'new HTMLRewriter()',
-    'status=eq.published', 'validHttpUrl(article.cover_image_url)'
+    'status: "eq.published"', 'validHttpUrl(article.cover_image_url)'
   ]) assert.ok(source.includes(marker), marker);
   assert.match(source, /youtube_video_id/);
   assert.match(source, /DEFAULT_IMAGE/);
