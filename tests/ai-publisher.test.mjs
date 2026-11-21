@@ -126,7 +126,7 @@ test("AI publisher validates and persists cover image aliases without empty over
   assert.equal(validatePayload({ ...payload(), image: "" }).article.COVER_IMAGE_URL, "");
   assert.match(validatePayload({ ...payload(), image: "javascript:alert(1)" }).error, /http or https URL/);
   assert.match(validatePayload({ ...payload(), cover_url: "not-a-url" }).error, /http or https URL/);
-  assert.match(endpoint, /cover_image_url: article\\.COVER_IMAGE_URL/);
+  assert.match(endpoint, /cover_image_url: article\.COVER_IMAGE_URL/);
 });
 
 test("AI publisher validates YouTube ids and extracts ids from supported YouTube URLs", () => {
@@ -139,7 +139,7 @@ test("AI publisher validates YouTube ids and extracts ids from supported YouTube
   assert.match(validatePayload({ ...payload(), youtubeVideoId: "bad-id" }).error, /11 letters/);
   assert.match(validatePayload({ ...payload(), videoUrl: "https://example.com/" + id }).error, /valid YouTube URL/);
   assert.match(validatePayload({ ...payload(), youtubeVideoId: id, videoUrl: "https://youtu.be/abcdefghijk" }).error, /does not match/);
-  assert.match(endpoint, /youtube_video_id: article\\.YOUTUBE_VIDEO_ID/);
+  assert.match(endpoint, /youtube_video_id: article\.YOUTUBE_VIDEO_ID/);
   assert.match(bento, /videoIdOf/);
   assert.match(bento, /youtube_video_id/);
 });
