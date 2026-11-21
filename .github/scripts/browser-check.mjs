@@ -34,6 +34,58 @@ for (const [path, vp] of [["/", { width: 1280, height: 900 }], ["/", { width: 39
   if (other.length) console.log(`INFO  ${tag}: third-party requests not loaded: ${other.join(" | ")}`);
   await p.close();
 }
+// Stage 2: direct navigation, search filters, band profile reload and related stories.
+const stage2 = await b.newPage({ viewport: { width: 1280, height: 900 } });
+const stage2Errors = [];
+stage2.on("pageerror", (e) => stage2Errors.push(e.message));
+await stage2.goto(BASE + "/search", { waitUntil: "load", timeout: 30000 });
+await stage2.waitForTimeout(3500);
+ok(await stage2.locator("#pageSearchInput").isVisible(), "/search direct navigation renders the search page");
+ok(await stage2.locator('[data-search-filter="ALL"]').count() === 1, "/search exposes ALL filter");
+ok(await stage2.locator('[data-search-filter="VIDEO"]').count() === 1, "/search exposes VIDEO filter");
+await stage2.locator('[data-search-filter="VIDEO"]').click();
+const genreChip = stage2.locator('[data-search-filter]:not([data-search-filter="ALL"]):not([data-search-filter="VIDEO"])').first();
+if (await genreChip.count()) {
+  const genreName = await genreChip.getAttribute("data-search-filter");
+  await genreChip.click();
+  const combined = await stage2.evaluate((g) => {
+    const video = document.querySelector('[data-search-filter="VIDEO"]');
+    const genre = [...document.querySelectorAll("[data-search-filter]")].find((x) => x.dataset.searchFilter === g);
+    return video?.getAttribute("aria-pressed") === "true" && genre?.getAttribute("aria-pressed") === "true";
+  }, genreName);
+  ok(combined, "/search combines VIDEO and genre filters");
+} else {
+  ok(false, "/search exposes dynamic genre filters");
+}
+await stage2.locator("#pageSearchInput").fill(" ");
+await stage2.waitForTimeout(200);
+const bandUrl = await stage2.evaluate(() => window.UG?.articles?.find((a) => a.bandUrl)?.bandUrl || "");
+if (bandUrl) {
+  await stage2.goto(BASE + bandUrl, { waitUntil: "load", timeout: 30000 });
+  await stage2.waitForTimeout(3500);
+  ok(await stage2.locator("#view-band h1").count() === 1, "band profile direct navigation renders its header");
+  ok(await stage2.locator("#bhStories .search-result-card").count() > 0, "band profile lists published stories");
+  await stage2.reload({ waitUntil: "load" });
+  await stage2.waitForTimeout(2500);
+  ok(await stage2.locator("#view-band h1").count() === 1, "band profile reload works");
+} else {
+  ok(false, "home archive provides a band profile test target");
+}
+const articleUrl = await stage2.evaluate(() => {
+  const rows = window.UG?.articles || [];
+  const pick = rows.find((a) => a.url && rows.some((b) => b.id !== a.id && ((a.band && b.band === a.band) || (a.genre && b.genre === a.genre))));
+  return pick?.url || "";
+});
+if (articleUrl) {
+  await stage2.goto(BASE + articleUrl, { waitUntil: "load", timeout: 30000 });
+  await stage2.waitForTimeout(3500);
+  ok(await stage2.locator("#readerBody .related-stories").count() === 1, "article reader displays Related Stories");
+} else {
+  console.log("INFO  related stories browser assertion skipped: no matching article pair in the loaded archive");
+}
+ok(stage2Errors.length === 0, "Stage 2 routes have no browser runtime errors", stage2Errors.join(" | "));
+await stage2.close();
+
 await b.close();
 console.log(`\nBROWSER CHECK: ${fail ? fail + " failed" : "all passed"}`);
 process.exit(fail ? 1 : 0);
