@@ -8,7 +8,13 @@ const DEFAULT_IMAGE = SITE + "/assets/og.png";
 const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const plain = (md) => String(md || "").replace(/^https?:\/\/\S+$/gm, "").replace(/!\[[^\]]*\]\([^)]*\)/g, "").replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
   .replace(/[#>*_`~]+/g, "").replace(/\s+/g, " ").trim();
-const validHttpUrl = (value) => {\n  try { const url = new URL(String(value || "")); return ["http:", "https:"].includes(url.protocol) && url.hostname && !url.username && !url.password ? url.toString() : ""; } catch { return ""; }\n};\nconst ytId = (s) => (String(s || "").match(/^https:\/\/(?:www\.|m\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]{11})/m) || [])[1] || "";
+const validHttpUrl = (value) => {
+  try {
+    const url = new URL(String(value || ""));
+    return ["http:", "https:"].includes(url.protocol) && url.hostname && !url.username && !url.password ? url.toString() : "";
+  } catch { return ""; }
+};
+const ytId = (s) => (String(s || "").match(/^https:\/\/(?:www\.|m\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]{11})/m) || [])[1] || "";
 
 const safeDecode = (s) => { try { return decodeURIComponent(s); } catch { return s; } };
 
