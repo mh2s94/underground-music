@@ -9,7 +9,8 @@
       "price_label": "Check current price",
       "url": "https://www.etymotic.com/product/er20xs/",
       "image_url": "https://images.unsplash.com/photo-1593078166031-9a0d0b4a8f9a?auto=format&fit=crop&w=900&q=80",
-      "active": true
+      "active": true,
+      "affiliate": false
     },
     {
       "id": "vinyl-record-care",
@@ -19,7 +20,8 @@
       "price_label": "Explore the kit",
       "url": "https://www.audio-technica.com/en-us/turntables/accessories",
       "image_url": "https://images.unsplash.com/photo-1603048588665-791ca8aea617?auto=format&fit=crop&w=900&q=80",
-      "active": true
+      "active": true,
+      "affiliate": false
     },
     {
       "id": "guitar-strings",
@@ -29,7 +31,8 @@
       "price_label": "See string options",
       "url": "https://www.daddario.com/products/guitar/electric-guitar/",
       "image_url": "https://images.unsplash.com/photo-1550985616-10810253b84d?auto=format&fit=crop&w=900&q=80",
-      "active": true
+      "active": true,
+      "affiliate": false
     },
     {
       "id": "band-merch",
@@ -39,7 +42,8 @@
       "price_label": "Browse official stores",
       "url": "https://bandcamp.com/",
       "image_url": "https://images.unsplash.com/photo-1576566588028-4147f3842f27?auto=format&fit=crop&w=900&q=80",
-      "active": true
+      "active": true,
+      "affiliate": false
     }
   ]
 }
