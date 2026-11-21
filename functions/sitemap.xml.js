@@ -1,7 +1,7 @@
 import { serviceRest } from "./api/draft-lib.js";
 
 const SITE = "https://music.mikasa.me";
-const STATIC_ROUTES = ["/", "/articles", "/music", "/charts", "/search"];
+const STATIC_ROUTES = ["/"];
 const xml = (value) => String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
 const headers = {
   "content-type": "application/xml; charset=utf-8",

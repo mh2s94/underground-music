@@ -17,7 +17,7 @@ test("article reader adds four newest related published stories, excluding the c
     '.order("published_at", { ascending: false })',
     '.slice(0, 4)',
     'Related Stories',
-    'hasVideoField(a)'
+    'Boolean(videoIdOf(a))'
   ]) assert.ok(block.includes(marker), marker);
   assert.ok(source.includes("relatedStoriesHtml(related)"));
 });
@@ -34,7 +34,7 @@ test("search page supports title, band, genre, excerpt, tags, VIDEO and combinab
     'a.title,a.band_name,a.genre,a.excerpt,a.album_name,tags',
     'pageSearchVideoOnly',
     'pageSearchGenre',
-    'hasVideoField(a)',
+    'Boolean(videoIdOf(a))',
     'data-search-filter',
     'href="/band/'
   ]) assert.ok(block.includes(marker), marker);
@@ -82,3 +82,30 @@ test("search discovery filters stay in a compact horizontal strip and empty stat
   assert.match(html, /class="search-page-stories bento-item"/);
   assert.match(source, /No stories found<\/strong><span>Try another band, genre, tag or title\.<\/span>/);
 });
+
+test("VIDEO detection falls back to a YouTube URL inside content when youtube_video_id is null", async () => {
+  const source = await read("assets/bento.js");
+  // Pull the real YT_LINE / ytId / videoIdOf declarations straight from the source (skip unrelated
+  // lines such as the browser-only `window.supabase` client setup).
+  const decl = (re) => (source.match(re) || [""])[0];
+  const ytLine = decl(/const YT_LINE = .*?;\n/);
+  const ytId = decl(/const ytId = .*?;\n/);
+  const videoIdOfDecl = decl(/const videoIdOf = .*?;\n/);
+  assert.ok(ytLine && ytId && videoIdOfDecl, "video helpers are present in bento.js");
+  const { videoIdOf } = new Function(ytLine + ytId + videoIdOfDecl + "\nreturn { videoIdOf };")();
+
+  // null column, YouTube URL on its own line inside content -> detected.
+  const fixture = { youtube_video_id: null, content: "Some body copy\nhttps://www.youtube.com/watch?v=yE16u9uyW28\nmore text" };
+  assert.equal(videoIdOf(fixture), "yE16u9uyW28");
+
+  // youtu.be short form also detected.
+  assert.equal(videoIdOf({ youtube_video_id: null, content: "x\nhttps://youtu.be/yE16u9uyW28\n" }), "yE16u9uyW28");
+
+  // Valid column still wins; no video anywhere -> empty string.
+  assert.equal(videoIdOf({ youtube_video_id: "abcdefghijk", content: "" }), "abcdefghijk");
+  assert.equal(videoIdOf({ youtube_video_id: null, content: "no url here" }), "");
+
+  // Static guard: the old column-only helper must be gone.
+  assert.ok(!source.includes("hasVideoField(a)"));
+});
+
