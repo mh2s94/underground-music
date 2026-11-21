@@ -23,12 +23,14 @@ export function supabaseProjectUrl(value) {
 
 // Supabase REST with the service key. Returns { rest } or { error, seen }.
 export function serviceRest(env) {
-  const NAMES = ["SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_SECRET_KEY", "SUPABASE_SERVICE_KEY", "SUPABASE_SERVICE_ROLE", "SERVICE_ROLE_KEY"];
-  const keyName = NAMES.find((n) => env[n] && String(env[n]).trim());
-  const projectUrl = supabaseProjectUrl(env.SUPABASE_URL);
+  const URL_NAMES = ["SUPABASE_URL", "SUPABASE_PROJECT_URL", "NEXT_PUBLIC_SUPABASE_URL", "PUBLIC_SUPABASE_URL", "VITE_SUPABASE_URL"];
+  const KEY_NAMES = ["SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_SECRET_KEY", "SUPABASE_SERVICE_KEY", "SUPABASE_SERVICE_ROLE", "SERVICE_ROLE_KEY", "SUPABASE_ANON_KEY", "SUPABASE_PUBLIC_KEY", "NEXT_PUBLIC_SUPABASE_ANON_KEY", "PUBLIC_SUPABASE_ANON_KEY", "VITE_SUPABASE_ANON_KEY"];
+  const urlName = URL_NAMES.find((n) => env[n] && String(env[n]).trim());
+  const keyName = KEY_NAMES.find((n) => env[n] && String(env[n]).trim());
+  const projectUrl = supabaseProjectUrl(urlName ? env[urlName] : "");
   if (!projectUrl || !keyName) {
-    const seen = Object.keys(env).filter((k) => /SUPA|SERVICE|SECRET/i.test(k)); // names only, never values
-    return { error: "The Supabase secret key is not set in Cloudflare Pages (Production). Add it as SUPABASE_SERVICE_ROLE_KEY and redeploy.", seen };
+    const seen = Object.keys(env).filter((k) => /SUPA|SERVICE|SECRET|PUBLIC/i.test(k)); // names only, never values
+    return { error: `Supabase public article read is not configured (URL: ${urlName || "missing"}; key: ${keyName || "missing"}). Set SUPABASE_URL and SUPABASE_ANON_KEY (or a service-role key) in this Cloudflare Pages environment.`, seen };
   }
   // New Supabase secret keys (sb_secret_…) go in the apikey header only; legacy service_role JWTs also as Bearer.
   const key = String(env[keyName]).trim();
