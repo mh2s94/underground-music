@@ -26,7 +26,7 @@ export async function onRequestGet({ request, env, params }) {
   const url = `${SITE}/a/${encodeURIComponent(article.slug || article.id)}`;
   const title = `${article.title} — UNDERGROUND`;
   const desc = (article.excerpt || plain(article.content).slice(0, 180)).slice(0, 200);
-  const vid = ytId(article.content);
+  const vid = /^[A-Za-z0-9_-]{11}$/.test(String(article.youtube_video_id || "")) ? article.youtube_video_id : ytId(article.content);
   const image = /^https:\/\//.test(article.cover_image_url || "") ? article.cover_image_url : vid ? `https://i.ytimg.com/vi/${vid}/hqdefault.jpg` : DEFAULT_IMAGE;
   const ld = {
     "@context": "https://schema.org", "@type": "NewsArticle",
