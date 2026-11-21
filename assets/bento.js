@@ -746,6 +746,31 @@
       }).join('') + '</div></section>';
   }
 
+  async function loadAffiliatePicks() {
+    try {
+      const response = await fetch("/data/affiliate-picks.json", { headers: { accept: "application/json" } });
+      if (!response.ok) return "";
+      const data = await response.json();
+      const items = Array.isArray(data) ? data : data.items;
+      const active = (Array.isArray(items) ? items : []).filter((x) => x && x.active === true && x.title && x.url)
+        .map((x) => ({ ...x, href: safeExternalUrl(x.url), image: safeImageUrl(x.image_url) }))
+        .filter((x) => x.href).slice(0, 4);
+      if (!active.length) return "";
+      return `<section class="affiliate-picks" aria-labelledby="affiliatePicksTitle">
+        <div class="affiliate-head"><div><span class="hint">Curated for the heavy underground</span><h2 id="affiliatePicksTitle">UNDERGROUND PICKS</h2></div><span class="affiliate-kicker">GEAR &amp; MERCH</span></div>
+        <div class="affiliate-grid">${active.map((x) => `<a class="affiliate-card" href="${esc(x.href)}" target="_blank" rel="noopener noreferrer sponsored">
+          <span class="affiliate-image">${x.image ? `<img src="${esc(x.image)}" alt="" loading="lazy" onerror="this.remove()">` : ""}<span class="affiliate-badge">${esc(String(x.badge || "PICK").slice(0, 24))}</span></span>
+          <span class="affiliate-copy"><strong>${esc(String(x.title).slice(0, 100))}</strong><small>${esc(String(x.subtitle || "").slice(0, 140))}</small><span class="affiliate-price">${esc(String(x.price_label || "Explore item").slice(0, 60))}</span></span>
+        </a>`).join("")}</div>
+        <p class="affiliate-disclosure">Some links may be affiliate links. UNDERGROUND may earn a commission at no extra cost to you.</p>
+      </section>`;
+    } catch { return ""; }
+  }
+  function safeExternalUrl(value) {
+    try { const u = new URL(String(value || "")); return ["https:", "http:"].includes(u.protocol) && !u.username && !u.password ? u.href : ""; }
+    catch { return ""; }
+  }
+
   async function openArticle(key) {
     let a = articles.find((x) => x.slug === key || String(x.id) === key);
     if (!a) {
@@ -755,7 +780,7 @@
     }
     if (!a) { toast("warning", "Story not found", "It may have been moved or unpublished."); history.replaceState(null, "", "/#/" + view); route(); return; }
     currentArticle = a;
-    const related = await getRelatedStories(a);
+    const [related, affiliateHtml] = await Promise.all([getRelatedStories(a), loadAffiliatePicks()]);
     if (currentArticle !== a) return;
     updateSaveBtn();
     renderComments(a);
@@ -771,6 +796,7 @@
       <div class="prose">${md(a.content, vid)}</div>
       ${Array.isArray(a.tags) && a.tags.length ? `<div class="tags">${a.tags.map((t) => `<span class="tag">#${esc(t)}</span>`).join("")}</div>` : ""}
       ${a.band_name ? `<a class="band-cta" href="/band/${encodeURIComponent(bandSlug(a.band_name))}"><span class="hint">Band profile</span><strong>More from ${esc(a.band_name)}</strong><span class="arr" aria-hidden="true">→</span></a>` : ""}
+      ${affiliateHtml}
       ${related.length ? relatedStoriesHtml(related) : ""}
       ${newsletterHtml("reader")}`;
     document.title = a.title + " — UNDERGROUND";
@@ -829,8 +855,52 @@
 
   // ---- Community: accounts, saved articles, comments, demos ----------------
   let user = null, profile = null, isAdmin = false, recovery = false;
-  let savedIds = new Set();
   let currentArticle = null;
+  const BOOKMARK_KEY = "ug_saved_articles_v1";
+  function readBookmarks() {
+    try {
+      const value = JSON.parse(localStorage.getItem(BOOKMARK_KEY) || "[]");
+      return Array.isArray(value) ? value.filter((x) => x && typeof x.slug === "string" && x.slug.trim()).map((x) => ({
+        slug: x.slug.slice(0, 200), title: String(x.title || "Untitled story").slice(0, 300),
+        band: String(x.band || "").slice(0, 160), genre: String(x.genre || "Underground").slice(0, 100),
+        cover_image_url: safeImageUrl(x.cover_image_url), saved_at: String(x.saved_at || "")
+      })) : [];
+    } catch { return []; }
+  }
+  function writeBookmarks(items) {
+    try { localStorage.setItem(BOOKMARK_KEY, JSON.stringify(items)); return true; }
+    catch { toast("error", "Bookmarks could not be saved", "Check available browser storage."); return false; }
+  }
+  function safeImageUrl(value) {
+    try { const u = new URL(String(value || ""), location.origin); return ["https:", "http:"].includes(u.protocol) ? u.href : ""; }
+    catch { return ""; }
+  }
+  const bookmarkFor = (a) => ({
+    slug: String(a.slug || a.id || ""), title: String(a.title || "Untitled story"),
+    band: String(a.band_name || a.band || ""), genre: String(a.genre || "Underground"),
+    cover_image_url: safeImageUrl(a.cover_image_url || ""), saved_at: new Date().toISOString()
+  });
+  function isBookmarked(a) { const slug = String(a?.slug || a?.id || ""); return !!slug && readBookmarks().some((x) => x.slug === slug); }
+  function toggleBookmark(a) {
+    const item = bookmarkFor(a); if (!item.slug) return false;
+    const current = readBookmarks(), exists = current.some((x) => x.slug === item.slug);
+    const next = exists ? current.filter((x) => x.slug !== item.slug) : [item, ...current];
+    return writeBookmarks(next) ? !exists : exists;
+  }
+  function savedArticlesHtml() {
+    const saved = readBookmarks();
+    return `<section class="card pad bento-item saved-articles-panel" aria-labelledby="savedArticlesTitle">
+      <div class="card-title"><h2 id="savedArticlesTitle">Saved articles</h2><span class="hint">${saved.length} saved</span></div>
+      ${saved.length ? `<div class="saved-grid">${saved.map((a) => `
+        <article class="card lift acard saved-entry">
+          <a class="saved-entry-link" href="/a/${encodeURIComponent(a.slug)}">
+            <div class="art-wrap">${a.cover_image_url ? `<img src="${esc(a.cover_image_url)}" alt="" loading="lazy" onerror="this.remove()">` : art(a.slug)}</div>
+            <div class="body">${tagHtml(a.genre)}<h3>${esc(a.title)}</h3><div class="meta"><span>${esc(a.band || "UNDERGROUND")}</span><span>Saved ${a.saved_at ? fmtDate(a.saved_at) : "recently"}</span></div></div>
+          </a>
+          <button class="btn btn-outline saved-remove" type="button" data-bookmark-remove="${esc(a.slug)}" aria-label="Remove ${esc(a.title)} from saved articles">Remove</button>
+        </article>`).join("")}</div>` : `<div class="empty-note">No saved stories yet. Use <b>Save</b> on any article to keep it here.</div>`}
+    </section>`;
+  }
   let authTab = "signin", pendingEmail = "";
   let authOpen = false, authAnim = false; // minimal account page: the form opens only after Sign in / Create account
   const finePointer = window.matchMedia("(hover: hover) and (pointer: fine)").matches; // no auto-focus on phones: the keyboard would cover the form
@@ -878,16 +948,14 @@
 
   async function refreshUser() {
     if (user) authOpen = false;
-    if (!user) { profile = null; isAdmin = false; savedIds = new Set(); }
+    if (!user) { profile = null; isAdmin = false; }
     else {
-      const [p, adm, sv] = await Promise.all([
+      const [p, adm] = await Promise.all([
         db.from("profiles").select("display_name,favorite_genres,created_at").eq("id", user.id).maybeSingle(),
-        db.from("admin_users").select("user_id").eq("user_id", user.id).maybeSingle(),
-        db.from("saved_articles").select("article_id").eq("user_id", user.id)
+        db.from("admin_users").select("user_id").eq("user_id", user.id).maybeSingle()
       ]);
       profile = p.data || { display_name: myName(), favorite_genres: [], created_at: user.created_at };
       isAdmin = !!adm.data;
-      savedIds = new Set((sv.data || []).map((x) => String(x.article_id)));
     }
     updateNav(); updateSaveBtn();
     if (view === "account" && !$("view-account").hidden) { renderAccount(); enter($("view-account")); }
@@ -992,7 +1060,8 @@
     const on = open && !authAnim ? " is-open" : "";
     // Rack slide: the panel with the two choices slides left, the form slides in from the right.
     return `<div class="amp-wrap"><div class="amp-stage bento-item${on}" data-mode="slide"><div class="amp-track">
-          <div class="card amp-land amp-face">${land}</div><div class="amp-face amp-back-face">${open ? `<div class="card auth-card amp-form">${back}${tabs}${form}</div>` : ""}</div></div></div></div>`;
+          <div class="card amp-land amp-face">${land}</div><div class="amp-face amp-back-face">${open ? `<div class="card auth-card amp-form">${back}${tabs}${form}</div>` : ""}</div></div></div></div>
+      <div class="account-saved-wrap">${savedArticlesHtml()}</div>`;
   }
 
   function recoveryHtml() {
@@ -1014,7 +1083,6 @@
   function memberHtml() {
     const name = myName();
     const since = new Date(profile?.created_at || user.created_at).toLocaleDateString("en-GB", { month: "long", year: "numeric" });
-    const saved = articles.filter((a) => savedIds.has(String(a.id)));
     const favs = new Set(profile?.favorite_genres || []);
     return `
       <div class="card me bento-item">
@@ -1027,13 +1095,7 @@
       </div>
       <div class="acct" style="margin-top:18px">
         <div class="col">
-          <div class="card pad bento-item">
-            <div class="card-title"><h2>Saved articles</h2><span class="hint">${saved.length} saved</span></div>
-            ${saved.length ? `<div class="saved-grid">${saved.map((a) => `
-              <a class="card lift acard" href="/a/${keyOf(a)}"><div class="art-wrap">${media(a)}</div>
-              <div class="body">${tagHtml(a.genre)}<h3>${esc(a.title)}</h3><div class="meta"><span>${fmtDate(a.published_at)}</span><span>${readTime(a.content)}</span></div></div></a>`).join("")}</div>`
-              : `<div class="empty-note">Tap <b>Save</b> on any article and it will wait for you here.</div>`}
-          </div>
+          ${savedArticlesHtml()}
           <div class="card pad bento-item">
             <div class="card-title"><h2>Your demos</h2><button class="link" type="button" data-demo-open>+ Submit a demo</button></div>
             <ul class="demo-list" id="myDemos"><li><div class="skel" style="height:18px;width:60%"></div></li></ul>
@@ -1248,28 +1310,32 @@
   // ---- Saved articles --------------------------------------------------------
   function updateSaveBtn(pop) {
     const b = $("saveBtn"); if (!b) return;
-    const on = !!(user && currentArticle && savedIds.has(String(currentArticle.id)));
+    const on = !!(currentArticle && isBookmarked(currentArticle));
     b.setAttribute("aria-pressed", String(on));
+    b.classList.toggle("is-saved", on);
     b.querySelector("span").textContent = on ? "Saved" : "Save";
     b.setAttribute("aria-label", on ? "Remove from saved articles" : "Save article");
     if (pop) { b.classList.remove("pop"); void b.offsetWidth; b.classList.add("pop"); }
   }
-  $("saveBtn").onclick = async () => {
+  $("saveBtn").onclick = () => {
     if (!currentArticle) return;
-    if (!user) return requireAuth("save articles");
-    const a = currentArticle, id = String(a.id), wasOn = savedIds.has(id);
-    wasOn ? savedIds.delete(id) : savedIds.add(id);
+    const on = toggleBookmark(currentArticle);
     updateSaveBtn(true);
-    const res = wasOn
-      ? await db.from("saved_articles").delete().eq("user_id", user.id).eq("article_id", a.id)
-      : await db.from("saved_articles").insert({ user_id: user.id, article_id: a.id });
-    if (res.error) {
-      wasOn ? savedIds.add(id) : savedIds.delete(id);
-      updateSaveBtn();
-      return toast("error", "Could not update saved articles", notReady(res.error) ? "Saving is still being set up." : friendly(res.error));
-    }
-    toast("success", wasOn ? "Removed from saved" : "Saved for later", wasOn ? "" : "Find it any time in your account.", { duration: 3000 });
+    if (view === "account" && !$("view-account").hidden) renderAccount();
+    toast("success", on ? "Saved for later" : "Removed from saved", on ? "Find it any time in ACCOUNT on this device." : "", { duration: 3000 });
   };
+  $("view-account").addEventListener("click", (e) => {
+    const remove = e.target.closest("[data-bookmark-remove]");
+    if (!remove) return;
+    const slug = remove.dataset.bookmarkRemove;
+    writeBookmarks(readBookmarks().filter((x) => x.slug !== slug));
+    if (currentArticle && String(currentArticle.slug || currentArticle.id) === slug) updateSaveBtn();
+    renderAccount();
+    toast("success", "Bookmark removed");
+  });
+  window.addEventListener("storage", (e) => {
+    if (e.key === BOOKMARK_KEY) { updateSaveBtn(); if (view === "account" && !$("view-account").hidden) renderAccount(); }
+  });
 
   // ---- Comments ----------------------------------------------------------------
   const commentHtml = (c) => {
