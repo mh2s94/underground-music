@@ -222,7 +222,7 @@ export function youtubeIdFromUrl(value) {
       return /^[A-Za-z0-9_-]{11}$/.test(id) ? id : "";
     }
     if (host !== "youtube.com") return "";
-    const id = url.searchParams.get("v") || (url.pathname.match(/^\\/(?:shorts|embed|live)\\/([A-Za-z0-9_-]{11})(?:\\/|$)/) || [])[1] || "";
+    const id = url.searchParams.get("v") || (url.pathname.match(/^\/(?:shorts|embed|live)\//([A-Za-z0-9_-]{11})(?:\\/|$)/) || [])[1] || "";
     return /^[A-Za-z0-9_-]{11}$/.test(id) ? id : "";
   } catch { return ""; }
 }
