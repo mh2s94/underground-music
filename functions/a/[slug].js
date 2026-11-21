@@ -23,7 +23,16 @@ export async function onRequestGet({ request, env, params }) {
   const slug = safeDecode(String(params.slug || "")).slice(0, 200);
   const shell = await env.ASSETS.fetch(new Request(new URL("/", request.url)));
   let article = null;
-  try { article = await findArticle(env, slug); } catch { /* fall back to the plain page */ }
+  try {
+    article = await findArticle(env, slug);
+  } catch (error) {
+    const message = String(error?.message || error || "Unknown Supabase error").replace(/[<>\\r\\n]/g, " ").slice(0, 300);
+    console.error("[article metadata] " + message);
+    return new Response(`Article metadata lookup failed: ${message}`, {
+      status: 502,
+      headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" }
+    });
+  }
 
   const headers = new Headers(shell.headers);
   headers.set("content-type", "text/html; charset=utf-8");
@@ -87,7 +96,7 @@ export async function onRequestGet({ request, env, params }) {
 async function findArticle(env, slug) {
   if (!slug) return null;
   const svc = serviceRest(env);
-  if (svc.error) return null;
+  if (svc.error) throw new Error(svc.error);
   const { rest } = svc;
   const idLookup = /^[0-9a-f-]{36}$|^\d+$/i.test(slug);
   const filters = idLookup ? { id: "eq." + slug } : { slug: "eq." + slug };
@@ -102,12 +111,17 @@ async function findArticle(env, slug) {
     "id,slug,title,excerpt,content,cover_image_url,genre,tags,band_name,album_name,published_at,updated_at,kind,score",
     "id,slug,title,excerpt,content,cover_image_url,genre,tags,band_name,album_name,published_at,updated_at"
   ];
+  let lastError = "No compatible public.articles column set was accepted";
   for (const select of selects) {
     const query = new URLSearchParams({ select, ...base });
     const result = await rest("articles?" + query.toString(), { signal: AbortSignal.timeout(5000) });
-    if (!result.ok) continue;
+    if (!result.ok) {
+      lastError = `Supabase HTTP ${result.status} ${result.statusText}: ${(await result.text()).slice(0, 200)}`;
+      continue;
+    }
     const rows = await result.json();
+    if (!Array.isArray(rows)) throw new Error("Supabase returned a non-array response for public.articles");
     return rows[0] || null;
   }
-  return null;
+  throw new Error(lastError);
 }
