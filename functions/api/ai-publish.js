@@ -216,7 +216,7 @@ export function youtubeIdFromUrl(value) {
   try {
     const url = new URL(String(value || ""));
     if (!["http:", "https:"].includes(url.protocol) || url.username || url.password) return "";
-    const host = url.hostname.toLowerCase().replace(/^(www|m|music)\\./, "");
+    const host = url.hostname.toLowerCase().replace(/^(www|m|music)\./, "");
     if (host === "youtu.be") {
       const id = url.pathname.split("/").filter(Boolean)[0] || "";
       return /^[A-Za-z0-9_-]{11}$/.test(id) ? id : "";
