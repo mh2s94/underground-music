@@ -38,6 +38,10 @@ jobs:
           node --check assets/bento.js
           node --check 'functions/band/[slug].js'
           node tests/discovery.test.mjs
+      - name: Stage 3 bookmarks and affiliate cards
+        run: |
+          node --check assets/bento.js
+          node tests/bookmarks-affiliate.test.mjs
       - name: Glitch Wave branding (header, splash, launch, favicon on every page)
         run: node tests/branding.test.mjs
   verify:
