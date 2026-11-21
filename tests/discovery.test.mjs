@@ -70,3 +70,15 @@ test("search and band pages support direct navigation and reload", async () => {
   assert.ok(source.includes('location.pathname.match(/^\\/band\\/([^/]+)\\/?$/)'));
   assert.ok(route.includes('env.ASSETS.fetch(new Request(new URL("/", request.url)))'));
 });
+
+
+test("search discovery filters stay in a compact horizontal strip and empty state has readable spacing", async () => {
+  const [css, html, source] = await Promise.all([read("assets/bento.css"), read("index.html"), read("assets/bento.js")]);
+  assert.match(css, /\.search-page-filters\{[^}]*display:flex;flex-wrap:nowrap;[^}]*overflow-x:auto/s);
+  assert.match(css, /\.search-page-filters \.pill\{flex:0 0 auto/);
+  assert.match(css, /\.search-page-stories\{padding:0;background:transparent;border:0/);
+  assert.match(css, /\.search-no-results\{display:flex;flex-direction:column;gap:6px\}/);
+  assert.match(html, /class="bento-item search-page-hero"/);
+  assert.match(html, /class="search-page-stories bento-item"/);
+  assert.match(source, /No stories found<\/strong><span>Try another band, genre, tag or title\.<\/span>/);
+});
