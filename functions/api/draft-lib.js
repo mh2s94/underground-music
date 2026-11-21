@@ -23,17 +23,21 @@ export function supabaseProjectUrl(value) {
 
 // Supabase REST with the service key. Returns { rest } or { error, seen }.
 export function serviceRest(env) {
+  // Keep these public fallback credentials aligned with the browser client in admin.html.
+  // They are publishable/anon credentials and can only read rows allowed by Supabase RLS.
+  const FALLBACK_URL = "https://lhhmzfwjznlwkentbakv.supabase.co";
+  const FALLBACK_PUBLIC_KEY = "sb_publishable_MQDqmSmPb3qiSODbBOSKmA_U7aBEFtN";
   const URL_NAMES = ["SUPABASE_URL", "SUPABASE_PROJECT_URL", "NEXT_PUBLIC_SUPABASE_URL", "PUBLIC_SUPABASE_URL", "VITE_SUPABASE_URL"];
   const KEY_NAMES = ["SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_SECRET_KEY", "SUPABASE_SERVICE_KEY", "SUPABASE_SERVICE_ROLE", "SERVICE_ROLE_KEY", "SUPABASE_ANON_KEY", "SUPABASE_PUBLIC_KEY", "NEXT_PUBLIC_SUPABASE_ANON_KEY", "PUBLIC_SUPABASE_ANON_KEY", "VITE_SUPABASE_ANON_KEY"];
   const urlName = URL_NAMES.find((n) => env[n] && String(env[n]).trim());
   const keyName = KEY_NAMES.find((n) => env[n] && String(env[n]).trim());
-  const projectUrl = supabaseProjectUrl(urlName ? env[urlName] : "");
-  if (!projectUrl || !keyName) {
+  const projectUrl = supabaseProjectUrl(urlName ? env[urlName] : FALLBACK_URL);
+  const key = String(keyName ? env[keyName] : FALLBACK_PUBLIC_KEY).trim();
+  if (!projectUrl || !key) {
     const seen = Object.keys(env).filter((k) => /SUPA|SERVICE|SECRET|PUBLIC/i.test(k)); // names only, never values
-    return { error: `Supabase public article read is not configured (URL: ${urlName || "missing"}; key: ${keyName || "missing"}). Set SUPABASE_URL and SUPABASE_ANON_KEY (or a service-role key) in this Cloudflare Pages environment.`, seen };
+    return { error: `Supabase public article read is not configured (URL: ${urlName || "frontend fallback"}; key: ${keyName || "frontend fallback"}). Set valid Supabase Pages variables or check the frontend fallback configuration.`, seen };
   }
-  // New Supabase secret keys (sb_secret_…) go in the apikey header only; legacy service_role JWTs also as Bearer.
-  const key = String(env[keyName]).trim();
+  // New Supabase keys (sb_publishable_ / sb_secret_) go in the apikey header only; legacy JWT keys also as Bearer.
   const sb = key.startsWith("sb_") ? { apikey: key, "content-type": "application/json" } : { apikey: key, Authorization: "Bearer " + key, "content-type": "application/json" };
   const rest = (path, init = {}) => fetch(`${projectUrl}/rest/v1/${path}`, { ...init, headers: { ...sb, ...(init.headers || {}) } });
   return { rest };
