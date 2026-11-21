@@ -1719,7 +1719,7 @@
       const tags = Array.isArray(a.tags) ? a.tags.join(" ") : (a.tags || "");
       const text = [a.title,a.band_name,a.genre,a.excerpt,a.album_name,tags].join(" ").toLowerCase();
       const textMatch = !q || text.includes(q);
-      const filterMatch = (!pageSearchVideoOnly || Boolean(videoIdOf(a)) && (pageSearchGenre === "ALL" || String(a.genre || "").toLowerCase() === pageSearchGenre.toLowerCase());
+      const filterMatch = (!pageSearchVideoOnly || Boolean(videoIdOf(a))) && (pageSearchGenre === "ALL" || String(a.genre || "").toLowerCase() === pageSearchGenre.toLowerCase());
       return textMatch && filterMatch;
     }).sort((a,b) => new Date(b.published_at || 0) - new Date(a.published_at || 0));
     $("pageSearchCount").textContent = found.length + (found.length === 1 ? " story" : " stories");
