@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "id": "tour-grade-earplugs",
+      "title": "Tour-grade earplugs",
+      "subtitle": "Reusable hearing protection for loud rooms and long sets.",
+      "badge": "GEAR",
+      "price_label": "Check current price",
+      "url": "https://www.etymotic.com/product/er20xs/",
+      "image_url": "https://images.unsplash.com/photo-1593078166031-9a0d0b4a8f9a?auto=format&fit=crop&w=900&q=80",
+      "active": true
+    },
+    {
+      "id": "vinyl-record-care",
+      "title": "Vinyl care essentials",
+      "subtitle": "Keep your heavy rotation clean between spins.",
+      "badge": "VINYL",
+      "price_label": "Explore the kit",
+      "url": "https://www.audio-technica.com/en-us/turntables/accessories",
+      "image_url": "https://images.unsplash.com/photo-1603048588665-791ca8aea617?auto=format&fit=crop&w=900&q=80",
+      "active": true
+    },
+    {
+      "id": "guitar-strings",
+      "title": "Electric guitar strings",
+      "subtitle": "A practical spare set for rehearsals and the road.",
+      "badge": "GEAR",
+      "price_label": "See string options",
+      "url": "https://www.daddario.com/products/guitar/electric-guitar/",
+      "image_url": "https://images.unsplash.com/photo-1550985616-10810253b84d?auto=format&fit=crop&w=900&q=80",
+      "active": true
+    },
+    {
+      "id": "band-merch",
+      "title": "Official band merch",
+      "subtitle": "Support artists directly through their official stores.",
+      "badge": "MERCH",
+      "price_label": "Browse official stores",
+      "url": "https://bandcamp.com/",
+      "image_url": "https://images.unsplash.com/photo-1576566588028-4147f3842f27?auto=format&fit=crop&w=900&q=80",
+      "active": true
+    }
+  ]
+}
