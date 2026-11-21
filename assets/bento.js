@@ -1362,8 +1362,9 @@
     const { data, error } = await db.from("articles")
       .select(ACOLS)
       .eq("status", "published").order("published_at", { ascending: false }).limit(60);
-    if (error && ACOLS.includes(",youtube_video_id")) { ACOLS = ACOLS.replace(",youtube_video_id", ""); return load(); } // video column migration not applied yet
-    if (error && ACOLS !== ACOLS_BASE) { ACOLS = ACOLS_BASE; return load(); } // optional kind/score columns not applied yet
+    if (error && /youtube_video_id/i.test(error.message || "") && ACOLS.includes(",youtube_video_id")) { ACOLS = ACOLS.replace(",youtube_video_id", ""); return load(); } // video column migration not applied yet
+    if (error && /(kind|score)/i.test(error.message || "") && ACOLS.includes(",kind,score")) { ACOLS = ACOLS.replace(",kind,score", ""); return load(); } // optional kind/score columns not applied yet
+    if (error && ACOLS !== ACOLS_BASE) { ACOLS = ACOLS_BASE; return load(); }
     if (error) toast("error", "Could not load stories", "Check your connection and refresh the page.");
     articles = (data || []).filter((a) => a.published_at);
     emit("data", { type: "articles", count: articles.length });
