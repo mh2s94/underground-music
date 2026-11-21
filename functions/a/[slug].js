@@ -80,12 +80,16 @@ export async function onRequestGet({ request, env, params }) {
 
 async function findArticle(env, slug) {
   if (!slug || !env.SUPABASE_URL || !env.SUPABASE_ANON_KEY) return null;
-  const cols = "id,slug,title,excerpt,content,cover_image_url,genre,tags,band_name,album_name,published_at,updated_at";
+  const cols = "id,slug,title,excerpt,content,cover_image_url,youtube_video_id,genre,tags,band_name,album_name,published_at,updated_at";
   const h = { apikey: env.SUPABASE_ANON_KEY, Authorization: "Bearer " + env.SUPABASE_ANON_KEY };
   const base = `${env.SUPABASE_URL}/rest/v1/articles?select=${cols}&status=eq.published&limit=1`;
-  const q = /^[0-9a-f-]{36}$|^\d+$/i.test(slug) ? `&id=eq.${encodeURIComponent(slug)}` : `&slug=eq.${encodeURIComponent(slug)}`;
-  let r = await fetch(base.replace("&status", ",kind,score&status") + q, { headers: h, signal: AbortSignal.timeout(5000) });
-  if (!r.ok) r = await fetch(base + q, { headers: h, signal: AbortSignal.timeout(5000) }); // before extras.sql
+  const legacyBase = base.replace(",youtube_video_id", "");
+  const q = /^[0-9a-f-]{36}$|^\\d+$/i.test(slug) ? `&id=eq.${encodeURIComponent(slug)}` : `&slug=eq.${encodeURIComponent(slug)}`;
+  const options = { headers: h, signal: AbortSignal.timeout(5000) };
+  let r = await fetch(base.replace("&status", ",kind,score&status") + q, options);
+  if (!r.ok) r = await fetch(base + q, options); // before extras.sql
+  if (!r.ok) r = await fetch(legacyBase.replace("&status", ",kind,score&status") + q, options); // before youtube_video_id migration
+  if (!r.ok) r = await fetch(legacyBase + q, options); // legacy base schema
   if (!r.ok) return null;
   const rows = await r.json();
   return rows[0] || null;
