@@ -1,3 +1,5 @@
+import { serviceRest } from "./api/draft-lib.js";
+
 const SITE = "https://music.mikasa.me";
 const DEFAULT_IMAGE = SITE + "/assets/og.png";
 const xml = (value) => String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
@@ -57,19 +59,16 @@ ${items.join("\n")}
 }
 
 async function latestArticles(env) {
-  if (!env.SUPABASE_URL || !env.SUPABASE_ANON_KEY) throw new Error("Supabase read credentials unavailable");
+  const svc = serviceRest(env);
+  if (svc.error) throw new Error(svc.error);
   const query = new URLSearchParams({
     select: "id,slug,title,excerpt,content,genre,published_at,cover_image_url,youtube_video_id",
     status: "eq.published",
     order: "published_at.desc",
     limit: "50"
   });
-  const url = String(env.SUPABASE_URL).replace(/\/+$/, "") + "/rest/v1/articles?" + query;
-  const result = await fetch(url, {
-    headers: { apikey: env.SUPABASE_ANON_KEY, Authorization: "Bearer " + env.SUPABASE_ANON_KEY, Accept: "application/json" },
-    signal: AbortSignal.timeout(8000)
-  });
-  if (!result.ok) throw new Error("Published articles query failed");
+  const result = await svc.rest("articles?" + query.toString());
+  if (!result.ok) throw new Error("Published articles query failed: " + (await result.text()).slice(0, 200));
   const rows = await result.json();
   if (!Array.isArray(rows)) throw new Error("Unexpected articles response");
   return rows;
