@@ -54,7 +54,7 @@ ${items.join("\n")}
 `;
     return response(body);
   } catch (error) {
-    const message = String(error?.message || error || "Unknown Supabase error").replace(/[<>\\r\\n]/g, " ").slice(0, 300);
+    const message = String(error?.message || error || "Unknown Supabase error").replace(/[<>\r\n]/g, " ").slice(0, 300);
     console.error("[rss.xml] " + message);
     return response(`<?xml version="1.0" encoding="UTF-8"?><error status="502">${xml(message)}</error>`, 502);
   }
