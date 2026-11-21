@@ -872,7 +872,8 @@
     catch { toast("error", "Bookmarks could not be saved", "Check available browser storage."); return false; }
   }
   function safeImageUrl(value) {
-    try { const u = new URL(String(value || ""), location.origin); return ["https:", "http:"].includes(u.protocol) ? u.href : ""; }
+    if (!value) return "";
+    try { const u = new URL(String(value), location.origin); return ["https:", "http:"].includes(u.protocol) ? u.href : ""; }
     catch { return ""; }
   }
   const bookmarkFor = (a) => ({
