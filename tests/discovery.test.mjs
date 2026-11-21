@@ -19,7 +19,7 @@ test("article reader adds four newest related published stories, excluding the c
     'Related Stories',
     'hasVideoField(a)'
   ]) assert.ok(block.includes(marker), marker);
-  assert.ok(source.includes('const searchPath = /^\\/search\\/?$/.test(location.pathname);'));
+  assert.ok(source.includes("relatedStoriesHtml(related)"));
 });
 
 test("search page supports title, band, genre, excerpt, tags, VIDEO and combinable genre filters", async () => {
@@ -65,7 +65,7 @@ test("search and band pages support direct navigation and reload", async () => {
     read("index.html"), read("assets/bento.js"), read("functions/band/[slug].js")
   ]);
   assert.match(html, /id="view-search" data-view="search"/);
-  assert.match(source, /\/search\\\/?\$/.test(source) ? /\/search/ : /\/search/);
+  assert.ok(source.includes('const searchPath = /^\\/search\\/?$/.test(location.pathname);'));
   assert.ok(source.includes('showView("search")'));
   assert.ok(source.includes('location.pathname.match(/^\\/band\\/([^/]+)\\/?$/)'));
   assert.ok(route.includes('env.ASSETS.fetch(new Request(new URL("/", request.url)))'));
