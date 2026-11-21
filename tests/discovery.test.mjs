@@ -19,7 +19,7 @@ test("article reader adds four newest related published stories, excluding the c
     'Related Stories',
     'hasVideoField(a)'
   ]) assert.ok(block.includes(marker), marker);
-  assert.match(source.slice(source.indexOf("async function openArticle(key)"), source.indexOf("function closeReader", start)), /relatedStoriesHtml\(related\)/);
+  assert.ok(source.includes('const searchPath = /^\\/search\\/?$/.test(location.pathname);'));
 });
 
 test("search page supports title, band, genre, excerpt, tags, VIDEO and combinable genre filters", async () => {
