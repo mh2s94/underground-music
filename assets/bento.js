@@ -48,7 +48,6 @@
   const tagHtml = (g) => `<span class="tag${isWarm(g) ? " warm" : ""}">${esc(g || "Underground")}</span>`;
   const ytId = (s) => (String(s || "").match(YT_LINE) || [])[1] || "";
   const videoIdOf = (a) => /^[A-Za-z0-9_-]{11}$/.test(String(a?.youtube_video_id || "")) ? a.youtube_video_id : ytId(a?.content);
-  const hasVideoField = (a) => String(a?.youtube_video_id || "").trim().length > 0;
   const readTime = (s) => Math.max(1, Math.round((String(s || "").match(/\S+/g) || []).length / 220)) + " min read";
   const fmtDate = (d) => d ? new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "";
   const keyOf = (a) => encodeURIComponent(a.slug || a.id);
@@ -741,7 +740,7 @@
         const vid = videoIdOf(a), cover = coverOf(a);
         return '<a class="related-card" href="/a/' + keyOf(a) + '"><span class="related-thumb">' +
           (cover ? '<img src="' + esc(cover) + '" alt="" loading="lazy" onerror="this.remove()">' : art(a.id)) +
-          (hasVideoField(a) ? '<span class="related-video">VIDEO</span>' : '') +
+          (Boolean(videoIdOf(a)) ? '<span class="related-video">VIDEO</span>' : '') +
           '</span><span class="related-copy">' + tagHtml(a.genre) + '<strong>' + esc(a.title) + '</strong><small>' + fmtDate(a.published_at) + '</small></span></a>';
       }).join('') + '</div></section>';
   }
@@ -1018,7 +1017,7 @@
         <div class="strength" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
         <p class="fine" id="pwHint" style="margin:-6px 0 0">At least 8 characters. Mix letters, numbers and symbols for a stronger password.</p>
         <div class="form-error" role="alert" hidden></div>
-        <p class="hint" style="margin:0;text-transform:none;letter-spacing:.02em">By creating an account you agree to our <a href="/terms.html" target="_blank" style="color:var(--uv-hi)">Terms</a> and <a href="/privacy.html" target="_blank" style="color:var(--uv-hi)">Privacy policy</a>.</p>
+        <p class="hint" style="margin:0;text-transform:none;letter-spacing:.02em">By creating an account you agree to our <a href="/terms.html" target="_blank" rel="noopener noreferrer" style="color:var(--uv-hi)">Terms</a> and <a href="/privacy.html" target="_blank" rel="noopener noreferrer" style="color:var(--uv-hi)">Privacy policy</a>.</p>
         ${TURNSTILE_SITE_KEY ? `<div class="captcha" aria-label="Security check"></div>` : ""}
         <button class="btn btn-forest" type="submit">Create account <span class="arr" aria-hidden="true">→</span></button>
         <p class="fine" style="margin:0;text-align:center">By joining you agree to keep comments respectful.</p>
@@ -1720,7 +1719,7 @@
       const tags = Array.isArray(a.tags) ? a.tags.join(" ") : (a.tags || "");
       const text = [a.title,a.band_name,a.genre,a.excerpt,a.album_name,tags].join(" ").toLowerCase();
       const textMatch = !q || text.includes(q);
-      const filterMatch = (!pageSearchVideoOnly || hasVideoField(a)) && (pageSearchGenre === "ALL" || String(a.genre || "").toLowerCase() === pageSearchGenre.toLowerCase());
+      const filterMatch = (!pageSearchVideoOnly || Boolean(videoIdOf(a))) && (pageSearchGenre === "ALL" || String(a.genre || "").toLowerCase() === pageSearchGenre.toLowerCase());
       return textMatch && filterMatch;
     }).sort((a,b) => new Date(b.published_at || 0) - new Date(a.published_at || 0));
     $("pageSearchCount").textContent = found.length + (found.length === 1 ? " story" : " stories");
@@ -1728,7 +1727,7 @@
       const vid = videoIdOf(a), cover = coverOf(a);
       return '<article class="search-result-card"><a class="search-result-main" href="/a/' + keyOf(a) + '"><span class="search-result-thumb">' +
         (cover ? '<img src="' + esc(cover) + '" alt="" loading="lazy" onerror="this.remove()">' : art(a.id)) +
-        (hasVideoField(a) ? '<span class="related-video">VIDEO</span>' : '') +
+        (Boolean(videoIdOf(a)) ? '<span class="related-video">VIDEO</span>' : '') +
         '</span><span class="search-result-copy">' + tagHtml(a.genre) + '<strong>' + esc(a.title) + '</strong><small>' + fmtDate(a.published_at) + ' · ' + readTime(a.content) + '</small></span></a>' +
         (a.band_name ? '<a class="search-result-band" href="/band/' + encodeURIComponent(bandSlug(a.band_name)) + '">' + esc(a.band_name) + ' <span>Band profile →</span></a>' : '') + '</article>';
     }).join("") : '<div class="card pad search-no-results"><strong>No stories found</strong><span>Try another band, genre, tag or title.</span></div>';
@@ -1893,7 +1892,7 @@
         const vid = videoIdOf(a), cover = coverOf(a);
         return '<article class="search-result-card"><a class="search-result-main" href="/a/' + keyOf(a) + '"><span class="search-result-thumb">' +
           (cover ? '<img src="' + esc(cover) + '" alt="" loading="lazy" onerror="this.remove()">' : art(a.id)) +
-          (hasVideoField(a) ? '<span class="related-video">VIDEO</span>' : '') + '</span><span class="search-result-copy">' +
+          (Boolean(videoIdOf(a)) ? '<span class="related-video">VIDEO</span>' : '') + '</span><span class="search-result-copy">' +
           tagHtml(a.genre) + '<strong>' + esc(a.title) + '</strong><small>' + fmtDate(a.published_at) + ' · ' + readTime(a.content) + '</small></span></a></article>';
       }).join("");
     } else {

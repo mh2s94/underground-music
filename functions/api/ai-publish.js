@@ -22,8 +22,11 @@ export async function onRequestPost({ request, env }) {
   if (validation.error) return json({ error: validation.error }, 400);
   const article = validation.article;
   const dailyLimit = parseDailyLimit(env.AI_PUBLISH_DAILY_LIMIT);
-  const sourceUrl = canonicalSourceUrl(sourceFromContent(article.CONTENT).url);
   const titleKey = normaliseTitle(article.TITLE);
+  // Source is optional (Option A): article.SOURCE_URL is the real canonical URL taken from the
+  // trailing "Source:" line or the SOURCE_URL payload field, and may be empty. ai_ingestion.source_url
+  // is NOT NULL + UNIQUE, so fall back to a deterministic, per-title placeholder when there is none.
+  const sourceUrl = article.SOURCE_URL || fallbackSourceUrl(titleKey);
   const mode = String(env.AI_PUBLISH_MODE || "draft").trim().toLowerCase();
   if (!["draft", "review", "published"].includes(mode)) return json({ error: "AI_PUBLISH_MODE must be draft, review, or published." }, 503);
   if (dailyLimit.error) return json({ error: dailyLimit.error }, 503);
@@ -103,8 +106,8 @@ export async function onRequestPost({ request, env }) {
     try {
       const message = "<b>UNDERGROUND · AI article " + esc(mode) + "</b>\n" +
         esc(article.TITLE) + "\n" +
-        "<a href=\""+SITE+"/a/"+encodeURIComponent(slug)+"\">Open article</a> · " +
-        "<a href=\""+esc(sourceUrl)+"\">Source</a>";
+        "<a href=\""+SITE+"/a/"+encodeURIComponent(slug)+"\">Open article</a>" +
+        (article.SOURCE_URL ? " · <a href=\""+esc(article.SOURCE_URL)+"\">Source</a>" : "");
       const sent = await tg(env, "sendMessage", {
         chat_id: env.TELEGRAM_CHAT_ID, text: message, parse_mode: "HTML",
         link_preview_options: { is_disabled: true }
@@ -175,9 +178,17 @@ export function validatePayload(value) {
   }
   const words = wordCount(CONTENT);
   if (words < 350 || words > 500) return { error: "CONTENT must contain 350–500 words." };
-  const source = sourceFromContent(CONTENT);
-  if (!source) return { error: "CONTENT must end with a final line in the form Source: [site](https://source-link)." };
-  if (!canonicalSourceUrl(source.url)) return { error: "Source link must be a valid HTTPS URL." };
+  // Source is optional: prefer a trailing "Source:" line, otherwise fall back to SOURCE_URL.
+  const contentSource = sourceFromContent(CONTENT);
+  let SOURCE_URL = "";
+  if (contentSource) {
+    SOURCE_URL = canonicalSourceUrl(contentSource.url);
+    if (!SOURCE_URL) return { error: "Source link must be a valid HTTPS URL." };
+  } else if (value.SOURCE_URL != null && value.SOURCE_URL !== "") {
+    if (typeof value.SOURCE_URL !== "string") return { error: "SOURCE_URL must be a valid HTTPS URL." };
+    SOURCE_URL = canonicalSourceUrl(value.SOURCE_URL.trim());
+    if (!SOURCE_URL) return { error: "SOURCE_URL must be a valid HTTPS URL." };
+  }
   const coverKeys = ["image", "cover_url", "cover_image"];
   let COVER_IMAGE_URL = "";
   for (const key of coverKeys) {
@@ -202,7 +213,7 @@ export function validatePayload(value) {
     if (YOUTUBE_VIDEO_ID && YOUTUBE_VIDEO_ID !== fromUrl) return { error: "youtubeVideoId does not match videoUrl." };
     YOUTUBE_VIDEO_ID = YOUTUBE_VIDEO_ID || fromUrl;
   }
-  return { article: { BAND, RELEASE, TITLE, EXCERPT, TAGS: [...new Set(value.TAGS.map((tag) => tag.trim()))], GENRE, TYPE, SCORE, CONTENT, COVER_IMAGE_URL, YOUTUBE_VIDEO_ID } };
+  return { article: { BAND, RELEASE, TITLE, EXCERPT, TAGS: [...new Set(value.TAGS.map((tag) => tag.trim()))], GENRE, TYPE, SCORE, CONTENT, SOURCE_URL, COVER_IMAGE_URL, YOUTUBE_VIDEO_ID } };
 }
 
 export function validHttpUrl(value) {
@@ -271,9 +282,17 @@ export function canonicalSourceUrl(value) {
   } catch { return ""; }
 }
 export function sourceFromContent(content) {
-  const lastLine = String(content || "").trim().split(/\r?\n/).at(-1) || "";
-  const match = /^Source:\s*\[([^\]\n]{1,120})\]\((https:\/\/[^)\s]+)\)$/.exec(lastLine);
-  return match ? { site: match[1], url: match[2] } : null;
+  try {
+    const lastLine = String(content || "").trim().split(/\r?\n/).at(-1) || "";
+    const match = /^Source:\s*\[([^\]\n]{1,120})\]\((https:\/\/[^)\s]+)\)$/.exec(lastLine);
+    return match ? { site: match[1], url: match[2] } : null;
+  } catch { return null; }
+}
+
+// Placeholder used only when neither a trailing "Source:" line nor SOURCE_URL is supplied.
+// ai_ingestion.source_url is NOT NULL + UNIQUE, so it stays deterministic per normalised title.
+export function fallbackSourceUrl(titleKey) {
+  return "https://music.mikasa.me/ai-publish/" + encodeURIComponent(String(titleKey || "").trim() || "article");
 }
 function contentHasSource(content, sourceUrl) {
   const matches = String(content || "").matchAll(/^Source:\s*\[[^\]]+\]\((https:\/\/[^)\s]+)\)\s*$/gm);

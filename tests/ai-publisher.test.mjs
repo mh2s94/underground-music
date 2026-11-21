@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import {
   canonicalSourceUrl, normaliseTitle, sourceFromContent, validatePayload, wordCount, youtubeIdFromUrl,
-  parseDailyLimit, slugify, nextAvailableSlug
+  parseDailyLimit, slugify, nextAvailableSlug, fallbackSourceUrl
 } from "../functions/api/ai-publish.js";
 
 const endpoint = await readFile(new URL("../functions/api/ai-publish.js", import.meta.url), "utf8");
@@ -45,14 +45,46 @@ test("content must be 350–500 words and end with an HTTPS Source Markdown line
   assert.equal(validatePayload(payload(343)).error, undefined);
   assert.match(validatePayload(payload(342)).error, /350–500/);
   assert.match(validatePayload(payload(494)).error, /350–500/);
-  assert.match(validatePayload({ ...payload(), CONTENT: payload().CONTENT + "\nEditorial note" }).error, /Source/);
+  // Source line is optional now: trailing text after it is no longer rejected.
+  assert.equal(validatePayload({ ...payload(), CONTENT: payload().CONTENT + "\nEditorial note" }).error, undefined);
   assert.equal(sourceFromContent(payload().CONTENT).url, "https://example.com/news");
+  assert.equal(sourceFromContent("no source line here"), null);
 });
 
 test("canonical source URL removes tracking parameters and rejects unsafe URLs", () => {
   assert.equal(canonicalSourceUrl("https://example.com/news?utm_source=x&id=4#top"), "https://example.com/news?id=4");
   assert.equal(canonicalSourceUrl("http://example.com/news"), "");
   assert.equal(canonicalSourceUrl("https://user:pass@example.com/news"), "");
+});
+
+test("source resolution: Source line wins, SOURCE_URL fallback, invalid SOURCE_URL rejected", () => {
+  // 1. Valid trailing Source line is used as-is.
+  const withSource = validatePayload(payload());
+  assert.equal(withSource.error, undefined);
+  assert.equal(withSource.article.SOURCE_URL, "https://example.com/news");
+
+  // 2. No Source line + valid SOURCE_URL -> canonical fallback (tracking params dropped).
+  const noSource = { ...payload(), CONTENT: Array(355).fill("metalcore").join(" ") };
+  const fallback = validatePayload({ ...noSource, SOURCE_URL: "https://example.com/original?utm_source=x&id=4#top" });
+  assert.equal(fallback.error, undefined);
+  assert.equal(fallback.article.SOURCE_URL, "https://example.com/original?id=4");
+
+  // 3. Invalid SOURCE_URL -> rejected.
+  assert.match(validatePayload({ ...noSource, SOURCE_URL: "http://example.com/x" }).error, /SOURCE_URL/);
+  assert.match(validatePayload({ ...noSource, SOURCE_URL: "javascript:alert(1)" }).error, /SOURCE_URL/);
+  assert.match(validatePayload({ ...noSource, SOURCE_URL: "not a url" }).error, /SOURCE_URL/);
+
+  // 4. Neither present -> allowed; resolved at runtime to a unique placeholder.
+  const neither = validatePayload(noSource);
+  assert.equal(neither.error, undefined);
+  assert.equal(neither.article.SOURCE_URL, "");
+  assert.equal(fallbackSourceUrl(normaliseTitle(noSource.TITLE)), fallbackSourceUrl(normaliseTitle(noSource.TITLE)));
+  assert.notEqual(fallbackSourceUrl("a b"), fallbackSourceUrl("a-c"));
+
+  // Endpoint wiring: no null deref, placeholder only when empty, Telegram link conditional.
+  assert.doesNotMatch(endpoint, /sourceFromContent\(article\.CONTENT\)\.url/);
+  assert.match(endpoint, /article\.SOURCE_URL \|\| fallbackSourceUrl\(titleKey\)/);
+  assert.match(endpoint, /article\.SOURCE_URL \? /);
 });
 
 test("titles are normalized consistently for duplicate detection", () => {

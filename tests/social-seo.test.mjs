@@ -28,15 +28,19 @@ async function withFetch(run) {
   try { await run(calls); } finally { globalThis.fetch = original; }
 }
 
-test("sitemap is XML, cached for 15 minutes, and lists static routes plus published articles", async () => {
+test("sitemap is XML, cached for 15 minutes, and lists the home route plus published articles", async () => {
   await withFetch(async (calls) => {
     const response = await sitemap({ env });
     const body = await response.text();
     assert.equal(response.status, 200);
     assert.match(response.headers.get("content-type"), /^application\/xml/);
     assert.equal(response.headers.get("cache-control"), "public, max-age=900, s-maxage=900");
-    for (const path of ["/", "/articles", "/music", "/charts", "/search", "/a/latest-track", "/a/video-feature"]) {
+    for (const path of ["/", "/a/latest-track", "/a/video-feature"]) {
       assert.ok(body.includes("https://music.mikasa.me" + path));
+    }
+    // SPA / hash routes must not appear as crawlable <loc> entries.
+    for (const spa of ["/articles", "/music", "/charts", "/search"]) {
+      assert.ok(!body.includes("<loc>https://music.mikasa.me" + spa + "</loc>"), "SPA route leaked into sitemap: " + spa);
     }
     assert.ok(body.includes("<lastmod>2026-11-20T10:00:00.000Z</lastmod>"));
     assert.equal(calls.length, 1);
