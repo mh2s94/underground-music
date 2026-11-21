@@ -973,3 +973,32 @@ body:not(.is-playing) .np-chip i { background: var(--muted); }
 
 /* Search page: keep discovery controls compact and let the story grid start directly below. */
 .search-page-stories{padding:0;background:transparent;border:0;box-shadow:none}.search-page-stories .card-title{margin:0 0 12px}.search-no-results{display:flex;flex-direction:column;gap:6px}.search-no-results span{display:block;color:var(--muted)}
+
+
+/* Stage 3 · local bookmarks + native affiliate picks */
+.save-btn.is-saved { color:var(--neon-hi); border-color:var(--neon); background:rgb(var(--ug-accent-rgb) / .12); box-shadow:0 0 16px rgb(var(--ug-accent-rgb) / .16); }
+.account-saved-wrap { max-width:1040px; margin:18px auto 0; }
+.saved-articles-panel { min-width:0; }
+.saved-entry { display:flex; flex-direction:column; overflow:hidden; }
+.saved-entry-link { display:block; color:inherit; text-decoration:none; min-width:0; }
+.saved-entry .art-wrap { aspect-ratio:16/9; }
+.saved-entry .art-wrap img { width:100%; height:100%; object-fit:cover; }
+.saved-remove { align-self:flex-start; margin:0 14px 14px; min-height:34px; font-size:11px; }
+.affiliate-picks { margin:28px 0; padding:18px; border:1px solid rgb(var(--ug-accent-rgb) / .28); border-radius:16px; background:linear-gradient(135deg, rgb(var(--ug-accent-rgb) / .075), rgb(var(--ug-uv-rgb) / .055) 55%, #09070d); box-shadow:inset 0 1px 0 rgb(255 255 255 / .035), 0 12px 36px #0005; }
+.affiliate-head { display:flex; align-items:flex-end; justify-content:space-between; gap:12px; margin-bottom:14px; }
+.affiliate-head h2 { margin:3px 0 0; font:400 clamp(24px,4vw,34px)/.95 var(--display); letter-spacing:.035em; }
+.affiliate-kicker,.affiliate-badge { font:700 9px/1 var(--mono); letter-spacing:.12em; color:var(--neon-hi); }
+.affiliate-kicker { padding:7px 9px; border:1px solid rgb(var(--ug-accent-rgb) / .35); border-radius:999px; white-space:nowrap; }
+.affiliate-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; }
+.affiliate-card { min-width:0; overflow:hidden; display:flex; flex-direction:column; color:inherit; text-decoration:none; border:1px solid var(--line); border-radius:11px; background:#0c0a11; transition:border-color .2s,transform .2s; }
+.affiliate-card:hover { border-color:var(--neon); transform:translateY(-2px); }
+.affiliate-image { position:relative; display:block; aspect-ratio:4/3; background:linear-gradient(135deg,#171020,#09070d); }
+.affiliate-image img { width:100%; height:100%; object-fit:cover; display:block; }
+.affiliate-badge { position:absolute; left:8px; top:8px; padding:6px 7px; border-radius:4px; background:#08060dcc; border:1px solid rgb(var(--ug-accent-rgb) / .45); }
+.affiliate-copy { padding:11px; display:flex; flex-direction:column; gap:6px; min-width:0; }
+.affiliate-copy strong { font-size:12px; line-height:1.35; }
+.affiliate-copy small { color:var(--muted); font-size:10px; line-height:1.45; }
+.affiliate-price { color:var(--neon-hi); font:700 10px/1.3 var(--mono); }
+.affiliate-disclosure { margin:12px 0 0; color:var(--muted); font-size:9px; line-height:1.5; }
+@media (max-width:700px) { .affiliate-picks { padding:14px; margin:22px 0; } .affiliate-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; } .affiliate-copy { padding:9px; } }
+@media (max-width:380px) { .affiliate-head { align-items:flex-start; flex-direction:column; } }
