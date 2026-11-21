@@ -25,7 +25,7 @@
   const YT_LINE = /^https:\/\/(?:www\.|m\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]{11})\S*$/m;
   const DAY = 864e5;
   const ACOLS_BASE = "id,slug,title,excerpt,content,cover_image_url,genre,tags,published_at,band_name,album_name";
-  let ACOLS = ACOLS_BASE + ",kind,score"; // kind/score exist after supabase/extras.sql
+  let ACOLS = ACOLS_BASE + ",kind,score,youtube_video_id"; // optional metadata columns; load() falls back for older schemas
   const bandSlug = (n) => String(n || "").trim().toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
   const bandLink = (n, cls = "band-link") => n ? `<a class="${cls}" href="/band/${encodeURIComponent(bandSlug(n))}">${esc(n)}</a>` : "";
   const fmtScore = (v) => (Math.round(Number(v) * 10) / 10).toFixed(1).replace(/\.0$/, ".0");
@@ -47,6 +47,7 @@
   const isWarm = (g) => WARM.has(String(g || "").toLowerCase()) || !!(UGG && UGG.isWarm(g));
   const tagHtml = (g) => `<span class="tag${isWarm(g) ? " warm" : ""}">${esc(g || "Underground")}</span>`;
   const ytId = (s) => (String(s || "").match(YT_LINE) || [])[1] || "";
+  const videoIdOf = (a) => /^[A-Za-z0-9_-]{11}$/.test(String(a?.youtube_video_id || "")) ? a.youtube_video_id : ytId(a?.content);
   const readTime = (s) => Math.max(1, Math.round((String(s || "").match(/\S+/g) || []).length / 220)) + " min read";
   const fmtDate = (d) => d ? new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "";
   const keyOf = (a) => encodeURIComponent(a.slug || a.id);
@@ -186,7 +187,7 @@
     return [...seen.values()];
   };
   const releases = () => new Set(articles.map((a) => (a.album_name || "").trim().toLowerCase()).filter(Boolean)).size;
-  const coverOf = (a) => a.cover_image_url || (ytId(a.content) ? `https://i.ytimg.com/vi/${ytId(a.content)}/hqdefault.jpg` : "");
+  const coverOf = (a) => a.cover_image_url || (videoIdOf(a) ? `https://i.ytimg.com/vi/${videoIdOf(a)}/hqdefault.jpg` : "");
   // Real cover when the article has one (cover URL or the band's YouTube thumbnail),
   // generated neon art underneath as the fallback if there is none or it fails to load.
   const media = (a) => {
@@ -250,10 +251,10 @@
     $("statReleases").dataset.count = releases();
 
 
-    const vids = articles.filter((a) => ytId(a.content)).slice(0, 4);
+    const vids = articles.filter((a) => videoIdOf(a)).slice(0, 4);
     $("sessions").innerHTML = vids.length ? vids.map((a) => `
       <a class="session" href="/a/${keyOf(a)}">
-        ${art(a.id)}<img src="https://i.ytimg.com/vi/${ytId(a.content)}/hqdefault.jpg" alt="" loading="lazy" onerror="this.remove()">
+        ${art(a.id)}<img src="https://i.ytimg.com/vi/${videoIdOf(a)}/hqdefault.jpg" alt="" loading="lazy" onerror="this.remove()">
         <span class="shade"></span><span class="play" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l13-7.5z"/></svg></span>
         <span class="cap">${esc(a.title)}</span></a>`).join("")
       : `<div class="empty-note" style="grid-column:1/-1">Music videos from new stories show up here.</div>`;
@@ -602,7 +603,7 @@
     const list = genre === "All" ? articles : articles.filter((a) => (a.genre || "Underground").toLowerCase() === genre.toLowerCase());
     $("grid").innerHTML = list.length ? list.map((a) => `
       <a class="card lift acard bento-item" href="/a/${keyOf(a)}">
-        <div class="art-wrap">${media(a)}${scoreBadge(a)}${ytId(a.content) ? `<span class="vid"><svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"/></svg>Video</span>` : ""}</div>
+        <div class="art-wrap">${media(a)}${scoreBadge(a)}${videoIdOf(a) ? `<span class="vid"><svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"/></svg>Video</span>` : ""}</div>
         <div class="body">${tagHtml(a.genre)}<h3>${esc(a.title)}</h3>${a.excerpt ? `<p>${esc(a.excerpt)}</p>` : ""}
           <div class="meta"><span>${fmtDate(a.published_at)}</span><span>${readTime(a.content)}</span></div></div>
       </a>`).join("")
@@ -725,7 +726,7 @@
     currentArticle = a;
     updateSaveBtn();
     renderComments(a);
-    const vid = ytId(a.content);
+    const vid = videoIdOf(a);
     $("readerTag").innerHTML = tagHtml(a.genre);
     $("readerBody").innerHTML = `
       ${vid ? "" : `<div class="reader-hero">${media(a)}</div>`}
@@ -1361,7 +1362,8 @@
     const { data, error } = await db.from("articles")
       .select(ACOLS)
       .eq("status", "published").order("published_at", { ascending: false }).limit(60);
-    if (error && ACOLS !== ACOLS_BASE) { ACOLS = ACOLS_BASE; return load(); } // database not updated yet
+    if (error && ACOLS.includes(",youtube_video_id")) { ACOLS = ACOLS.replace(",youtube_video_id", ""); return load(); } // video column migration not applied yet
+    if (error && ACOLS !== ACOLS_BASE) { ACOLS = ACOLS_BASE; return load(); } // optional kind/score columns not applied yet
     if (error) toast("error", "Could not load stories", "Check your connection and refresh the page.");
     articles = (data || []).filter((a) => a.published_at);
     emit("data", { type: "articles", count: articles.length });
@@ -1572,7 +1574,7 @@
   // ---- Search ----------------------------------------------------------------
   // Articles (published, searched on the server), songs from Basement radio, and genres.
   let searchRun = 0, searchTimer = null, searchItems = [];
-  const ytThumb = (a) => { const v = ytId(a.content); return v ? `https://i.ytimg.com/vi/${v}/mqdefault.jpg` : ""; };
+  const ytThumb = (a) => { const v = videoIdOf(a); return v ? `https://i.ytimg.com/vi/${v}/mqdefault.jpg` : ""; };
   const hl = (text, q) => {
     const t = esc(text || ""); if (!q) return t;
     const words = q.split(/\s+/).filter((w) => w.length > 1).map((w) => esc(w).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
