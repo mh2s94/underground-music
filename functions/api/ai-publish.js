@@ -72,7 +72,9 @@ export async function onRequestPost({ request, env }) {
       title: article.TITLE, slug, excerpt: article.EXCERPT, content: article.CONTENT.trim(),
       band_name: article.BAND || null, album_name: article.RELEASE || null, tags: article.TAGS,
       genre: article.GENRE, kind: article.TYPE, score: article.SCORE ?? null,
-      status: mode, author_id: null, published_at: mode === "published" ? now.toISOString() : null
+      status: mode, author_id: null, published_at: mode === "published" ? now.toISOString() : null,
+      ...(article.COVER_IMAGE_URL ? { cover_image_url: article.COVER_IMAGE_URL } : {}),
+      ...(article.YOUTUBE_VIDEO_ID ? { youtube_video_id: article.YOUTUBE_VIDEO_ID } : {})
     };
     inserted = await rest("articles", {
       method: "POST", headers: { Prefer: "return=representation" }, body: JSON.stringify(row)
@@ -176,7 +178,53 @@ export function validatePayload(value) {
   const source = sourceFromContent(CONTENT);
   if (!source) return { error: "CONTENT must end with a final line in the form Source: [site](https://source-link)." };
   if (!canonicalSourceUrl(source.url)) return { error: "Source link must be a valid HTTPS URL." };
-  return { article: { BAND, RELEASE, TITLE, EXCERPT, TAGS: [...new Set(value.TAGS.map((tag) => tag.trim()))], GENRE, TYPE, SCORE, CONTENT } };
+  const coverKeys = ["image", "cover_url", "cover_image"];
+  let COVER_IMAGE_URL = "";
+  for (const key of coverKeys) {
+    if (value[key] == null || value[key] === "") continue;
+    if (typeof value[key] !== "string") return { error: key + " must be a valid http or https URL." };
+    const parsed = validHttpUrl(value[key].trim());
+    if (!parsed) return { error: key + " must be a valid http or https URL." };
+    COVER_IMAGE_URL = parsed;
+    break;
+  }
+  let YOUTUBE_VIDEO_ID = "";
+  if (value.youtubeVideoId != null && value.youtubeVideoId !== "") {
+    if (typeof value.youtubeVideoId !== "string" || !/^[A-Za-z0-9_-]{11}$/.test(value.youtubeVideoId.trim())) {
+      return { error: "youtubeVideoId must contain exactly 11 letters, numbers, underscores, or hyphens." };
+    }
+    YOUTUBE_VIDEO_ID = value.youtubeVideoId.trim();
+  }
+  if (value.videoUrl != null && value.videoUrl !== "") {
+    if (typeof value.videoUrl !== "string") return { error: "videoUrl must be a valid YouTube URL." };
+    const fromUrl = youtubeIdFromUrl(value.videoUrl.trim());
+    if (!fromUrl) return { error: "videoUrl must be a valid YouTube URL containing an 11-character video id." };
+    if (YOUTUBE_VIDEO_ID && YOUTUBE_VIDEO_ID !== fromUrl) return { error: "youtubeVideoId does not match videoUrl." };
+    YOUTUBE_VIDEO_ID = YOUTUBE_VIDEO_ID || fromUrl;
+  }
+  return { article: { BAND, RELEASE, TITLE, EXCERPT, TAGS: [...new Set(value.TAGS.map((tag) => tag.trim()))], GENRE, TYPE, SCORE, CONTENT, COVER_IMAGE_URL, YOUTUBE_VIDEO_ID } };
+}
+
+export function validHttpUrl(value) {
+  try {
+    const url = new URL(String(value || ""));
+    if (!["http:", "https:"].includes(url.protocol) || !url.hostname || url.username || url.password) return "";
+    return url.toString();
+  } catch { return ""; }
+}
+export function youtubeIdFromUrl(value) {
+  try {
+    const url = new URL(String(value || ""));
+    if (!["http:", "https:"].includes(url.protocol) || url.username || url.password) return "";
+    const host = url.hostname.toLowerCase().replace(/^(www|m|music)\\./, "");
+    if (host === "youtu.be") {
+      const id = url.pathname.split("/").filter(Boolean)[0] || "";
+      return /^[A-Za-z0-9_-]{11}$/.test(id) ? id : "";
+    }
+    if (host !== "youtube.com") return "";
+    const id = url.searchParams.get("v") || (url.pathname.match(/^\\/(?:shorts|embed|live)\\/([A-Za-z0-9_-]{11})(?:\\/|$)/) || [])[1] || "";
+    return /^[A-Za-z0-9_-]{11}$/.test(id) ? id : "";
+  } catch { return ""; }
 }
 
 export function parseDailyLimit(value) {
