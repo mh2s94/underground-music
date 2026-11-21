@@ -1,25 +1,46 @@
-// /sitemap.xml — tells search engines about the home page, legal pages and every published article.
 const SITE = "https://music.mikasa.me";
-const bandSlug = (n) => String(n || "").trim().toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-const x = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;");
+const STATIC_ROUTES = ["/", "/articles", "/music", "/charts", "/search"];
+const xml = (value) => String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
 
 export async function onRequestGet({ env }) {
-  let rows = [];
   try {
-    const h = { apikey: env.SUPABASE_ANON_KEY, Authorization: "Bearer " + env.SUPABASE_ANON_KEY };
-    const r = await fetch(`${env.SUPABASE_URL}/rest/v1/articles?select=id,slug,band_name,published_at,updated_at&status=eq.published&order=published_at.desc&limit=5000`, { headers: h, signal: AbortSignal.timeout(8000) });
-    if (r.ok) rows = await r.json();
-  } catch {}
-  const urls = [
-    { loc: SITE + "/", lastmod: rows[0]?.published_at, freq: "daily", pri: "1.0" },
-    ...rows.map((a) => ({ loc: `${SITE}/a/${encodeURIComponent(a.slug || a.id)}`, lastmod: a.updated_at || a.published_at, freq: "weekly", pri: "0.8" })),
-    ...[...new Set(rows.map((a) => bandSlug(a.band_name)).filter(Boolean))].map((b) => ({ loc: `${SITE}/band/${encodeURIComponent(b)}`, freq: "weekly", pri: "0.6" })),
-    { loc: SITE + "/privacy.html", freq: "yearly", pri: "0.2" },
-    { loc: SITE + "/terms.html", freq: "yearly", pri: "0.2" }
-  ];
-  const body = `<?xml version="1.0" encoding="UTF-8"?>
+    const query = new URLSearchParams({
+      select: "slug,published_at",
+      status: "eq.published",
+      order: "published_at.desc",
+      limit: "1000"
+    });
+    const url = String(env.SUPABASE_URL || "").replace(/\/+$/, "") + "/rest/v1/articles?" + query;
+    if (!env.SUPABASE_URL || !env.SUPABASE_ANON_KEY) throw new Error("Supabase read credentials unavailable");
+    const result = await fetch(url, {
+      headers: { apikey: env.SUPABASE_ANON_KEY, Authorization: "Bearer " + env.SUPABASE_ANON_KEY, Accept: "application/json" },
+      signal: AbortSignal.timeout(8000)
+    });
+    if (!result.ok) throw new Error("Published articles query failed");
+    const rows = await result.json();
+    if (!Array.isArray(rows)) throw new Error("Unexpected articles response");
+
+    const urls = [
+      ...STATIC_ROUTES.map((path) => `  <url><loc>${xml(SITE + path)}</loc></url>`),
+      ...rows.filter((article) => article.slug).map((article) => {
+        const lastmod = article.published_at && Number.isFinite(Date.parse(article.published_at))
+          ? `<lastmod>${new Date(article.published_at).toISOString()}</lastmod>` : "";
+        return `  <url><loc>${xml(SITE + "/a/" + encodeURIComponent(article.slug))}</loc>${lastmod}</url>`;
+      })
+    ];
+    const body = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${urls.map((u) => `  <url><loc>${x(u.loc)}</loc>${u.lastmod ? `<lastmod>${x(new Date(u.lastmod).toISOString())}</lastmod>` : ""}<changefreq>${u.freq}</changefreq><priority>${u.pri}</priority></url>`).join("\n")}
-</urlset>`;
-  return new Response(body, { headers: { "content-type": "application/xml; charset=utf-8", "cache-control": "public, max-age=600, s-maxage=3600" } });
+${urls.join("\n")}
+</urlset>
+`;
+    return new Response(body, { headers: {
+      "content-type": "application/xml; charset=utf-8",
+      "cache-control": "public, max-age=900, s-maxage=900",
+      "x-content-type-options": "nosniff"
+    } });
+  } catch {
+    return new Response('<?xml version="1.0" encoding="UTF-8"?><error>Sitemap temporarily unavailable.</error>', {
+      status: 503, headers: { "content-type": "application/xml; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" }
+    });
+  }
 }
