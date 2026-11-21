@@ -115,6 +115,7 @@ test("daily quota defaults to ten and validates an explicit environment override
 
 test("slug generation uses clean title slugs and numeric collision suffixes only", async () => {
   assert.equal(slugify("The New Wave: A Test!"), "the-new-wave-a-test");
+  assert.equal(slugify("Unveils 14th Five For Fun"), "unveils-14th-five-for-fun");
   assert.doesNotMatch(slugify("The New Wave"), /[a-f0-9]{10}$/);
   const taken = new Set(["the-new-wave", "the-new-wave-2"]);
   const fakeRest = async (path) => {
