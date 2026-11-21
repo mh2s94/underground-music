@@ -1,22 +1,23 @@
+import { serviceRest } from "./api/draft-lib.js";
+
 const SITE = "https://music.mikasa.me";
 const STATIC_ROUTES = ["/", "/articles", "/music", "/charts", "/search"];
 const xml = (value) => String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
 
 export async function onRequestGet({ env }) {
   try {
+    // Use the same server-side Supabase credentials and URL normalization as the
+    // existing API endpoints. This remains a read-only PostgREST GET.
+    const svc = serviceRest(env);
+    if (svc.error) throw new Error(svc.error);
     const query = new URLSearchParams({
       select: "slug,published_at",
       status: "eq.published",
       order: "published_at.desc",
       limit: "1000"
     });
-    const url = String(env.SUPABASE_URL || "").replace(/\/+$/, "") + "/rest/v1/articles?" + query;
-    if (!env.SUPABASE_URL || !env.SUPABASE_ANON_KEY) throw new Error("Supabase read credentials unavailable");
-    const result = await fetch(url, {
-      headers: { apikey: env.SUPABASE_ANON_KEY, Authorization: "Bearer " + env.SUPABASE_ANON_KEY, Accept: "application/json" },
-      signal: AbortSignal.timeout(8000)
-    });
-    if (!result.ok) throw new Error("Published articles query failed");
+    const result = await svc.rest("articles?" + query.toString());
+    if (!result.ok) throw new Error("Published articles query failed: " + (await result.text()).slice(0, 200));
     const rows = await result.json();
     if (!Array.isArray(rows)) throw new Error("Unexpected articles response");
 
