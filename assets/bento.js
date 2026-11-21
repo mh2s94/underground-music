@@ -885,7 +885,7 @@
     const item = bookmarkFor(a); if (!item.slug) return false;
     const current = readBookmarks(), exists = current.some((x) => x.slug === item.slug);
     const next = exists ? current.filter((x) => x.slug !== item.slug) : [item, ...current];
-    return writeBookmarks(next) ? !exists : exists;
+    return writeBookmarks(next) ? !exists : null;
   }
   function savedArticlesHtml() {
     const saved = readBookmarks();
@@ -1320,6 +1320,7 @@
   $("saveBtn").onclick = () => {
     if (!currentArticle) return;
     const on = toggleBookmark(currentArticle);
+    if (on === null) return;
     updateSaveBtn(true);
     if (view === "account" && !$("view-account").hidden) renderAccount();
     toast("success", on ? "Saved for later" : "Removed from saved", on ? "Find it any time in ACCOUNT on this device." : "", { duration: 3000 });
