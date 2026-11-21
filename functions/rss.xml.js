@@ -53,8 +53,10 @@ ${items.join("\n")}
 </rss>
 `;
     return response(body);
-  } catch {
-    return response('<?xml version="1.0" encoding="UTF-8"?><error>RSS feed temporarily unavailable.</error>', 503);
+  } catch (error) {
+    const message = String(error?.message || error || "Unknown Supabase error").replace(/[<>\\r\\n]/g, " ").slice(0, 300);
+    console.error("[rss.xml] " + message);
+    return response(`<?xml version="1.0" encoding="UTF-8"?><error status="502">${xml(message)}</error>`, 502);
   }
 }
 
@@ -68,7 +70,7 @@ async function latestArticles(env) {
     limit: "50"
   });
   const result = await svc.rest("articles?" + query.toString());
-  if (!result.ok) throw new Error("Published articles query failed: " + (await result.text()).slice(0, 200));
+  if (!result.ok) throw new Error(`Supabase HTTP ${result.status} ${result.statusText}: ${(await result.text()).slice(0, 240)}`);
   const rows = await result.json();
   if (!Array.isArray(rows)) throw new Error("Unexpected articles response");
   return rows;
