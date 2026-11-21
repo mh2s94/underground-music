@@ -21,6 +21,8 @@ assert.match(js, /rel="noopener noreferrer sponsored"/);
 assert.match(js, /target="_blank"/);
 assert.match(js, /x\.active === true/);
 assert.match(js, /if \(!active\.length\) return ""/);
+assert.match(js, /active\.some\(\(x\) => x\.affiliate === true\)/);
+assert.ok(cfg.items.every((item) => item.affiliate === false), "sample destinations must not claim affiliate commission");
 assert.match(css, /\.affiliate-picks/);
 assert.match(css, /\.affiliate-grid/);
 assert.match(css, /@media \(max-width:700px\)/);
