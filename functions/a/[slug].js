@@ -84,7 +84,7 @@ async function findArticle(env, slug) {
   const h = { apikey: env.SUPABASE_ANON_KEY, Authorization: "Bearer " + env.SUPABASE_ANON_KEY };
   const base = `${env.SUPABASE_URL}/rest/v1/articles?select=${cols}&status=eq.published&limit=1`;
   const legacyBase = base.replace(",youtube_video_id", "");
-  const q = /^[0-9a-f-]{36}$|^\\d+$/i.test(slug) ? `&id=eq.${encodeURIComponent(slug)}` : `&slug=eq.${encodeURIComponent(slug)}`;
+  const q = /^[0-9a-f-]{36}$|^\d+$/i.test(slug) ? `&id=eq.${encodeURIComponent(slug)}` : `&slug=eq.${encodeURIComponent(slug)}`;
   const options = { headers: h, signal: AbortSignal.timeout(5000) };
   let r = await fetch(base.replace("&status", ",kind,score&status") + q, options);
   if (!r.ok) r = await fetch(base + q, options); // before extras.sql
