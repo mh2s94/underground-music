@@ -26,7 +26,7 @@ export async function onRequestGet({ request, env, params }) {
   try {
     article = await findArticle(env, slug);
   } catch (error) {
-    const message = String(error?.message || error || "Unknown Supabase error").replace(/[<>\\r\\n]/g, " ").slice(0, 300);
+    const message = String(error?.message || error || "Unknown Supabase error").replace(/[<>\r\n]/g, " ").slice(0, 300);
     console.error("[article metadata] " + message);
     return new Response(`Article metadata lookup failed: ${message}`, {
       status: 502,
