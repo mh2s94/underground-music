@@ -762,7 +762,7 @@
           <span class="affiliate-image">${x.image ? `<img src="${esc(x.image)}" alt="" loading="lazy" onerror="this.remove()">` : ""}<span class="affiliate-badge">${esc(String(x.badge || "PICK").slice(0, 24))}</span></span>
           <span class="affiliate-copy"><strong>${esc(String(x.title).slice(0, 100))}</strong><small>${esc(String(x.subtitle || "").slice(0, 140))}</small><span class="affiliate-price">${esc(String(x.price_label || "Explore item").slice(0, 60))}</span></span>
         </a>`).join("")}</div>
-        <p class="affiliate-disclosure">Some links may be affiliate links. UNDERGROUND may earn a commission at no extra cost to you.</p>
+        ${active.some((x) => x.affiliate === true) ? '<p class="affiliate-disclosure">Some links are affiliate links. UNDERGROUND may earn a commission at no extra cost to you.</p>' : '<p class="affiliate-disclosure">Curated gear and merch recommendations. Links open in a new tab.</p>'}
       </section>`;
     } catch { return ""; }
   }
