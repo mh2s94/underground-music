@@ -33,7 +33,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap">
 <script src="/assets/theme/schema.js?v=t5"></script>
 <script src="/assets/theme/runtime.js?v=t4"></script>
-<link rel="stylesheet" href="/assets/bento.css?v=tr1">
+<link rel="stylesheet" href="/assets/bento.css?v=stage2-1">
 <link rel="stylesheet" href="/assets/launch.css?v=t1">
 <link rel="stylesheet" href="/assets/account.css?v=t1">
 </head>
@@ -196,6 +196,19 @@
         </div>
       </div>
       <div class="grid4" id="grid"></div>
+    </section>
+
+    <!-- View: Search & discovery -->
+    <section class="view" id="view-search" data-view="search" aria-label="Search stories" hidden>
+      <div class="bento-item search-page-hero">
+        <span class="badge-dark"><i aria-hidden="true"></i>Archive discovery</span>
+        <h1>Find your <span class="neon-txt">next story.</span></h1>
+        <p>Search published coverage by band, genre, title, excerpt or tag.</p>
+        <label class="search-page-input"><span class="sr-only">Search stories</span><input class="input" id="pageSearchInput" type="search" placeholder="Search bands, stories, genres and tags…" autocomplete="off"></label>
+        <div class="pills search-page-filters" id="pageSearchFilters" role="group" aria-label="Filter published stories"><button class="pill" type="button" data-search-filter="ALL" aria-pressed="true">ALL</button></div>
+      </div>
+      <div class="search-page-suggestions" id="pageBandSuggestions"></div>
+      <div class="search-page-stories bento-item"><div class="card-title"><h2>Published stories</h2><span class="hint" id="pageSearchCount">Loading archive…</span></div><div class="search-page-results" id="pageSearchResults"></div></div>
     </section>
 
     <!-- View 3: About -->
@@ -499,7 +512,7 @@
 <script src="/assets/genres.js"></script>
 <script src="/assets/launch.js?v=lm2"></script>
 <script src="/assets/trim.js?v=tr1"></script>
-<script src="/assets/bento.js?v=bf1"></script>
+<script src="/assets/bento.js?v=stage2-1"></script>
 <script src="/assets/readers.js?v=rc1" defer></script>
 </body>
 </html>
