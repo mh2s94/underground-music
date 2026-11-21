@@ -1796,7 +1796,7 @@
   let lastBand = null, bandRun = 0;
   const nameFromSlug = (slug) => {
     const s = bandSlug(slug);
-    const hit = [...articles.map((a) => a.band_name), ...tracks.map((t) => t.artist)].find((n) => n && bandSlug(n) === s);
+    const hit = articles.map((a) => a.band_name).find((n) => n && bandSlug(n) === s);
     return hit || s.split("-").filter(Boolean).map((w) => w[0].toUpperCase() + w.slice(1)).join(" ");
   };
 
