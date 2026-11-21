@@ -20,7 +20,7 @@ Last audit: **2026-11-19**, against `main` @ `82afca0` (Final Audit). Update thi
 | Scene Radar Auto-write (single) | VERIFIED | used by owner |
 | Scene Radar batch "Write as drafts" + Publish all | IMPLEMENTED, NOT VERIFIED | mock-tested; first live try hit the RLS bug; not re-run after the fix |
 | Scheduled AI drafts | REMOVED | Removed in PR #58 on 2026-11-19; AI generation is manual only |
-| VPS AI auto-publisher (`POST /api/ai-publish`, `ai_ingestion`, tests/docs) | IMPLEMENTED, NOT VERIFIED | Migration applied and RLS verified on Supabase 2026-11-20; PR review and preview CI pending; endpoint secrets/VPS smoke test remain owner actions |
+| VPS AI auto-publisher (`POST /api/ai-publish`, `ai_ingestion`, tests/docs) | IMPLEMENTED, NOT VERIFIED | Hardening migration applied and RLS verified 2026-11-20; media fields PR adds `cover_image_url` + `youtube_video_id` support; apply media migration before deploying; endpoint secrets/VPS smoke test remain owner actions |
 | RSS news publisher | IMPLEMENTED, NOT VERIFIED | PR branch `feat/rss-news-publisher`; short English RSS briefs, no AI, max 3/run and 10/day; SQL and secrets still require owner setup after PR approval |
 | Visitor accounts (sign up, sign in, reset) | IMPLEMENTED, NOT VERIFIED in this audit | Supabase dashboard settings not visible from repo |
 | Account page design (Amp Head, rack slide) | IMPLEMENTED | mock-tested at 412 px and 1280 px |

@@ -26,7 +26,7 @@ export async function onRequestGet({ request, env, params }) {
   const url = `${SITE}/a/${encodeURIComponent(article.slug || article.id)}`;
   const title = `${article.title} — UNDERGROUND`;
   const desc = (article.excerpt || plain(article.content).slice(0, 180)).slice(0, 200);
-  const vid = ytId(article.content);
+  const vid = /^[A-Za-z0-9_-]{11}$/.test(String(article.youtube_video_id || "")) ? article.youtube_video_id : ytId(article.content);
   const image = /^https:\/\//.test(article.cover_image_url || "") ? article.cover_image_url : vid ? `https://i.ytimg.com/vi/${vid}/hqdefault.jpg` : DEFAULT_IMAGE;
   const ld = {
     "@context": "https://schema.org", "@type": "NewsArticle",
@@ -80,12 +80,16 @@ export async function onRequestGet({ request, env, params }) {
 
 async function findArticle(env, slug) {
   if (!slug || !env.SUPABASE_URL || !env.SUPABASE_ANON_KEY) return null;
-  const cols = "id,slug,title,excerpt,content,cover_image_url,genre,tags,band_name,album_name,published_at,updated_at";
+  const cols = "id,slug,title,excerpt,content,cover_image_url,youtube_video_id,genre,tags,band_name,album_name,published_at,updated_at";
   const h = { apikey: env.SUPABASE_ANON_KEY, Authorization: "Bearer " + env.SUPABASE_ANON_KEY };
   const base = `${env.SUPABASE_URL}/rest/v1/articles?select=${cols}&status=eq.published&limit=1`;
+  const legacyBase = base.replace(",youtube_video_id", "");
   const q = /^[0-9a-f-]{36}$|^\d+$/i.test(slug) ? `&id=eq.${encodeURIComponent(slug)}` : `&slug=eq.${encodeURIComponent(slug)}`;
-  let r = await fetch(base.replace("&status", ",kind,score&status") + q, { headers: h, signal: AbortSignal.timeout(5000) });
-  if (!r.ok) r = await fetch(base + q, { headers: h, signal: AbortSignal.timeout(5000) }); // before extras.sql
+  const options = { headers: h, signal: AbortSignal.timeout(5000) };
+  let r = await fetch(base.replace("&status", ",kind,score&status") + q, options);
+  if (!r.ok) r = await fetch(base + q, options); // before extras.sql
+  if (!r.ok) r = await fetch(legacyBase.replace("&status", ",kind,score&status") + q, options); // before youtube_video_id migration
+  if (!r.ok) r = await fetch(legacyBase + q, options); // legacy base schema
   if (!r.ok) return null;
   const rows = await r.json();
   return rows[0] || null;

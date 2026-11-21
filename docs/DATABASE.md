@@ -40,6 +40,7 @@ Columns used by the code: `id` (type not documented; `community.sql` detects it 
 
 - `kind` text: `Review` | `News` | `Feature` | `Interview`, or null
 - `score` numeric(3,1): 0–10, or null
+- `youtube_video_id` text, nullable; exactly 11 YouTube video-id characters (`A–Z`, `a–z`, `0–9`, `_`, `-`), added by `20261121170000_ai_publish_media_fields.sql`
 
 Conventions:
 

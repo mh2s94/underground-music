@@ -2,13 +2,15 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import {
-  canonicalSourceUrl, normaliseTitle, sourceFromContent, validatePayload, wordCount,
+  canonicalSourceUrl, normaliseTitle, sourceFromContent, validatePayload, wordCount, youtubeIdFromUrl,
   parseDailyLimit, slugify, nextAvailableSlug
 } from "../functions/api/ai-publish.js";
 
 const endpoint = await readFile(new URL("../functions/api/ai-publish.js", import.meta.url), "utf8");
 const migration = await readFile(new URL("../supabase/20261120103205_create_ai_ingestion.sql", import.meta.url), "utf8");
 const hardening = await readFile(new URL("../supabase/20261121120000_ai_publish_hardening.sql", import.meta.url), "utf8");
+const mediaMigration = await readFile(new URL("../supabase/20261121170000_ai_publish_media_fields.sql", import.meta.url), "utf8");
+const bento = await readFile(new URL("../assets/bento.js", import.meta.url), "utf8");
 
 function payload(words = 355, genre = "Metalcore") {
   return {
@@ -112,4 +114,37 @@ test("atomic quota claim RPC is service-role only", () => {
   assert.match(hardening, /create or replace function public\.ug_claim_ai_publish/);
   assert.match(hardening, /grant execute on function public\.ug_claim_ai_publish[\s\S]*to service_role/);
   assert.match(hardening, /revoke all on function public\.ug_claim_ai_publish[\s\S]*from public, anon, authenticated/);
+});
+
+test("AI publisher validates and persists cover image aliases without empty overwrites", () => {
+  const image = "https://cdn.example.com/cover-hd.jpg";
+  for (const key of ["image", "cover_url", "cover_image"]) {
+    const result = validatePayload({ ...payload(), [key]: image });
+    assert.equal(result.error, undefined);
+    assert.equal(result.article.COVER_IMAGE_URL, image);
+  }
+  assert.equal(validatePayload({ ...payload(), image: "" }).article.COVER_IMAGE_URL, "");
+  assert.match(validatePayload({ ...payload(), image: "javascript:alert(1)" }).error, /http or https URL/);
+  assert.match(validatePayload({ ...payload(), cover_url: "not-a-url" }).error, /http or https URL/);
+  assert.match(endpoint, /cover_image_url: article\.COVER_IMAGE_URL/);
+});
+
+test("AI publisher validates YouTube ids and extracts ids from supported YouTube URLs", () => {
+  const id = "yE16u9uyW28";
+  assert.equal(validatePayload({ ...payload(), youtubeVideoId: id }).article.YOUTUBE_VIDEO_ID, id);
+  assert.equal(validatePayload({ ...payload(), videoUrl: "https://www.youtube.com/watch?v=" + id }).article.YOUTUBE_VIDEO_ID, id);
+  assert.equal(validatePayload({ ...payload(), videoUrl: "https://youtu.be/" + id }).article.YOUTUBE_VIDEO_ID, id);
+  assert.equal(youtubeIdFromUrl("https://www.youtube.com/shorts/" + id), id);
+  assert.equal(youtubeIdFromUrl("https://youtube.com/embed/" + id), id);
+  assert.match(validatePayload({ ...payload(), youtubeVideoId: "bad-id" }).error, /11 letters/);
+  assert.match(validatePayload({ ...payload(), videoUrl: "https://example.com/" + id }).error, /valid YouTube URL/);
+  assert.match(validatePayload({ ...payload(), youtubeVideoId: id, videoUrl: "https://youtu.be/abcdefghijk" }).error, /does not match/);
+  assert.match(endpoint, /youtube_video_id: article\.YOUTUBE_VIDEO_ID/);
+  assert.match(bento, /videoIdOf/);
+  assert.match(bento, /youtube_video_id/);
+});
+
+test("media migration adds a nullable constrained video id without changing existing article rows", () => {
+  assert.match(mediaMigration, /add column if not exists youtube_video_id text/);
+  assert.ok(mediaMigration.includes("youtube_video_id is null or youtube_video_id ~ '^[A-Za-z0-9_-]{11}$'"));
 });

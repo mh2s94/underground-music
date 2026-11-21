@@ -41,7 +41,7 @@ Tracking claims also have unique indexes on `source_url` and `title_key`, which 
 
 ## Storage and publication mode
 
-The endpoint inserts the article into `articles`, maps `BAND` → `band_name`, `RELEASE` → `album_name`, `TYPE` → `kind`, and stores tags, genre, score, excerpt and Markdown content. It records the claim and article id in `ai_ingestion`.
+The endpoint inserts the article into `articles`, maps `BAND` → `band_name`, `RELEASE` → `album_name`, `TYPE` → `kind`, and stores tags, genre, score, excerpt and Markdown content. Optional image aliases `image`, `cover_url`, and `cover_image` are validated as HTTP(S) URLs and stored in `cover_image_url`. Optional `youtubeVideoId` (11 characters) or a supported YouTube `videoUrl` is stored in `youtube_video_id`; the frontend uses it for the existing Video badge, thumbnail and player without changing the article UI. Empty optional media fields are omitted from the insert, not written as null. Apply `supabase/20261121170000_ai_publish_media_fields.sql` before deploying this endpoint. The endpoint records the claim and article id in `ai_ingestion`.
 
 Cloudflare Pages Production variables:
 
