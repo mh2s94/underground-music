@@ -139,35 +139,19 @@ await ok("4 many random cases always add up to 100", () => {
   }
 });
 
-// ---- 5 unknown band pages -------------------------------------------------
-const bandFetch = (deezer, articles, tracks) => mockFetch((url) => {
-  if (url.includes("deezer")) return deezer();
-  if (url.includes("/articles")) return jsonRes(articles);
-  if (url.includes("/tracks")) return jsonRes(tracks);
-  throw new Error("unexpected " + url);
-});
+// ---- 5 article-backed band profile shell ---------------------------------
 const band = (slug) => B.onRequestGet({ request: new Request("https://x.test/band/" + slug), env: shellEnv, params: { slug } });
-await ok("5 a band nobody knows answers 404", async () => {
-  bandFetch(() => jsonRes({ data: [] }), [], []);
-  assert.equal((await band("zzqq-not-a-band")).status, 404);
-  assert.ok(calls.some((c) => c.url.includes("band_name=ilike.*zzqq*not*a*band*")));
+await ok("5 a valid band slug serves its profile shell without external or database reads", async () => {
+  mockFetch(() => { throw new Error("band route must not call external APIs or Supabase"); });
+  const res = await band("local-band");
+  assert.equal(res.status, 200);
+  assert.equal(calls.length, 0);
+  assert.match(res.headers.get("content-type"), /text\/html/);
 });
-await ok("5 a band on Deezer stays 200", async () => {
-  bandFetch(() => jsonRes({ data: [{ name: "Lorna Shore" }] }), [], []);
-  assert.equal((await band("lorna-shore")).status, 200);
-});
-await ok("5 a band with a story or song here stays 200", async () => {
-  bandFetch(() => jsonRes({ data: [] }), [{ id: 1 }], []);
-  assert.equal((await band("local-band")).status, 200);
-  bandFetch(() => jsonRes({ data: [] }), [], [{ id: 1 }]);
-  assert.equal((await band("local-band")).status, 200);
-});
-await ok("5 when Deezer or Supabase fail the page stays 200", async () => {
-  bandFetch(() => { throw new Error("timeout"); }, [], []);
-  assert.equal((await band("x-band")).status, 200);
-  bandFetch(() => jsonRes({ data: [] }), [], []);
-  globalThis.fetch = async (url) => String(url).includes("deezer") ? jsonRes({ data: [] }) : new Response("no", { status: 500 });
-  assert.equal((await band("x-band")).status, 200);
+await ok("5 an empty band slug answers 404", async () => {
+  const res = await B.onRequestGet({ request: new Request("https://x.test/band/"), env: shellEnv, params: { slug: "" } });
+  assert.equal(res.status, 404);
+  assert.equal(calls.length, 0);
 });
 
 // ---- 6 markdown links ------------------------------------------------------
