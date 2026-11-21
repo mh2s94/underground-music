@@ -48,6 +48,7 @@
   const tagHtml = (g) => `<span class="tag${isWarm(g) ? " warm" : ""}">${esc(g || "Underground")}</span>`;
   const ytId = (s) => (String(s || "").match(YT_LINE) || [])[1] || "";
   const videoIdOf = (a) => /^[A-Za-z0-9_-]{11}$/.test(String(a?.youtube_video_id || "")) ? a.youtube_video_id : ytId(a?.content);
+  const hasVideoField = (a) => String(a?.youtube_video_id || "").trim().length > 0;
   const readTime = (s) => Math.max(1, Math.round((String(s || "").match(/\S+/g) || []).length / 220)) + " min read";
   const fmtDate = (d) => d ? new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "";
   const keyOf = (a) => encodeURIComponent(a.slug || a.id);
@@ -707,7 +708,7 @@
     const bm = location.pathname.match(/^\/band\/([^/]+)\/?$/);
     const searchPath = /^\/search\/?$/.test(location.pathname);
     const v = (h.match(/^#\/(\w+)/) || [])[1];
-    if (searchPath && !v) { closeReader(true); closeSearch(); showView("search"); document.title = "Search — UNDERGROUND"; renderSearchPage(); return; }
+    if (searchPath && !v) { pageSearchQuery = new URLSearchParams(location.search).get("q") || ""; closeReader(true); closeSearch(); showView("search"); document.title = "Search — UNDERGROUND"; renderSearchPage(); return; }
     if (bm && !v) { closeReader(true); showView("band"); renderBand(safeDecode(bm[1])); return; }
     if (pm && v) { history.replaceState(null, "", "/" + h); } // a view was requested while on an article path
     else if (pm) { if (!document.querySelector(".view.entered")) showView(view); openArticle(safeDecode(pm[1])); return; }
@@ -740,7 +741,7 @@
         const vid = videoIdOf(a), cover = coverOf(a);
         return '<a class="related-card" href="/a/' + keyOf(a) + '"><span class="related-thumb">' +
           (cover ? '<img src="' + esc(cover) + '" alt="" loading="lazy" onerror="this.remove()">' : art(a.id)) +
-          (vid ? '<span class="related-video">VIDEO</span>' : '') +
+          (hasVideoField(a) ? '<span class="related-video">VIDEO</span>' : '') +
           '</span><span class="related-copy">' + tagHtml(a.genre) + '<strong>' + esc(a.title) + '</strong><small>' + fmtDate(a.published_at) + '</small></span></a>';
       }).join('') + '</div></section>';
   }
@@ -1617,12 +1618,12 @@
   const thumb = (src, seed) => `<span class="sr-thumb">${src ? `<img src="${esc(src)}" alt="" loading="lazy" onerror="this.remove()">` : ""}${art(seed)}</span>`;
 
   // ---- Search & filters (/search) -----------------------------------------
-  let searchIndex = null, searchIndexPromise = null, pageSearchFilter = "ALL", pageSearchQuery = "";
+  let searchIndex = null, searchIndexPromise = null, pageSearchGenre = "ALL", pageSearchVideoOnly = false, pageSearchQuery = "";
   async function loadSearchIndex() {
     if (searchIndex) return searchIndex;
     if (!searchIndexPromise) searchIndexPromise = (async () => {
-      let result = await db.from("articles").select(ACOLS).eq("status", "published").order("published_at", { ascending: false }).limit(500);
-      if (result.error) result = await db.from("articles").select(ACOLS_BASE).eq("status", "published").order("published_at", { ascending: false }).limit(500);
+      let result = await db.from("articles").select(ACOLS).eq("status", "published").order("published_at", { ascending: false }).limit(1000);
+      if (result.error) result = await db.from("articles").select(ACOLS_BASE).eq("status", "published").order("published_at", { ascending: false }).limit(1000);
       const rows = result.error ? articles : (result.data || []);
       const seen = new Set();
       searchIndex = [...rows, ...articles].filter((a) => a && a.published_at && !seen.has(String(a.id)) && seen.add(String(a.id)));
@@ -1641,7 +1642,7 @@
     const q = pageSearchQuery.trim().toLowerCase();
     const genres = [...new Set(rows.map((a) => a.genre).filter(Boolean))].sort((a,b) => a.localeCompare(b));
     const filters = ["ALL", "VIDEO", ...genres];
-    $("pageSearchFilters").innerHTML = filters.map((f) => '<button class="pill" type="button" data-search-filter="' + esc(f) + '" aria-pressed="' + (pageSearchFilter.toLowerCase() === f.toLowerCase()) + '">' + esc(f) + '</button>').join("");
+    $("pageSearchFilters").innerHTML = filters.map((f) => { const active = f === "ALL" ? pageSearchGenre === "ALL" && !pageSearchVideoOnly : f === "VIDEO" ? pageSearchVideoOnly : pageSearchGenre.toLowerCase() === f.toLowerCase(); return '<button class="pill" type="button" data-search-filter="' + esc(f) + '" aria-pressed="' + active + '">' + esc(f) + '</button>'; }).join("");
     const bandMap = new Map();
     rows.forEach((a) => { const n = String(a.band_name || "").trim(); if (n) bandMap.set(bandSlug(n), n); });
     const bandMatches = [...bandMap.values()].filter((n) => !q || n.toLowerCase().includes(q)).slice(0, 8);
@@ -1651,7 +1652,7 @@
       const tags = Array.isArray(a.tags) ? a.tags.join(" ") : (a.tags || "");
       const text = [a.title,a.band_name,a.genre,a.excerpt,a.album_name,tags].join(" ").toLowerCase();
       const textMatch = !q || text.includes(q);
-      const filterMatch = pageSearchFilter === "ALL" || (pageSearchFilter === "VIDEO" ? !!videoIdOf(a) : String(a.genre || "").toLowerCase() === pageSearchFilter.toLowerCase());
+      const filterMatch = (!pageSearchVideoOnly || hasVideoField(a)) && (pageSearchGenre === "ALL" || String(a.genre || "").toLowerCase() === pageSearchGenre.toLowerCase());
       return textMatch && filterMatch;
     }).sort((a,b) => new Date(b.published_at || 0) - new Date(a.published_at || 0));
     $("pageSearchCount").textContent = found.length + (found.length === 1 ? " story" : " stories");
@@ -1659,13 +1660,13 @@
       const vid = videoIdOf(a), cover = coverOf(a);
       return '<article class="search-result-card"><a class="search-result-main" href="/a/' + keyOf(a) + '"><span class="search-result-thumb">' +
         (cover ? '<img src="' + esc(cover) + '" alt="" loading="lazy" onerror="this.remove()">' : art(a.id)) +
-        (vid ? '<span class="related-video">VIDEO</span>' : '') +
+        (hasVideoField(a) ? '<span class="related-video">VIDEO</span>' : '') +
         '</span><span class="search-result-copy">' + tagHtml(a.genre) + '<strong>' + esc(a.title) + '</strong><small>' + fmtDate(a.published_at) + ' · ' + readTime(a.content) + '</small></span></a>' +
         (a.band_name ? '<a class="search-result-band" href="/band/' + encodeURIComponent(bandSlug(a.band_name)) + '">' + esc(a.band_name) + ' <span>Band profile →</span></a>' : '') + '</article>';
     }).join("") : '<div class="card pad search-no-results"><strong>No stories found</strong><span>Try another band, genre, tag or title.</span></div>';
   }
   $("pageSearchInput").addEventListener("input", (e) => { pageSearchQuery = e.target.value; paintSearchPage(searchIndex || articles); });
-  $("pageSearchFilters").addEventListener("click", (e) => { const b = e.target.closest("[data-search-filter]"); if (!b) return; pageSearchFilter = b.dataset.searchFilter; paintSearchPage(searchIndex || articles); });
+  $("pageSearchFilters").addEventListener("click", (e) => { const b = e.target.closest("[data-search-filter]"); if (!b) return; const f = b.dataset.searchFilter; if (f === "ALL") { pageSearchGenre = "ALL"; pageSearchVideoOnly = false; } else if (f === "VIDEO") pageSearchVideoOnly = !pageSearchVideoOnly; else pageSearchGenre = pageSearchGenre.toLowerCase() === f.toLowerCase() ? "ALL" : f; paintSearchPage(searchIndex || articles); });
 
   function openSearch() {
     if (!$("search").hidden) return;
@@ -1806,8 +1807,8 @@
     el.innerHTML = '<div class="band-hero card bento-item"><div class="bh-bg"></div><div class="bh-in"><a class="link" href="/search">← Search stories</a><span class="badge-dark"><i aria-hidden="true"></i>Band profile</span><h1>' + esc(lastBand) + '</h1><div class="bh-tags" id="bhTags"></div><div class="bh-stats" id="bhStats"><span class="skel" style="width:220px;height:46px"></span></div></div></div>' +
       '<div class="band-grid"><section class="card pad bento-item band-stories"><div class="card-title"><h2>Stories &amp; videos</h2><span class="hint" id="bhStoriesN"></span></div><div class="grid" id="bhStories"></div></section></div><div class="card pad bento-item band-empty" id="bhEmpty" hidden></div>';
     stagger(el); enter(el);
-    let result = await db.from("articles").select(ACOLS).eq("status", "published").order("published_at", { ascending: false }).limit(500);
-    if (result.error) result = await db.from("articles").select(ACOLS_BASE).eq("status", "published").order("published_at", { ascending: false }).limit(500);
+    let result = await db.from("articles").select(ACOLS).eq("status", "published").order("published_at", { ascending: false }).limit(1000);
+    if (result.error) result = await db.from("articles").select(ACOLS_BASE).eq("status", "published").order("published_at", { ascending: false }).limit(1000);
     if (run !== bandRun) return;
     const rows = result.error ? articles : (result.data || []), seen = new Set();
     const stories = [...rows, ...articles].filter((a) => a && a.published_at && bandSlug(a.band_name) === safeSlug && !seen.has(String(a.id)) && seen.add(String(a.id)))
@@ -1824,7 +1825,7 @@
         const vid = videoIdOf(a), cover = coverOf(a);
         return '<article class="search-result-card"><a class="search-result-main" href="/a/' + keyOf(a) + '"><span class="search-result-thumb">' +
           (cover ? '<img src="' + esc(cover) + '" alt="" loading="lazy" onerror="this.remove()">' : art(a.id)) +
-          (vid ? '<span class="related-video">VIDEO</span>' : '') + '</span><span class="search-result-copy">' +
+          (hasVideoField(a) ? '<span class="related-video">VIDEO</span>' : '') + '</span><span class="search-result-copy">' +
           tagHtml(a.genre) + '<strong>' + esc(a.title) + '</strong><small>' + fmtDate(a.published_at) + ' · ' + readTime(a.content) + '</small></span></a></article>';
       }).join("");
     } else {
