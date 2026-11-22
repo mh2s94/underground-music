@@ -41,8 +41,8 @@
   --ug-warn: #FFC23D;        --ug-warn-rgb: 255 194 61;
 
   /* typography */
-  --ug-font-display: "Fraunces", Georgia, serif;
-  --ug-font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --ug-font-display: "Big Shoulders Stencil Display", Impact, sans-serif;
+  --ug-font-body: "Space Mono", ui-monospace, Menlo, monospace;
   --ug-font-mono: "Space Mono", ui-monospace, Menlo, monospace;
 
   /* shape and motion */
