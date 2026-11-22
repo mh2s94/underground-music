@@ -83,7 +83,7 @@
   // ?v=<version>.<ASSET_REV>, and index.html/admin.html request schema.js with this same value, so
   // bumping it is what carries a theme change to a browser that already cached the old files: a
   // stale schema.js keeps handing out the previous ASSET_REV, and the old theme.css comes back.
-  var ASSET_REV = "t-mm-vivid-01";
+  var ASSET_REV = "t-mm-vivid-02";
   var READY = THEMES.filter(function (t) { return t.status === "ready"; }).map(function (t) { return t.id; });
 
   // Monochrome Modular is the only theme and the permanent token baseline.
