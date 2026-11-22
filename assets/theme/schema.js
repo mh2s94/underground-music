@@ -73,26 +73,26 @@
   // values on top of DEFAULTS: the edge and the runtime apply them, and admin overrides from the
   // Theme Manager are stored as differences from them. The default theme needs no files.
   var THEMES = [
-    { id: "monochrome-modular", no: "01", name: "Monochrome Modular", status: "ready", css: true, js: true, desc: "Tema default permanen: hitam-putih seperti zine fotokopi, masthead tebal, panel potongan dengan bayangan keras tanpa blur, label selotip, isi mesin ketik.",
-      tokens: { void: "#000000", bg: "#080808", shell: "#090909", surface: "#111111", surface2: "#171717", surface3: "#202020", line: "#303030", line2: "#555555",
-        ink: "#F4F4F4", inkSoft: "#E4E4E4", muted: "#B0B0B0", faint: "#909090", accent: "#F4F4F4", accentHi: "#FFFFFF", accentTint: "#D8D8D8", onAccent: "#080808",
-        accent2: "#A8A8A8", accent2Hi: "#C8C8C8", accent2Tint: "#E6E6E6", ok: "#D8D8D8", warn: "#B8B8B8",
-        fontDisplay: "archivo-black", fontBody: "special-elite", fontMono: "space-mono", radius: 8, scanlines: 0 } }
+    { id: "monochrome-modular", no: "01", name: "Monochrome Modular", status: "ready", css: true, js: true, desc: "Tema default permanen: kanvas indigo gelap dengan cahaya warna yang lembut, panel membulat yang terangkat di atas glow, judul bergradasi cyan-amber, foto tetap berwarna.",
+      tokens: { void: "#05050C", bg: "#0A0A16", shell: "#0D0D1E", surface: "#15152E", surface2: "#1C1C3E", surface3: "#262654", line: "#2E2E5C", line2: "#42427F",
+        ink: "#F2F4FF", inkSoft: "#DDE1F7", muted: "#AEB4D6", faint: "#8C93BC", accent: "#22D3EE", accentHi: "#67E8F9", accentTint: "#CFFAFF", onAccent: "#04202A",
+        accent2: "#FBBF24", accent2Hi: "#FCD34D", accent2Tint: "#FEF3C7", ok: "#34D399", warn: "#FB7185",
+        fontDisplay: "inter-tight", fontBody: "inter", fontMono: "space-mono", radius: 18, scanlines: 0 } }
   ];
   // Bump on ANY change under assets/theme/ or assets/themes/. Theme files are requested as
   // ?v=<version>.<ASSET_REV>, and index.html/admin.html request schema.js with this same value, so
   // bumping it is what carries a theme change to a browser that already cached the old files: a
   // stale schema.js keeps handing out the previous ASSET_REV, and the old theme.css comes back.
-  var ASSET_REV = "t-mm-xerox-01";
+  var ASSET_REV = "t-mm-vivid-01";
   var READY = THEMES.filter(function (t) { return t.status === "ready"; }).map(function (t) { return t.id; });
 
   // Monochrome Modular is the only theme and the permanent token baseline.
   var DEFAULTS = {
-    void: "#000000", bg: "#080808", shell: "#090909", surface: "#111111", surface2: "#171717", surface3: "#202020",
-    line: "#303030", line2: "#555555", ink: "#F4F4F4", inkSoft: "#E4E4E4", muted: "#B0B0B0", faint: "#909090",
-    accent: "#F4F4F4", accentHi: "#FFFFFF", accentTint: "#D8D8D8", onAccent: "#080808",
-    accent2: "#A8A8A8", accent2Hi: "#C8C8C8", accent2Tint: "#E6E6E6", ok: "#D8D8D8", warn: "#B8B8B8",
-    fontDisplay: "archivo-black", fontBody: "special-elite", fontMono: "space-mono", radius: 8, scanlines: 0
+    void: "#05050C", bg: "#0A0A16", shell: "#0D0D1E", surface: "#15152E", surface2: "#1C1C3E", surface3: "#262654",
+    line: "#2E2E5C", line2: "#42427F", ink: "#F2F4FF", inkSoft: "#DDE1F7", muted: "#AEB4D6", faint: "#8C93BC",
+    accent: "#22D3EE", accentHi: "#67E8F9", accentTint: "#CFFAFF", onAccent: "#04202A",
+    accent2: "#FBBF24", accent2Hi: "#FCD34D", accent2Tint: "#FEF3C7", ok: "#34D399", warn: "#FB7185",
+    fontDisplay: "inter-tight", fontBody: "inter", fontMono: "space-mono", radius: 18, scanlines: 0
   };
 
   var HEX = /^#([0-9a-fA-F]{6})$/;
