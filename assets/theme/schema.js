@@ -18,7 +18,7 @@
     "bebas-neue":     { stack: '"Bebas Neue", Impact, "Arial Narrow", sans-serif', google: "Bebas+Neue" },
     "inter":          { stack: '"Inter", system-ui, -apple-system, "Segoe UI", sans-serif', google: "Inter:wght@400;500;600;700" },
     "space-mono":     { stack: '"Space Mono", ui-monospace, Menlo, monospace', google: "Space+Mono:wght@400;700" },
-    "fraunces":       { stack: '"Fraunces", Georgia, serif', google: "Fraunces:ital,opsz,wght@0,9..144,600;1,9..144,400" },
+    "fraunces":       { stack: '"Fraunces", Georgia, serif', google: "Fraunces:ital,opsz,wght@0,9..144,400..900;1,9..144,400" },
     "archivo-black":  { stack: '"Archivo Black", "Arial Black", sans-serif', google: "Archivo+Black" },
     "inter-tight":    { stack: '"Inter Tight", "Inter", system-ui, sans-serif', google: "Inter+Tight:wght@500;700;800" },
     "big-shoulders":  { stack: '"Big Shoulders Stencil Display", Impact, sans-serif', google: "Big+Shoulders+Stencil+Display:wght@800" },
@@ -73,23 +73,23 @@
   // values on top of DEFAULTS: the edge and the runtime apply them, and admin overrides from the
   // Theme Manager are stored as differences from them. The default theme needs no files.
   var THEMES = [
-    { id: "monochrome-modular", no: "01", name: "Monochrome Modular", status: "ready", css: true, js: true, desc: "Tema default permanen: hitam-putih industrial, logo modular, hero grayscale, panel modular.",
+    { id: "monochrome-modular", no: "01", name: "Monochrome Modular", status: "ready", css: true, js: true, desc: "Tema default permanen: hitam-putih industrial, logo modular, hero grayscale, panel modular, tipografi editorial cetak.",
       tokens: { void: "#000000", bg: "#080808", shell: "#090909", surface: "#111111", surface2: "#171717", surface3: "#202020", line: "#303030", line2: "#555555",
-        ink: "#F4F4F4", inkSoft: "#E4E4E4", muted: "#B0B0B0", faint: "#858585", accent: "#F4F4F4", accentHi: "#FFFFFF", accentTint: "#D8D8D8", onAccent: "#080808",
+        ink: "#F4F4F4", inkSoft: "#E4E4E4", muted: "#B0B0B0", faint: "#909090", accent: "#F4F4F4", accentHi: "#FFFFFF", accentTint: "#D8D8D8", onAccent: "#080808",
         accent2: "#A8A8A8", accent2Hi: "#C8C8C8", accent2Tint: "#E6E6E6", ok: "#D8D8D8", warn: "#B8B8B8",
-        fontDisplay: "bebas-neue", fontBody: "inter", fontMono: "space-mono", radius: 8, scanlines: 0 } }
+        fontDisplay: "fraunces", fontBody: "inter", fontMono: "space-mono", radius: 8, scanlines: 0 } }
   ];
   // Bump when any file in assets/themes/ changes: theme files are requested as ?v=<version>.<ASSET_REV>.
-  var ASSET_REV = "t-mm-single-01";
+  var ASSET_REV = "t-mm-editorial-02";
   var READY = THEMES.filter(function (t) { return t.status === "ready"; }).map(function (t) { return t.id; });
 
   // Monochrome Modular is the only theme and the permanent token baseline.
   var DEFAULTS = {
     void: "#000000", bg: "#080808", shell: "#090909", surface: "#111111", surface2: "#171717", surface3: "#202020",
-    line: "#303030", line2: "#555555", ink: "#F4F4F4", inkSoft: "#E4E4E4", muted: "#B0B0B0", faint: "#858585",
+    line: "#303030", line2: "#555555", ink: "#F4F4F4", inkSoft: "#E4E4E4", muted: "#B0B0B0", faint: "#909090",
     accent: "#F4F4F4", accentHi: "#FFFFFF", accentTint: "#D8D8D8", onAccent: "#080808",
     accent2: "#A8A8A8", accent2Hi: "#C8C8C8", accent2Tint: "#E6E6E6", ok: "#D8D8D8", warn: "#B8B8B8",
-    fontDisplay: "bebas-neue", fontBody: "inter", fontMono: "space-mono", radius: 8, scanlines: 0
+    fontDisplay: "fraunces", fontBody: "inter", fontMono: "space-mono", radius: 8, scanlines: 0
   };
 
   var HEX = /^#([0-9a-fA-F]{6})$/;

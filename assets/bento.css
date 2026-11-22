@@ -41,7 +41,7 @@
   --ug-warn: #FFC23D;        --ug-warn-rgb: 255 194 61;
 
   /* typography */
-  --ug-font-display: "Bebas Neue", Impact, "Arial Narrow", sans-serif;
+  --ug-font-display: "Fraunces", Georgia, serif;
   --ug-font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
   --ug-font-mono: "Space Mono", ui-monospace, Menlo, monospace;
 
