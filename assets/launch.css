@@ -1,35 +1,43 @@
-/* UNDERGROUND — launch motion.
-   Motion 09 "Mosh Pit". body.lm-intro = first open (longer, with an overlay);
-   without it the same motion plays as a short page-change version. Off for prefers-reduced-motion. */
+/* UNDERGROUND — launch motion 10 "Signal Sweep".
+   body[data-lm="10"] turns the motion on; body.lm-intro marks the first open of the session, which
+   draws the overlay below. Repeat opens skip it (launch.js removes the session splash up front).
+   Off for prefers-reduced-motion. */
 
 #lm { position: fixed; inset: 0; z-index: 650; pointer-events: none; overflow: hidden; }
-#lm .lm-logo { position: absolute; inset: 0; display: grid; place-items: center; align-content: center; gap: 16px; }
-#lm .lm-logo svg { display: block; width: 112px; height: 70px; color: var(--ink); filter: drop-shadow(0 0 12px currentColor); }
-#lm .lm-word { font: 400 clamp(20px, 6.4vw, 30px)/1 var(--display); letter-spacing: .38em; padding-left: .38em; color: var(--ug-accent-2-tint); text-shadow: var(--uv-glow); }
+#lm .lm-logo { position: absolute; inset: 0; display: grid; place-items: center; }
+#lm .lm-logo svg { display: block; width: clamp(128px, 26vw, 224px); height: auto; color: var(--ink); }
+#lm .lm-word { position: absolute; left: 0; right: 0; bottom: 24%; text-align: center;
+  font: 400 clamp(20px, 5.4vw, 36px)/1 var(--display); letter-spacing: .5em; padding-left: .5em; color: var(--muted); }
 
-/* Shared item timing: --lm-base waits for the overlay on first open. */
-body[data-lm] .view.entered .bento-item { animation-delay: calc(var(--lm-base, 0ms) + var(--i, 0) * var(--lm-step, 50ms)); }
-body.lm-intro .sidebar { animation: lmSide .8s var(--ease-out) both; animation-delay: var(--lm-base, 0ms); }
-@keyframes lmSide { from { opacity: 0; } }
+/* ---------- 10 Signal Sweep ---------- */
+#lm.m10 { background: var(--void); animation: lm10out .45s ease .8s both; }
+#lm.m10::before { content: ""; position: absolute; inset: -10%; opacity: .9;
+  background: repeating-linear-gradient(0deg, rgba(255, 255, 255, .05) 0 1px, transparent 1px 4px);
+  animation: lm10grid .9s ease both; }
+#lm.m10::after { content: ""; position: absolute; left: -30%; right: -30%; top: 50%; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--ink), transparent);
+  box-shadow: 0 0 26px 5px rgb(var(--ug-ink-rgb) / .5);
+  transform: translateY(-50%) scaleX(0);
+  animation: lm10sweep .6s cubic-bezier(.66, 0, .2, 1) .14s both; }
+#lm.m10 .lm-logo { animation: lm10logo .7s var(--ease-out) both; }
+#lm.m10 .lm-logo svg { stroke-dasharray: 170; stroke-dashoffset: 170; animation: lm10draw .85s var(--ease-out) .1s forwards; }
+#lm.m10 .lm-word { clip-path: inset(0 50% 0 50%); animation: lm10word .6s var(--ease-out) .34s forwards; }
 
-/* ---------- 09 Mosh Pit ---------- */
-body[data-lm] .main { overflow-x: hidden; } /* cards fly in from the sides */
-body[data-lm="09"] .view.entered .bento-item { animation-name: lm09l; animation-duration: .7s; animation-timing-function: cubic-bezier(.34, 1.56, .64, 1); }
-body[data-lm="09"] .view.entered .bento-item[data-lm-side="r"] { animation-name: lm09r; }
-body[data-lm="09"].lm-intro { --lm-base: 520ms; --lm-step: 55ms; }
-body[data-lm="09"].lm-intro .main { animation: lm04shake .35s .3s both; }
-#lm.m09 { background: var(--void); animation: lmFade .3s .45s ease both; }
-#lm.m09 .lm-word { font-size: clamp(30px, 10vw, 80px); letter-spacing: .2em; padding-left: .2em; white-space: nowrap; color: #fff; text-shadow: var(--neon-glow); animation: lm09slam .4s cubic-bezier(.6, 0, .9, .5) both; }
-#lm.m09 .lm-logo svg { width: clamp(112px, 28vw, 220px); height: auto; }
-@keyframes lm09slam { from { transform: scale(3.2) rotate(-6deg); opacity: 0; } 70% { opacity: 1; } to { transform: none; } }
-@keyframes lm09l { from { opacity: 0; translate: -140px 0; rotate: -14deg; } to { opacity: 1; translate: 0 0; rotate: 0deg; } } /* translate/rotate keep hover transform working */
-@keyframes lm09r { from { opacity: 0; translate: 140px 0; rotate: 12deg; } to { opacity: 1; translate: 0 0; rotate: 0deg; } }
+@keyframes lm10logo { from { opacity: 0; transform: translateY(14px) scale(.96); } }
+@keyframes lm10draw { to { stroke-dashoffset: 0; } }
+@keyframes lm10word { to { clip-path: inset(0 0 0 0); } }
+@keyframes lm10sweep { 0% { transform: translateY(-50%) scaleX(0); opacity: 0; } 30% { opacity: 1; } 100% { transform: translateY(-50%) scaleX(1); opacity: 0; } }
+@keyframes lm10grid { from { opacity: .15; } }
+@keyframes lm10out { to { opacity: 0; } }
 
-@keyframes lmFade { to { opacity: 0; } }
-@keyframes lm04shake { 20% { transform: translate(-6px, 4px); } 40% { transform: translate(5px, -3px); } 60% { transform: translate(-3px, 2px); } 80% { transform: translate(2px, -1px); } }
-body[data-lm="09"] .reader-sheet { animation: lm09l .6s cubic-bezier(.34, 1.56, .64, 1) both; }
+/* Page-change hand-off: the router swaps a view in and it settles with a quick fade. */
+@keyframes lmVin { from { opacity: 0; } }
+body[data-lm="10"] .view.lm-view-in { animation: lmVin .45s var(--ease-out) both; }
+
+/* Repeat visits: the session flag hides the static splash before the app finishes booting. */
+html.launch-done .splash { display: none; }
 
 @media (prefers-reduced-motion: reduce) {
   #lm { display: none; }
-  body[data-lm] .app, body[data-lm] .main, body[data-lm] .sidebar, body[data-lm] .view.entered, body[data-lm] .view.entered .bento-item { animation: none !important; }
+  body[data-lm="10"] .view.lm-view-in { animation: none !important; }
 }
