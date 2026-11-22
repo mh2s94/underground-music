@@ -79,7 +79,10 @@
         accent2: "#A8A8A8", accent2Hi: "#C8C8C8", accent2Tint: "#E6E6E6", ok: "#D8D8D8", warn: "#B8B8B8",
         fontDisplay: "big-shoulders", fontBody: "space-mono", fontMono: "space-mono", radius: 8, scanlines: 1 } }
   ];
-  // Bump when any file in assets/themes/ changes: theme files are requested as ?v=<version>.<ASSET_REV>.
+  // Bump on ANY change under assets/theme/ or assets/themes/. Theme files are requested as
+  // ?v=<version>.<ASSET_REV>, and index.html/admin.html request schema.js with this same value, so
+  // bumping it is what carries a theme change to a browser that already cached the old files: a
+  // stale schema.js keeps handing out the previous ASSET_REV, and the old theme.css comes back.
   var ASSET_REV = "t-mm-broadcast-01";
   var READY = THEMES.filter(function (t) { return t.status === "ready"; }).map(function (t) { return t.id; });
 

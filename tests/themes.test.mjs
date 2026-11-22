@@ -70,6 +70,19 @@ t("shell registers only Monochrome Modular and uses the approved site API", () =
   for (const bad of [/fetch\(/, /XMLHttpRequest/, /supabase/i, /localStorage|sessionStorage|document\.cookie/, /\beval\(|new Function/, /import\(/])
     assert.ok(!bad.test(js), String(bad));
 });
+t("schema.js is cache-busted with ASSET_REV, so a shipped theme change cannot be missed", () => {
+  // The runtime reads ASSET_REV out of schema.js to version theme.css. If schema.js itself is cached
+  // under a stale URL, a browser that has seen the site before keeps applying the previous theme:
+  // that is how the old blurred mobile menu survived shipping. Tie the two together so bumping
+  // ASSET_REV without updating these pages fails here.
+  for (const page of ["index.html", "admin.html"]) {
+    const html = fs.readFileSync(R + page, "utf8");
+    assert.ok(
+      html.includes("/assets/theme/schema.js?v=" + S.ASSET_REV),
+      page + " must request schema.js with the current ASSET_REV (?v=" + S.ASSET_REV + ")"
+    );
+  }
+});
 t("branding references the PNG icon set and 1200x630 OG image", () => {
   const html = fs.readFileSync(R + "index.html", "utf8");
   const admin = fs.readFileSync(R + "admin.html", "utf8");
