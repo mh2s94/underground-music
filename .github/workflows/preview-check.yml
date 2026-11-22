@@ -29,6 +29,8 @@ jobs:
         run: node tests/supabase-js-pin.test.mjs
       - name: Theme catalogue and theme files (scoping, tokens, contrast, budget, ASSET_REV)
         run: node tests/themes.test.mjs
+      - name: Theme contrast and control-boundary regression
+        run: node tests/theme-contrast.test.mjs
       - name: Basement Radio cuts (trim math, admin saves only trim columns)
         run: node tests/trim.test.mjs
       - name: Bug fixes (unsubscribe, newsletter retry, broken URLs, reader shares, band 404, markdown links)

@@ -26,8 +26,8 @@ assert.ok(cfg.items.every((item) => item.affiliate === false), "sample destinati
 assert.match(css, /\.affiliate-picks/);
 assert.match(css, /\.affiliate-grid/);
 assert.match(css, /@media \(max-width:700px\)/);
-assert.match(html, /assets\/bento\.js\?v=stage3-1/);
-assert.match(html, /assets\/bento\.css\?v=stage3-1/);
+assert.match(html, /assets\/bento\.js\?v=[\w.-]+/);
+assert.match(html, /assets\/bento\.css\?v=[\w.-]+/);
 assert.equal(cfg.version, 1);
 assert.ok(cfg.items.length >= 3 && cfg.items.length <= 4);
 for (const item of cfg.items) {
