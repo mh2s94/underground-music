@@ -15,7 +15,7 @@
   // Tokens the editor offers (the rest of a configuration is kept as loaded).
   var COLOURS = [["accent", "Warna utama"], ["accent2", "Warna aksen"], ["bg", "Background"], ["surface", "Permukaan kartu"], ["ink", "Teks utama"], ["muted", "Teks sekunder"]];
   var FONT_KEYS = [["fontDisplay", "Font judul"], ["fontBody", "Font isi"]];
-  var FONT_LABEL = { "bebas-neue": "Bebas Neue", "inter": "Inter", "space-mono": "Space Mono", "fraunces": "Fraunces (serif)", "archivo-black": "Archivo Black", "inter-tight": "Inter Tight", "big-shoulders": "Big Shoulders Stencil", "special-elite": "Special Elite (mesin ketik)", "system": "System UI", "serif": "Serif sistem", "mono": "Mono sistem" };
+  var FONT_LABEL = { "bebas-neue": "Bebas Neue", "inter": "Inter", "space-mono": "Space Mono", "fraunces": "Fraunces (serif)", "archivo-black": "Archivo Black", "inter-tight": "Inter Tight", "space-grotesk": "Space Grotesk", "big-shoulders": "Big Shoulders Stencil", "special-elite": "Special Elite (mesin ketik)", "system": "System UI", "serif": "Serif sistem", "mono": "Mono sistem" };
   // Theme selection is intentionally fixed to the sole supported theme.
   var st = { loaded: false, busy: false, missing: false, active: null, activeRow: null, configs: [], history: [], themeId: S.DEFAULT_THEME, values: {}, extra: {}, configId: null, name: "", note: "" };
 

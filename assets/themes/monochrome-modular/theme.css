@@ -23,17 +23,23 @@ html[data-theme="monochrome-modular"] {
   --mm-grad: linear-gradient(135deg, var(--ug-accent), var(--ug-accent-2));
   --mm-grad-soft: linear-gradient(135deg, rgb(var(--ug-accent-rgb) / .16), rgb(var(--ug-accent-2-rgb) / .14));
   --mm-paper: var(--bg);
-  --r-card: 18px;                               /* round, the opposite of a cut-out */
-  --neon-glow: none; --uv-glow: none;
+  --r-card: 20px;                               /* round, the opposite of a cut-out */
+  /* Glow is the site's signature, so these are restored rather than muted: every glow in
+     bento.css is expressed through these two variables, which is what makes it safe to tune. */
+  --neon-glow: 0 0 10px rgb(var(--ug-accent-rgb) / .5), 0 0 34px rgb(var(--ug-accent-rgb) / .26);
+  --uv-glow: 0 0 10px rgb(var(--ug-accent-2-rgb) / .45), 0 0 30px rgb(var(--ug-accent-2-rgb) / .24);
   --neon-soft: rgb(var(--ug-accent-rgb) / .16); --uv-soft: rgb(var(--ug-accent-2-rgb) / .16);
 }
-html[data-theme="monochrome-modular"] * { text-shadow: none !important; }
+/* No blanket `text-shadow: none` here. The glow is part of the site's identity, and muting every
+   text-shadow at once is what made an earlier pass of this theme feel flat and static. Glow stays
+   restrained instead, because every glow in bento.css is expressed through --neon-glow / --uv-glow
+   above, so tuning those two lines tunes the whole page. */
 html[data-theme="monochrome-modular"] body { background: var(--mm-paper); }
 
 /* Gradient-filled headline text. Transparent text is invisible where background-clip: text is
    unsupported, so the colour is only dropped behind an @supports guard. */
 html[data-theme="monochrome-modular"] .neon-txt,
-html[data-theme="monochrome-modular"] .uv-txt { animation: none; color: var(--ug-accent-tint); }
+html[data-theme="monochrome-modular"] .uv-txt { color: var(--ug-accent-tint); }
 @supports (background-clip: text) or (-webkit-background-clip: text) {
   html[data-theme="monochrome-modular"] .neon-txt,
   html[data-theme="monochrome-modular"] .uv-txt {
@@ -177,7 +183,7 @@ html[data-theme="monochrome-modular"] .hero {
 html[data-theme="monochrome-modular"] .hero .floor, html[data-theme="monochrome-modular"] .hero-vid { display: none; }
 html[data-theme="monochrome-modular"] .mm-hero-img {
   position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 40%;
-  filter: saturate(1.15) contrast(1.05); animation: mmFade .6s var(--ease-out) both;
+  filter: saturate(1.15) contrast(1.05); animation: mmFade .6s var(--ease-out) both, mmKen 30s ease-in-out infinite alternate;
 }
 /* colour wash and legibility grade over the photograph, then a spectrum bloom on the right */
 html[data-theme="monochrome-modular"] .hero::after {
@@ -289,7 +295,7 @@ html[data-theme="monochrome-modular"] .bar.empty { background: rgb(var(--ug-void
 html[data-theme="monochrome-modular"] .stat { border-radius: var(--r-card); border: 1px solid var(--mm-hair); background: var(--card-2); }
 html[data-theme="monochrome-modular"] .demo { background: var(--card); }
 html[data-theme="monochrome-modular"] .demo h3 { font: 800 clamp(22px, 2.6vw, 32px)/1.1 var(--display); letter-spacing: -.028em; text-transform: none; }
-html[data-theme="monochrome-modular"] .ring-deco { border-color: var(--mm-hair); box-shadow: none; opacity: .45; animation: none; }
+html[data-theme="monochrome-modular"] .ring-deco { border-color: rgb(var(--ug-accent-2-rgb) / .5); box-shadow: 0 0 44px -12px rgb(var(--ug-accent-2-rgb) / .6); opacity: .5; }
 html[data-theme="monochrome-modular"] .session { border: 1px solid var(--mm-hair); border-radius: var(--r-card); }
 html[data-theme="monochrome-modular"] .session img, html[data-theme="monochrome-modular"] .session svg.art, html[data-theme="monochrome-modular"] .cover, html[data-theme="monochrome-modular"] .art-wrap, html[data-theme="monochrome-modular"] .acard .art-wrap img.cover, html[data-theme="monochrome-modular"] .reader-hero img.cover { filter: saturate(1.12); }
 html[data-theme="monochrome-modular"] .session .play { background: var(--mm-grad); color: var(--on-neon); box-shadow: 0 12px 26px -14px rgb(var(--ug-accent-rgb) / .9); }
@@ -378,7 +384,7 @@ html[data-theme="monochrome-modular"] .ft {
 }
 html[data-theme="monochrome-modular"] .ft::before { display: none; }
 html[data-theme="monochrome-modular"] .ft-inner, html[data-theme="monochrome-modular"] .ft-bar { max-width: 1560px; }
-html[data-theme="monochrome-modular"] .ft-pass { border: 1px solid var(--mm-hair); border-radius: var(--r-card); background: var(--card); box-shadow: var(--mm-shadow-sm); animation: none; }
+html[data-theme="monochrome-modular"] .ft-pass { border: 1px solid var(--mm-edge); border-radius: var(--r-card); background: var(--card); box-shadow: var(--mm-shadow-sm), 0 0 40px -18px rgb(var(--ug-accent-rgb) / .5); }
 html[data-theme="monochrome-modular"] .ft-lanyard { background: var(--mm-grad); box-shadow: none; }
 html[data-theme="monochrome-modular"] .ft-neon-label { color: var(--ink-soft); }
 html[data-theme="monochrome-modular"] .ft-live { background: var(--ok); box-shadow: 0 0 10px rgb(var(--ug-ok-rgb) / .9); }
@@ -427,12 +433,12 @@ html[data-theme="monochrome-modular"] .prose li { text-wrap: pretty; }
 html[data-theme="monochrome-modular"] .signal, html[data-theme="monochrome-modular"] .tag.warm { color: var(--uv); }
 
 /* ---------- a soft, eased reveal ---------- */
-html[data-theme="monochrome-modular"] .bento-item.ug-reveal { animation: none; opacity: 0; translate: 0 14px; }
-html[data-theme="monochrome-modular"] .card.ug-reveal { opacity: 0; translate: 0 14px; }
+html[data-theme="monochrome-modular"] .bento-item.ug-reveal { animation: none; opacity: 0; translate: 0 26px; scale: .986; }
+html[data-theme="monochrome-modular"] .card.ug-reveal { opacity: 0; translate: 0 26px; scale: .986; }
 html[data-theme="monochrome-modular"] .ug-reveal.ug-in {
-  opacity: 1; translate: 0 0;
-  transition: opacity .5s var(--ease-out), translate .5s var(--ease-out);
-  transition-delay: min(calc(var(--i, 0) * 45ms), 320ms);
+  opacity: 1; translate: 0 0; scale: 1;
+  transition: opacity .55s var(--ease-out), translate .55s var(--ease-out), scale .55s var(--ease-out);
+  transition-delay: min(calc(var(--i, 0) * 60ms), 380ms);
 }
 
 @keyframes mmBlink { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
@@ -478,11 +484,115 @@ html[data-theme="monochrome-modular"] .ug-reveal.ug-in {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  html[data-theme="monochrome-modular"] .ug-reveal, html[data-theme="monochrome-modular"] .ug-reveal.ug-in { opacity: 1; translate: none; transition: none; }
+  html[data-theme="monochrome-modular"] .ug-reveal, html[data-theme="monochrome-modular"] .ug-reveal.ug-in { opacity: 1; translate: none; scale: none; transition: none; }
   html[data-theme="monochrome-modular"] .mm-hero-img { animation: none; }
   html[data-theme="monochrome-modular"] .mm-sig.on i, html[data-theme="monochrome-modular"] .hero .rec .live-dot { animation: none; }
   html[data-theme="monochrome-modular"] .mm-top { transition: none; }
   html[data-theme="monochrome-modular"] .mm-navwrap .nav-pill { transition: none; }
   html[data-theme="monochrome-modular"] .mm-scrim { transition: none; }
   html[data-theme="monochrome-modular"] .card, html[data-theme="monochrome-modular"] .avatar .ring { transition: none; }
+}
+
+/* ==========================================================================
+   Motion and depth
+   The site already ships a motion vocabulary — flicker, marquee, pulse, eqb,
+   breathe, ftSwing, draw, rise, shimmer, podium, grow. This theme leans on that
+   vocabulary instead of muting it, and adds an ambient canvas, a hero camera
+   move and micro-interactions on top. Everything added here animates transform
+   or opacity, so the browser can hand the work to the compositor and a phone
+   stays smooth.
+   ========================================================================== */
+
+/* --- ambient aurora: the gradients are painted once, then the whole layer is moved --- */
+html[data-theme="monochrome-modular"] body::before {
+  content: ""; position: fixed; inset: -25%; z-index: 0; pointer-events: none; will-change: transform;
+  background:
+    radial-gradient(closest-side, rgb(var(--ug-accent-rgb) / .26), transparent) 6% 4% / 58% 58% no-repeat,
+    radial-gradient(closest-side, rgb(var(--ug-accent-2-rgb) / .22), transparent) 94% 10% / 52% 52% no-repeat,
+    radial-gradient(closest-side, rgb(var(--ug-accent-rgb) / .18), transparent) 36% 99% / 64% 64% no-repeat,
+    radial-gradient(closest-side, rgb(var(--ug-accent-2-rgb) / .14), transparent) 82% 76% / 44% 44% no-repeat;
+  animation: mmDrift 38s ease-in-out infinite alternate;
+}
+@keyframes mmDrift {
+  from { transform: translate3d(-2%, -1%, 0) scale(1.02); }
+  50%  { transform: translate3d(2%, 2%, 0) scale(1.08); }
+  to   { transform: translate3d(-1%, 3%, 0) scale(1.03); }
+}
+/* the aurora is the bottom layer, so the frame and the scroll area go transparent to reveal it */
+html[data-theme="monochrome-modular"] .app,
+html[data-theme="monochrome-modular"] .main { background: transparent; }
+
+/* --- hero: a slow camera push, so the fold is never completely still --- */
+@keyframes mmKen { from { transform: scale(1) translateY(0); } to { transform: scale(1.09) translateY(-1.5%); } }
+
+/* --- the brand mark breathes --- */
+html[data-theme="monochrome-modular"] .mm-mark { animation: mmMark 5.5s ease-in-out infinite; }
+@keyframes mmMark {
+  0%, 100% { filter: drop-shadow(0 0 6px rgb(var(--ug-accent-rgb) / .35)); }
+  50%      { filter: drop-shadow(0 0 17px rgb(var(--ug-accent-rgb) / .85)); }
+}
+
+/* --- the site's live dots now emit a ring --- */
+html[data-theme="monochrome-modular"] .live-dot { position: relative; }
+html[data-theme="monochrome-modular"] .live-dot::after {
+  content: ""; position: absolute; inset: 0; border-radius: 50%; background: inherit;
+  animation: mmRing 2s ease-out infinite;
+}
+@keyframes mmRing { from { transform: scale(1); opacity: .55; } to { transform: scale(3.4); opacity: 0; } }
+
+/* --- cards: light sweeps across on hover, over a lift that reads as depth --- */
+html[data-theme="monochrome-modular"] .card {
+  background-image: linear-gradient(115deg, transparent 42%, rgb(var(--ug-ink-rgb) / .07) 50%, transparent 58%);
+  background-size: 260% 100%; background-position: 135% 0; background-repeat: no-repeat;
+}
+@media (hover: hover) {
+  html[data-theme="monochrome-modular"] .card {
+    transition: transform .4s var(--ease-out), box-shadow .4s var(--ease-out),
+                border-color .3s var(--ease-out), background-position .9s var(--ease-out);
+  }
+  html[data-theme="monochrome-modular"] .card:hover {
+    transform: translateY(-4px); background-position: -135% 0;
+    border-color: rgb(var(--ug-accent-rgb) / .5); box-shadow: var(--mm-glow);
+  }
+}
+
+/* --- the solid buttons catch a travelling sheen --- */
+html[data-theme="monochrome-modular"] .btn-white,
+html[data-theme="monochrome-modular"] .btn-forest { position: relative; overflow: hidden; }
+html[data-theme="monochrome-modular"] .btn-white::after,
+html[data-theme="monochrome-modular"] .btn-forest::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(115deg, transparent 40%, rgb(var(--ug-ink-rgb) / .28) 50%, transparent 60%);
+  transform: translateX(-135%);
+}
+@media (hover: hover) {
+  html[data-theme="monochrome-modular"] .btn-white:hover::after,
+  html[data-theme="monochrome-modular"] .btn-forest:hover::after {
+    transform: translateX(135%); transition: transform .7s var(--ease-out);
+  }
+}
+
+/* --- text links underline themselves from the left --- */
+html[data-theme="monochrome-modular"] .link { position: relative; }
+html[data-theme="monochrome-modular"] .link::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 5px; height: 1px;
+  background: currentColor; transform: scaleX(0); transform-origin: left;
+  transition: transform .35s var(--ease-out);
+}
+@media (hover: hover) {
+  html[data-theme="monochrome-modular"] .link:hover::after { transform: scaleX(1); }
+}
+
+/* Someone who asked their system for less motion gets a still page, not a slower one. */
+@media (prefers-reduced-motion: reduce) {
+  html[data-theme="monochrome-modular"] body::before,
+  html[data-theme="monochrome-modular"] .mm-mark,
+  html[data-theme="monochrome-modular"] .live-dot::after,
+  html[data-theme="monochrome-modular"] .btn-white::after,
+  html[data-theme="monochrome-modular"] .btn-forest::after,
+  html[data-theme="monochrome-modular"] .link::after { animation: none; }
+  html[data-theme="monochrome-modular"] .btn-white::after,
+  html[data-theme="monochrome-modular"] .btn-forest::after { display: none; }
+  html[data-theme="monochrome-modular"] .card,
+  html[data-theme="monochrome-modular"] .card:hover { transition: none; transform: none; }
 }
