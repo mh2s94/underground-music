@@ -73,17 +73,17 @@
   // values on top of DEFAULTS: the edge and the runtime apply them, and admin overrides from the
   // Theme Manager are stored as differences from them. The default theme needs no files.
   var THEMES = [
-    { id: "monochrome-modular", no: "01", name: "Monochrome Modular", status: "ready", css: true, js: true, desc: "Tema default permanen: hitam-putih seperti monitor CCTV, strip kontrol siaran, feed letterbox dengan timecode REC, panel berlabel kanal, scanline bergulir.",
+    { id: "monochrome-modular", no: "01", name: "Monochrome Modular", status: "ready", css: true, js: true, desc: "Tema default permanen: hitam-putih seperti zine fotokopi, masthead tebal, panel potongan dengan bayangan keras tanpa blur, label selotip, isi mesin ketik.",
       tokens: { void: "#000000", bg: "#080808", shell: "#090909", surface: "#111111", surface2: "#171717", surface3: "#202020", line: "#303030", line2: "#555555",
         ink: "#F4F4F4", inkSoft: "#E4E4E4", muted: "#B0B0B0", faint: "#909090", accent: "#F4F4F4", accentHi: "#FFFFFF", accentTint: "#D8D8D8", onAccent: "#080808",
         accent2: "#A8A8A8", accent2Hi: "#C8C8C8", accent2Tint: "#E6E6E6", ok: "#D8D8D8", warn: "#B8B8B8",
-        fontDisplay: "big-shoulders", fontBody: "space-mono", fontMono: "space-mono", radius: 8, scanlines: 1 } }
+        fontDisplay: "archivo-black", fontBody: "special-elite", fontMono: "space-mono", radius: 8, scanlines: 0 } }
   ];
   // Bump on ANY change under assets/theme/ or assets/themes/. Theme files are requested as
   // ?v=<version>.<ASSET_REV>, and index.html/admin.html request schema.js with this same value, so
   // bumping it is what carries a theme change to a browser that already cached the old files: a
   // stale schema.js keeps handing out the previous ASSET_REV, and the old theme.css comes back.
-  var ASSET_REV = "t-mm-broadcast-01";
+  var ASSET_REV = "t-mm-xerox-01";
   var READY = THEMES.filter(function (t) { return t.status === "ready"; }).map(function (t) { return t.id; });
 
   // Monochrome Modular is the only theme and the permanent token baseline.
@@ -92,7 +92,7 @@
     line: "#303030", line2: "#555555", ink: "#F4F4F4", inkSoft: "#E4E4E4", muted: "#B0B0B0", faint: "#909090",
     accent: "#F4F4F4", accentHi: "#FFFFFF", accentTint: "#D8D8D8", onAccent: "#080808",
     accent2: "#A8A8A8", accent2Hi: "#C8C8C8", accent2Tint: "#E6E6E6", ok: "#D8D8D8", warn: "#B8B8B8",
-    fontDisplay: "big-shoulders", fontBody: "space-mono", fontMono: "space-mono", radius: 8, scanlines: 1
+    fontDisplay: "archivo-black", fontBody: "special-elite", fontMono: "space-mono", radius: 8, scanlines: 0
   };
 
   var HEX = /^#([0-9a-fA-F]{6})$/;
