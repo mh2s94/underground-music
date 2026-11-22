@@ -1,0 +1,4 @@
+# Local AI-assistant skill payloads.
+# Installed with `npx ui-ux-pro-max-cli init --ai opencode` (not hand-authored source).
+# Kept out of version control to keep the repo small; reinstall locally when needed.
+.opencode/skills/
