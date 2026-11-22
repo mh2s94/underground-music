@@ -80,7 +80,7 @@
         fontDisplay: "bebas-neue", fontBody: "inter", fontMono: "space-mono", radius: 8, scanlines: 0 } }
   ];
   // Bump when any file in assets/themes/ changes: theme files are requested as ?v=<version>.<ASSET_REV>.
-  var ASSET_REV = "t-mm-single-01";
+  var ASSET_REV = "t-mm-live-signal-01";
   var READY = THEMES.filter(function (t) { return t.status === "ready"; }).map(function (t) { return t.id; });
 
   // Monochrome Modular is the only theme and the permanent token baseline.
