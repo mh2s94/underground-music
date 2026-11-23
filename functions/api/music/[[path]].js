@@ -21,6 +21,10 @@ const FOLDERS = new Set(["audio", "covers"]);
 const AUDIO_TYPES = /^audio\/(mpeg|mp3|mp4|x-m4a|aac|ogg|wav|x-wav|flac)$/i;
 const IMAGE_TYPES = /^image\/(jpeg|png|webp)$/i;
 const KEY_RE = /^(audio|covers)\/[A-Za-z0-9-]{8,64}\.[a-z0-9]{2,5}$/;
+// Music files are public to read, but cross-origin browser access (fetch/Web Audio) is limited to
+// the site's own origin. A fixed value (never the request Origin) keeps the CDN cache safe: a cached
+// response can only ever advertise this one origin.
+const SITE_ORIGIN = "https://music.mikasa.me";
 
 const json = (data, status = 200) => new Response(JSON.stringify(data), {
   status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" }
@@ -147,7 +151,7 @@ async function serveFile(request, env, key) {
   headers.set("etag", object.httpEtag);
   headers.set("accept-ranges", "bytes");
   headers.set("cache-control", "public, max-age=31536000, immutable");
-  headers.set("access-control-allow-origin", "*");
+  headers.set("access-control-allow-origin", SITE_ORIGIN);
 
   // Precondition matched (If-None-Match etc.): no body
   if (!("body" in object) || !object.body) return new Response(null, { status: 304, headers });
