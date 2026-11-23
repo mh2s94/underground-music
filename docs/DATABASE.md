@@ -12,7 +12,7 @@ Every file is idempotent ("safe to re-run"): `create … if not exists`, `create
 
 | # | File | Purpose | Depends on |
 | --- | --- | --- | --- |
-| 0 | `supabase/base.sql` | `articles`, `categories`, `admin_users` and their original dashboard policies — the real exported definition. Run this first. | — |
+| 0 | `supabase/base.sql` | `articles`, `categories`, `admin_users` and their original dashboard policies — the real exported definition. Run this first. **Applied to production 2026-11-23** (idempotent; also drops the default `TRUNCATE`/`REFERENCES`/`TRIGGER` grants from `anon`/`authenticated`). | — |
 | 1 | `supabase/community.sql` | `ug_is_admin()`, `profiles` (+ sign-up trigger), `saved_articles`, `comments`, `demo_submissions`, rate-limit triggers | `articles` |
 | 2 | `supabase/music.sql` | `tracks`, storage bucket `music` (25 MB, public read), storage policies, `ug_admin_purge()` | 1 |
 | 3 | `supabase/music-v2.sql` | `tracks.album`, `tracks.release_year` + checks | 2 |
@@ -32,7 +32,7 @@ Owner-reported state: files 6 and 7 applied on 2026-11-17 (2FA working; "Admins 
 ⚠️ `community.sql`, `music.sql` and `security.sql` all define `ug_is_admin()`. Since 2026-11-17 **all three contain the 2FA version**. Never re-introduce the old body (admin membership only) in any file, or a re-run would silently drop the 2FA requirement.
 
 | 12 | `supabase/20261120103205_create_ai_ingestion.sql` | VPS AI publisher idempotency and article audit trail (`ai_ingestion`); RLS on, client roles revoked, service-role only | Base `articles` table |
-| 13 | `supabase/theme-font-list-fix.sql` | Repairs the `ug_clean_theme_tokens()` font allow-list in `themes.sql`, which was missing `anton` and `space-grotesk`. Run once; safe to re-run. `themes.sql` already carries the fix for future rebuilds, and `tests/themes.test.mjs` now fails if any SQL file's font/colour/key lists drift from `assets/theme/schema.js`. | 9 |
+| 13 | `supabase/theme-font-list-fix.sql` | Repairs the `ug_clean_theme_tokens()` font allow-list in `themes.sql`, which was missing `anton` and `space-grotesk`. **Applied to production and verified 2026-11-23.** Safe to re-run. `themes.sql` already carries the fix for future rebuilds, and `tests/themes.test.mjs` fails if any SQL file's font/colour/key lists drift from `assets/theme/schema.js`. | 9 |
 
 ## 2. Tables
 

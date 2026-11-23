@@ -157,7 +157,7 @@ only when pressed.
 - New test `tests/themes.test.mjs` ("database token validator accepts exactly the schema.js fonts and
   token keys") compares the font, colour and font-key lists in **every** SQL file that defines the
   validator against `schema.js`, so the two can never drift again. All theme tests pass (10 + 48 + 7).
-- Status: code IMPLEMENTED and committed; the SQL migration still needs to be run once in Supabase → SQL Editor (it was verified to apply cleanly inside a rolled-back transaction on production).
+- Status: **applied to production and verified 2026-11-23.** `ug_clean_theme_tokens()` now keeps `anton` and `space-grotesk` (checked live: an input with both fonts, plus a colour and a radius, came back complete). Before the fix, production dropped both fonts.
 
 ## 2026-11-23 · Base schema exported (`supabase/base.sql`)
 - `articles`, `categories` and `admin_users` (and their dashboard policies) were never in the repo, so a
@@ -168,3 +168,8 @@ only when pressed.
 - It also revokes `TRUNCATE`, `REFERENCES` and `TRIGGER` from `anon`/`authenticated` on the three tables:
   Supabase grants them by default, the API cannot use them, and `TRUNCATE` is not filtered by RLS.
 - Docs updated: DATABASE.md (sections 1, 2, 6, 7) no longer call the base schema "not in the repo".
+- Status: **applied to production and verified 2026-11-23.** The three tables already existed (the create
+  statements were no-ops); the policies were recreated identically (articles: 9 policies, 4 restrictive;
+  categories: 7, 3 restrictive; admin_users: 1) and the `TRUNCATE`/`REFERENCES`/`TRIGGER` grants are gone
+  from `anon` and `authenticated` (checked live). The site still answers 200 and `ug_active_theme()` still
+  returns the active theme.
