@@ -245,8 +245,8 @@ await t("only Monochrome Modular is injected with its CSS and shell", async () =
   assert.match(body, /data-theme="monochrome-modular" data-theme-version="12"/);
   assert.ok(body.includes('/assets/themes/monochrome-modular/theme.css' + q));
   assert.ok(body.includes('/assets/themes/monochrome-modular/shell.js' + q));
-  assert.strictEqual(globalThis.UGThemeSchema.DEFAULTS.bg, "#07090F");
-  assert.strictEqual(globalThis.UGThemeSchema.DEFAULTS.accent, "#6D8BFF");
+  assert.strictEqual(globalThis.UGThemeSchema.DEFAULTS.bg, "#0A0A0B");
+  assert.strictEqual(globalThis.UGThemeSchema.DEFAULTS.accent, "#D6FF3F");
   assert.ok(!body.includes("ug-theme-tokens"), "empty saved overrides must not create an inline token block");
   assert.strictEqual(res.headers.get("x-ug-theme"), "monochrome-modular@12;rpc");
 });

@@ -48,9 +48,9 @@ t("database theme allow-list contains only Monochrome Modular", () => {
   assert.doesNotMatch(sql, /'neon-bento'|'front-page'|'the-pit'|'scene-atlas'/);
 });
 t("default token baseline is the Monochrome Modular design system", () => {
-  assert.strictEqual(S.base(S.DEFAULT_THEME).bg, "#07090F");
-  assert.strictEqual(S.base(S.DEFAULT_THEME).accent, "#6D8BFF");
-  assert.strictEqual(S.base(S.DEFAULT_THEME).radius, 20);
+  assert.strictEqual(S.base(S.DEFAULT_THEME).bg, "#0A0A0B");
+  assert.strictEqual(S.base(S.DEFAULT_THEME).accent, "#D6FF3F");
+  assert.strictEqual(S.base(S.DEFAULT_THEME).radius, 10);
   assert.ok(S.contrast(S.DEFAULTS.ink, S.DEFAULTS.bg) >= 7);
 });
 t("only Monochrome Modular CSS and shell files remain", () => {

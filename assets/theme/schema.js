@@ -16,6 +16,7 @@
   // Font allow-list: key -> { stack, google } (google = family spec for fonts.googleapis.com, or "").
   var FONTS = {
     "bebas-neue":     { stack: '"Bebas Neue", Impact, "Arial Narrow", sans-serif', google: "Bebas+Neue" },
+    "anton":          { stack: '"Anton", "Arial Narrow", Impact, sans-serif', google: "Anton" },
     "inter":          { stack: '"Inter", system-ui, -apple-system, "Segoe UI", sans-serif', google: "Inter:wght@400;500;600;700" },
     "space-mono":     { stack: '"Space Mono", ui-monospace, Menlo, monospace', google: "Space+Mono:wght@400;700" },
     "fraunces":       { stack: '"Fraunces", Georgia, serif', google: "Fraunces:ital,opsz,wght@0,9..144,400..900;1,9..144,400" },
@@ -74,26 +75,26 @@
   // values on top of DEFAULTS: the edge and the runtime apply them, and admin overrides from the
   // Theme Manager are stored as differences from them. The default theme needs no files.
   var THEMES = [
-    { id: "monochrome-modular", no: "01", name: "Monochrome Modular", status: "ready", css: true, js: true, desc: "Tema default permanen: kanvas nyaris hitam dengan aurora biru-cyan yang bergerak perlahan, panel membulat yang terangkat di atas cahaya warna, glow neon yang hidup, dan judul bergradasi biru-cyan.",
-      tokens: { void: "#030407", bg: "#07090F", shell: "#0A0D15", surface: "#0F131C", surface2: "#151A25", surface3: "#1C2230", line: "#2E3748", line2: "#3E4A61",
-        ink: "#EEF2F8", inkSoft: "#C7D0DE", muted: "#A7B2C4", faint: "#949FB2", accent: "#6D8BFF", accentHi: "#A6B8FF", accentTint: "#DEE6FF", onAccent: "#050B1F",
-        accent2: "#2FD8E8", accent2Hi: "#8CEAF4", accent2Tint: "#D6F8FB", ok: "#35D6A4", warn: "#FFAE3D",
-        fontDisplay: "space-grotesk", fontBody: "inter", fontMono: "space-mono", radius: 20, scanlines: 0 } }
+    { id: "monochrome-modular", no: "01", name: "Monochrome Modular", status: "ready", css: true, js: true, desc: "Tema default permanen: kanvas tinta-hitam netral, tipografi editorial yang berat dan padat, aksen lime asam sebagai sinyal tunggal, garis rambut halus, sudut tajam dan komposisi asimetris yang bergerak sinematik.",
+      tokens: { void: "#070708", bg: "#0A0A0B", shell: "#101012", surface: "#141417", surface2: "#1B1B1F", surface3: "#242429", line: "#33333A", line2: "#43434C",
+        ink: "#F3F0E9", inkSoft: "#CFCBC2", muted: "#A5A199", faint: "#918D85", accent: "#D6FF3F", accentHi: "#E4FF8A", accentTint: "#F2FFD6", onAccent: "#12160A",
+        accent2: "#FF5C2E", accent2Hi: "#FF9268", accent2Tint: "#FFDCCB", ok: "#4ADE80", warn: "#FBBF24",
+        fontDisplay: "anton", fontBody: "inter", fontMono: "space-mono", radius: 10, scanlines: 0 } }
   ];
   // Bump on ANY change under assets/theme/ or assets/themes/. Theme files are requested as
   // ?v=<version>.<ASSET_REV>, and index.html/admin.html request schema.js with this same value, so
   // bumping it is what carries a theme change to a browser that already cached the old files: a
   // stale schema.js keeps handing out the previous ASSET_REV, and the old theme.css comes back.
-  var ASSET_REV = "t-mm-neon-03";
+  var ASSET_REV = "t-ink-01";
   var READY = THEMES.filter(function (t) { return t.status === "ready"; }).map(function (t) { return t.id; });
 
   // Monochrome Modular is the only theme and the permanent token baseline.
   var DEFAULTS = {
-    void: "#030407", bg: "#07090F", shell: "#0A0D15", surface: "#0F131C", surface2: "#151A25", surface3: "#1C2230",
-    line: "#2E3748", line2: "#3E4A61", ink: "#EEF2F8", inkSoft: "#C7D0DE", muted: "#A7B2C4", faint: "#949FB2",
-    accent: "#6D8BFF", accentHi: "#A6B8FF", accentTint: "#DEE6FF", onAccent: "#050B1F",
-    accent2: "#2FD8E8", accent2Hi: "#8CEAF4", accent2Tint: "#D6F8FB", ok: "#35D6A4", warn: "#FFAE3D",
-    fontDisplay: "space-grotesk", fontBody: "inter", fontMono: "space-mono", radius: 20, scanlines: 0
+    void: "#070708", bg: "#0A0A0B", shell: "#101012", surface: "#141417", surface2: "#1B1B1F", surface3: "#242429",
+    line: "#33333A", line2: "#43434C", ink: "#F3F0E9", inkSoft: "#CFCBC2", muted: "#A5A199", faint: "#918D85",
+    accent: "#D6FF3F", accentHi: "#E4FF8A", accentTint: "#F2FFD6", onAccent: "#12160A",
+    accent2: "#FF5C2E", accent2Hi: "#FF9268", accent2Tint: "#FFDCCB", ok: "#4ADE80", warn: "#FBBF24",
+    fontDisplay: "anton", fontBody: "inter", fontMono: "space-mono", radius: 10, scanlines: 0
   };
 
   var HEX = /^#([0-9a-fA-F]{6})$/;
