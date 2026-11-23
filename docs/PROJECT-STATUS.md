@@ -64,7 +64,7 @@ Last audit: **2026-11-19**, against `main` @ `82afca0` (Final Audit). Update thi
 | Admin 2FA (panel, API, DB) | VERIFIED | owner enrolled; `security.sql` applied; Security check shows aal2 |
 | "Admins can read all articles" SELECT policy | VERIFIED live / PENDING in repo | created in dashboard; its SQL must be copied into `supabase/` |
 | Admin page hidden from visitors | VERIFIED | E2E (guest, member, admin without 2FA); admin APIs answer 401 without login on production |
-| CSP + HSTS headers | VERIFIED | production 2026-11-18 checks the current `'unsafe-inline'` CSP, HSTS, DENY, nosniff on HTML and static files; the new hash-based CSP is browser-verified on the branch preview 2026-11-23 (see the latest security entry) |
+| CSP + HSTS headers | VERIFIED | production 2026-11-18 checks the current `'unsafe-inline'` CSP, HSTS, DENY, nosniff on HTML and static files. The new hash-based CSP is **live and browser-verified on production 2026-11-23** (see the latest security entry) |
 | Turnstile captcha | PENDING | owner must create a widget and send the **site key** |
 | Cloudflare rate-limiting rule for `/api/*` | PENDING | owner action (steps in SECURITY.md) |
 | Rotate `AUTODRAFT_TOKEN` | PENDING | the old value appeared in a chat transcript |
@@ -152,7 +152,9 @@ Follow-up to the security review, chosen so the autopilot (VPS AI publisher + RS
 
 - **Music files** (`functions/api/music/[[path]].js`): `Access-Control-Allow-Origin` changed from `*`
   to the site's own origin — a fixed value, never the request Origin, so a cached response can never
-  hand the header to a foreign origin. Same-origin playback and `<audio>` embeds are unaffected.
+  hand the header to a foreign origin. Same-origin playback and `<audio>` embeds are unaffected. The
+  objects are cached at the edge for a year, so **a Cloudflare cache purge is needed for files cached
+  before the deploy** (checked live 2026-11-23: a miss returns the new origin, a hit still returns `*`).
 - **Article pages** (`functions/a/[slug].js`): the 502 body no longer echoes the raw Supabase error
   (which could reveal table and column names); the detail still goes to the worker log.
 - **CSP** (`_headers` + `functions/api/theme/edge.js`): `script-src` no longer uses `'unsafe-inline'`.
@@ -168,6 +170,9 @@ Follow-up to the security review, chosen so the autopilot (VPS AI publisher + RS
 - **Rate limiting** (owner action): the recommended Cloudflare rule now **excludes** `/api/ai-publish`,
   `/api/news-publish` and `/api/telegram/*` — the autopilot — which is already token-protected and
   daily-capped, so an IP limit there would only risk breaking it.
-- Status: IMPLEMENTED, all 14 test suites pass. Browser-verified 2026-11-23 (headless Chromium against
-  the branch preview): the CSP is served on `/`, `/admin`, `/search`, a band page and an article,
-  `supabase-js` loads, the pages render, and no CSP violation is logged. Not yet on production.
+- Status: **LIVE on production 2026-11-23** (squash merge of PR #84). All test suites pass. Browser-checked
+  in headless Chromium the same day, first on the branch preview and then on `music.mikasa.me`: the CSP is
+  served on `/`, `/admin`, `/search`, a band page and an article, `supabase-js` loads, the pages render,
+  and no CSP violation is logged. The site's look is unchanged (the theme redesign stayed on its own branch).
+- Still open (owner actions): the Cloudflare rate-limit rule (below), and a **cache purge** so the music
+  CORS change reaches the files already cached at the edge.

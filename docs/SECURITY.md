@@ -134,6 +134,15 @@ If you do step 3 before step 2, every sign-in fails.
 - **Do not** enable Bot Fight Mode: it would challenge the GitHub Actions call to `/api/telegram/digest`.
 - The rule can be tested safely: after adding it, trigger the autopilot once (or `POST /api/news-publish` with its token) and confirm it still returns 200, and that a rapid burst against a public endpoint such as `/api/news` starts returning 429/blocked.
 
+## Music files (CORS)
+`/api/music/file/…` streams public R2 objects and sets `Access-Control-Allow-Origin: https://music.mikasa.me`
+— a fixed origin, never the request Origin, so a foreign page can no longer read the files and a cached
+response can only ever advertise that one origin. The objects are cached at the edge for a year
+(`cache-control: public, max-age=31536000, immutable`), so **responses cached before 2026-11-23 still carry
+the old `Access-Control-Allow-Origin: *`**. Checked live on 2026-11-23: a cache miss returns the new origin,
+a cache hit still returns `*` (age ≈ 2.7 days). Purge the Cloudflare cache (Caching → Configuration →
+Purge Cache) to apply it to the files already stored.
+
 ## Secrets management
 - Secrets live only in **Cloudflare Pages → Settings → Variables and Secrets** (type *Secret*) and **GitHub → Settings → Secrets → Actions**. Full list: [DEPLOYMENT.md](DEPLOYMENT.md#environment-variables).
 - The Supabase **publishable** key and project URL in `bento.js` and `admin.html` are public by design.
