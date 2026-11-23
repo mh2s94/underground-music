@@ -118,13 +118,21 @@ The code is ready in `assets/bento.js`: `TURNSTILE_SITE_KEY`, `mountCaptcha()`, 
 
 If you do step 3 before step 2, every sign-in fails.
 
-## Rate limiting (PENDING)
+## Rate limiting (PENDING — owner action in the Cloudflare dashboard)
 - **Database:** comments 5 per minute per member, demos 3 per day per member, newsletter sign-ups 30 per minute site-wide.
-- **Edge (recommended):** Cloudflare → `mikasa.me` → Security → WAF → Rate limiting rules:
-  - match Hostname `music.mikasa.me` AND URI path starts with `/api/`
-  - limit 100 requests per 10 s per IP
-  - action Block for 10 s
+- **Edge (recommended):** Cloudflare → `mikasa.me` → Security → WAF → Rate limiting rules. Add **one** rule:
+  - **Expression** — the public `/api/` surface, but **excluding the autopilot** (see below):
+    ```
+    (http.host eq "music.mikasa.me"
+      and starts_with(http.request.uri.path, "/api/")
+      and not http.request.uri.path in {"/api/ai-publish" "/api/news-publish"}
+      and not starts_with(http.request.uri.path, "/api/telegram/"))
+    ```
+  - limit **100 requests per 10 s per IP**
+  - action **Block** for 10 s
+- **Why the exclusions matter (do not remove them):** `/api/ai-publish` is the VPS AI publisher, `/api/news-publish` is the RSS brief writer, and `/api/telegram/*` is the GitHub Actions digest plus Telegram's own webhook. Together these are the **autopilot**. They arrive in a burst when a job runs and from a single IP (the VPS or GitHub), so an IP rate limit would throttle or block them. They are already protected by a constant-time bearer-token check and their own daily caps (`AI_PUBLISH_DAILY_LIMIT`, the news `DAILY_LIMIT`), so IP rate limiting adds nothing for them and only risks breaking the autopilot.
 - **Do not** enable Bot Fight Mode: it would challenge the GitHub Actions call to `/api/telegram/digest`.
+- The rule can be tested safely: after adding it, trigger the autopilot once (or `POST /api/news-publish` with its token) and confirm it still returns 200, and that a rapid burst against a public endpoint such as `/api/news` starts returning 429/blocked.
 
 ## Secrets management
 - Secrets live only in **Cloudflare Pages → Settings → Variables and Secrets** (type *Secret*) and **GitHub → Settings → Secrets → Actions**. Full list: [DEPLOYMENT.md](DEPLOYMENT.md#environment-variables).

@@ -147,6 +147,25 @@ only when pressed.
 - Status: IMPLEMENTED, NOT VERIFIED live (mock-tested).
 - **Newsletter sign-up was broken for everyone** ("violates check constraint newsletter_subscribers_email_check"): the live constraint had doubled backslashes, so it demanded a literal `\` in every address (0 subscribers had ever been saved). Fixed live on 2026-11-19 (migration `fix_newsletter_email_check`, checked: valid address accepted, invalid rejected) and the repair is in `supabase/extras.sql`. VERIFIED in the database; sign-up from the site to be confirmed by the owner.
 
+## 2026-11-23 · Security hardening: music CORS, article error, CSP, rate-limit guidance
+Follow-up to the security review, chosen so the autopilot (VPS AI publisher + RSS) is untouched.
+
+- **Music files** (`functions/api/music/[[path]].js`): `Access-Control-Allow-Origin` changed from `*`
+  to the site's own origin — a fixed value, never the request Origin, so a cached response can never
+  hand the header to a foreign origin. Same-origin playback and `<audio>` embeds are unaffected.
+- **Article pages** (`functions/a/[slug].js`): the 502 body no longer echoes the raw Supabase error
+  (which could reveal table and column names); the detail still goes to the worker log.
+- **CSP** (`_headers` + `functions/api/theme/edge.js`): `script-src` no longer uses `'unsafe-inline'`.
+  It now allows the site's own inline scripts by SHA-256 hash and its two inline `onerror` handlers via
+  `'unsafe-hashes'`. `style-src` keeps `'unsafe-inline'` on purpose (the theme middleware injects a
+  per-request `<style>` and the pages use `style="…"`). New `tests/csp.test.mjs` recomputes every hash
+  and proves the server-rendered pages add no classic inline script, so CI catches any drift. Checked
+  before the change: Cloudflare injects no inline scripts and the deployed inline scripts match the repo.
+- **Rate limiting** (owner action): the recommended Cloudflare rule now **excludes** `/api/ai-publish`,
+  `/api/news-publish` and `/api/telegram/*` — the autopilot — which is already token-protected and
+  daily-capped, so an IP limit there would only risk breaking it.
+- Status: code IMPLEMENTED, all 14 test suites pass; the CSP is NOT yet verified in a live browser.
+
 ## 2026-11-23 · Theme font allow-list fix (`fix/theme-font-parity`)
 - The database token validator `ug_clean_theme_tokens()` (`supabase/themes.sql`) listed 11 fonts but
   `assets/theme/schema.js` offers 13: `anton` and `space-grotesk` were missing. Because the validator
