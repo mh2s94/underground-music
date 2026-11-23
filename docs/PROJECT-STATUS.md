@@ -66,7 +66,7 @@ Last audit: **2026-11-19**, against `main` @ `82afca0` (Final Audit). Update thi
 | Admin page hidden from visitors | VERIFIED | E2E (guest, member, admin without 2FA); admin APIs answer 401 without login on production |
 | CSP + HSTS headers | VERIFIED | production 2026-11-18 checks the current `'unsafe-inline'` CSP, HSTS, DENY, nosniff on HTML and static files. The new hash-based CSP is **live and browser-verified on production 2026-11-23** (see the latest security entry) |
 | Turnstile captcha | PENDING | owner must create a widget and send the **site key** |
-| Cloudflare rate-limiting rule for `/api/*` | PENDING | owner action (steps in SECURITY.md) |
+| Cloudflare rate-limiting rule for `/api/*` | IMPLEMENTED (owner) | set in the Cloudflare dashboard; excludes `/api/ai-publish`, `/api/news-publish` and `/api/telegram/*` (autopilot). Expression and steps in SECURITY.md |
 | Rotate `AUTODRAFT_TOKEN` | PENDING | the old value appeared in a chat transcript |
 | DMARC record | PENDING confirmation | recommended value in DEPLOYMENT.md |
 
@@ -77,7 +77,7 @@ In the order of the Final Audit (2026-11-19):
 2. Run the read-only base-schema export in [DATABASE.md §7](DATABASE.md#export-the-base-schema-for-supabasebasesql) and send the result. It becomes `supabase/base.sql` (includes the "Admins can read all articles" policy).
 3. Production checklist with one test member account (sign up, sign in, comment, save, demo, newsletter + unsubscribe, delete account) and, as admin with 2FA, R2 upload, Scene Radar batch, one Telegram button.
 4. Turnstile: create the widget, send the site key, then add the secret key in Supabase **after** the code is deployed.
-5. Cloudflare rate-limiting rule for `/api/*` (do not enable Bot Fight Mode).
+5. ~~Cloudflare rate-limiting rule for `/api/*`~~ — **done**: the owner set the rule (it must exclude the autopilot; expression in [SECURITY.md](SECURITY.md)). Do not enable Bot Fight Mode.
 
 Optional decisions (not needed to finish the project):
 
@@ -153,8 +153,9 @@ Follow-up to the security review, chosen so the autopilot (VPS AI publisher + RS
 - **Music files** (`functions/api/music/[[path]].js`): `Access-Control-Allow-Origin` changed from `*`
   to the site's own origin — a fixed value, never the request Origin, so a cached response can never
   hand the header to a foreign origin. Same-origin playback and `<audio>` embeds are unaffected. The
-  objects are cached at the edge for a year, so **a Cloudflare cache purge is needed for files cached
-  before the deploy** (checked live 2026-11-23: a miss returns the new origin, a hit still returns `*`).
+  objects are cached at the edge for a year, so files cached before the deploy kept the old `*` until the
+  owner **purged the Cloudflare cache on 2026-11-24**; re-checked live the same day, 5 audio and 5 cover
+  files, cache hits included, all return `https://music.mikasa.me`.
 - **Article pages** (`functions/a/[slug].js`): the 502 body no longer echoes the raw Supabase error
   (which could reveal table and column names); the detail still goes to the worker log.
 - **CSP** (`_headers` + `functions/api/theme/edge.js`): `script-src` no longer uses `'unsafe-inline'`.
@@ -167,12 +168,15 @@ Follow-up to the security review, chosen so the autopilot (VPS AI publisher + RS
     Chromium reported every one as *"invalid source … will be ignored"*: the browser dropped the hashes
     and blocked the very inline scripts they were meant to allow. Fixed in both files; the guard test now
     also rejects an unquoted hash.
-- **Rate limiting** (owner action): the recommended Cloudflare rule now **excludes** `/api/ai-publish`,
-  `/api/news-publish` and `/api/telegram/*` — the autopilot — which is already token-protected and
-  daily-capped, so an IP limit there would only risk breaking it.
+- **Rate limiting** (IMPLEMENTED, owner-configured): the Cloudflare rule covers the public `/api/` surface
+  but **excludes** `/api/ai-publish`, `/api/news-publish` and `/api/telegram/*` — the autopilot — which is
+  already token-protected and daily-capped, so an IP limit there would only risk breaking it. Not confirmed
+  by an external test (a 130-request burst on 2026-11-23 was not blocked); the exact expression is in
+  SECURITY.md.
 - Status: **LIVE on production 2026-11-23** (squash merge of PR #84). All test suites pass. Browser-checked
   in headless Chromium the same day, first on the branch preview and then on `music.mikasa.me`: the CSP is
   served on `/`, `/admin`, `/search`, a band page and an article, `supabase-js` loads, the pages render,
   and no CSP violation is logged. The site's look is unchanged (the theme redesign stayed on its own branch).
-- Still open (owner actions): the Cloudflare rate-limit rule (below), and a **cache purge** so the music
-  CORS change reaches the files already cached at the edge.
+- Closed out 2026-11-24: the Cloudflare rate-limit rule is in place, and the owner purged the cache, so the
+  music CORS change now applies to the files that were already cached. The theme redesign was dropped by the
+  owner (the current look stays; drafts #82 and #83 closed).
