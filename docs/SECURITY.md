@@ -13,7 +13,7 @@ Audited 2026-11-17. Labels: **VERIFIED** (checked live, by the owner or by CI), 
 | Admin 2FA in the database | `supabase/security.sql` | VERIFIED (owner applied; Security check shows aal2) |
 | "Admins can read all articles" select policy | Supabase dashboard only | VERIFIED live, **PENDING** in repo |
 | `admin.html` hidden from non-admins | `admin.html` | IMPLEMENTED, NOT VERIFIED (mock-tested: guest, member, admin) |
-| Security headers incl. CSP + HSTS | `_headers` (static) + `functions/api/theme/edge.js` (HTML pages) | IMPLEMENTED, NOT VERIFIED live (CSP mock-tested locally, no violations) |
+| Security headers incl. CSP + HSTS | `_headers` (static) + `functions/api/theme/edge.js` (HTML pages) | IMPLEMENTED, NOT VERIFIED live (CSP mock-tested locally, no violations). `script-src` no longer uses `'unsafe-inline'` — it is hash-based and guarded by `tests/csp.test.mjs` |
 | Cloudflare Turnstile captcha | `assets/bento.js` + Supabase | PENDING (site key empty, so it is off) |
 | Rate limiting at Cloudflare | Cloudflare dashboard | PENDING (owner action) |
 | Rotate `AUTODRAFT_TOKEN` (old value appeared in a chat) | Cloudflare + GitHub | PENDING (owner action) |
@@ -95,8 +95,8 @@ the edge tests compare them.
 
 | Directive | Allowed |
 | --- | --- |
-| scripts | self, `'unsafe-inline'` (needed: inline admin script and `onerror` attributes), `cdn.jsdelivr.net` (supabase-js), `static.cloudflareinsights.com` (Web Analytics), `challenges.cloudflare.com` (Turnstile) |
-| styles | self, inline, Google Fonts CSS |
+| scripts | self, **SHA-256 hashes** for the site's own inline `<script>`s and, with `'unsafe-hashes'`, its two inline `onerror` handlers; `cdn.jsdelivr.net` (supabase-js), `static.cloudflareinsights.com` (Web Analytics), `challenges.cloudflare.com` (Turnstile). **No `'unsafe-inline'`.** `tests/csp.test.mjs` recomputes every hash from the files, so adding or editing an inline script fails CI instead of the browser blocking it in production. |
+| styles | self, `'unsafe-inline'` (needed: the theme middleware injects a per-request `<style>` and the pages use `style="…"` attributes), Google Fonts CSS |
 | fonts | self, `fonts.gstatic.com` |
 | images | any https, data, blob |
 | media | self, https, blob (R2 via `/api/music`, Supabase Storage, Deezer previews) |
@@ -105,6 +105,8 @@ the edge tests compare them.
 | other | `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`, `upgrade-insecure-requests` |
 
 **When you add an external service, add its host to the right directive in `_headers` and in `SECURITY_HEADERS` (`functions/api/theme/edge.js`)**, or the browser blocks it silently (look for "Content Security Policy" in the browser console).
+
+**Changing an inline `<script>` or an `onerror=` handler:** `script-src` allows inline code only through a SHA-256 hash. After any such edit, run `node tests/csp.test.mjs`. It passes silently when every hash still matches; otherwise it prints the missing `sha256-…` value, which must be added to the `script-src` directive in **both** files above (the edge test fails if they differ). The hash is `sha256-` plus the base64 of the script text exactly as it appears between `<script>` and `</script>` (or the attribute value for a handler).
 
 Responses produced by functions (`/a/<slug>`, `/band/<slug>`, `/api/*`) may not carry these headers. This is IMPLEMENTED, NOT VERIFIED: check with the browser's network tab.
 
