@@ -95,7 +95,7 @@ the edge tests compare them.
 
 | Directive | Allowed |
 | --- | --- |
-| scripts | self, **SHA-256 hashes** for the site's own inline `<script>`s and, with `'unsafe-hashes'`, its two inline `onerror` handlers; `cdn.jsdelivr.net` (supabase-js), `static.cloudflareinsights.com` (Web Analytics), `challenges.cloudflare.com` (Turnstile). **No `'unsafe-inline'`.** `tests/csp.test.mjs` recomputes every hash from the files, so adding or editing an inline script fails CI instead of the browser blocking it in production. |
+| scripts | self, **SHA-256 hashes** for the site's own inline `<script>`s and, with `'unsafe-hashes'`, its two inline `onerror` handlers; `cdn.jsdelivr.net` (supabase-js), `static.cloudflareinsights.com` (Web Analytics), `challenges.cloudflare.com` (Turnstile). **No `'unsafe-inline'`.** Each hash is written **single-quoted** (`'sha256-…'`): an unquoted hash is dropped by the browser as an invalid source. `tests/csp.test.mjs` recomputes every hash from the files and rejects an unquoted one, so editing an inline script fails CI instead of the browser blocking it in production. |
 | styles | self, `'unsafe-inline'` (needed: the theme middleware injects a per-request `<style>` and the pages use `style="…"` attributes), Google Fonts CSS |
 | fonts | self, `fonts.gstatic.com` |
 | images | any https, data, blob |
@@ -106,9 +106,9 @@ the edge tests compare them.
 
 **When you add an external service, add its host to the right directive in `_headers` and in `SECURITY_HEADERS` (`functions/api/theme/edge.js`)**, or the browser blocks it silently (look for "Content Security Policy" in the browser console).
 
-**Changing an inline `<script>` or an `onerror=` handler:** `script-src` allows inline code only through a SHA-256 hash. After any such edit, run `node tests/csp.test.mjs`. It passes silently when every hash still matches; otherwise it prints the missing `sha256-…` value, which must be added to the `script-src` directive in **both** files above (the edge test fails if they differ). The hash is `sha256-` plus the base64 of the script text exactly as it appears between `<script>` and `</script>` (or the attribute value for a handler).
+**Changing an inline `<script>` or an `onerror=` handler:** `script-src` allows inline code only through a SHA-256 hash. After any such edit, run `node tests/csp.test.mjs`. It passes silently when every hash still matches; otherwise it prints the missing `sha256-…` value, which must be added to the `script-src` directive in **both** files above (the edge test fails if they differ). The hash is `sha256-` plus the base64 of the script text exactly as it appears between `<script>` and `</script>` (or the attribute value for a handler). Write it **single-quoted** (`script-src … 'sha256-…'`); an unquoted hash is not a valid source and the browser ignores it, so the inline script it was meant to allow is blocked. The guard test rejects an unquoted hash for exactly this reason (2026-11-23: the first hash-based header shipped unquoted; Chromium reported every hash as "invalid source" and ignored it).
 
-Responses produced by functions (`/a/<slug>`, `/band/<slug>`, `/api/*`) may not carry these headers. This is IMPLEMENTED, NOT VERIFIED: check with the browser's network tab.
+Responses produced by functions (`/a/<slug>`, `/band/<slug>`, `/api/*`) may not carry these headers. **Verified in a real browser 2026-11-23** (headless Chromium against the `fix/theme-font-parity` preview): the CSP header is present on `/`, `/admin`, `/search`, a band page and an article, `supabase-js` loads, the pages render, and no CSP violation is logged.
 
 ## Turnstile captcha (PENDING)
 The code is ready in `assets/bento.js`: `TURNSTILE_SITE_KEY`, `mountCaptcha()`, and `captchaToken` passed to sign-in, sign-up and reset. Turn it on **in this order**:

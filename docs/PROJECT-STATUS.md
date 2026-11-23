@@ -64,7 +64,7 @@ Last audit: **2026-11-19**, against `main` @ `82afca0` (Final Audit). Update thi
 | Admin 2FA (panel, API, DB) | VERIFIED | owner enrolled; `security.sql` applied; Security check shows aal2 |
 | "Admins can read all articles" SELECT policy | VERIFIED live / PENDING in repo | created in dashboard; its SQL must be copied into `supabase/` |
 | Admin page hidden from visitors | VERIFIED | E2E (guest, member, admin without 2FA); admin APIs answer 401 without login on production |
-| CSP + HSTS headers | VERIFIED | production checks 2026-11-18: CSP identical to `_headers`, HSTS, DENY, nosniff on HTML and static files |
+| CSP + HSTS headers | VERIFIED | production 2026-11-18 checks the current `'unsafe-inline'` CSP, HSTS, DENY, nosniff on HTML and static files. The new hash-based CSP is VERIFIED in a real browser on the branch preview 2026-11-23 (see the security-hardening entry) |
 | Turnstile captcha | PENDING | owner must create a widget and send the **site key** |
 | Cloudflare rate-limiting rule for `/api/*` | PENDING | owner action (steps in SECURITY.md) |
 | Rotate `AUTODRAFT_TOKEN` | PENDING | the old value appeared in a chat transcript |
@@ -161,10 +161,18 @@ Follow-up to the security review, chosen so the autopilot (VPS AI publisher + RS
   per-request `<style>` and the pages use `style="…"`). New `tests/csp.test.mjs` recomputes every hash
   and proves the server-rendered pages add no classic inline script, so CI catches any drift. Checked
   before the change: Cloudflare injects no inline scripts and the deployed inline scripts match the repo.
+  - **The hashes must be single-quoted** (`'sha256-…'`). The first version wrote them bare, and headless
+    Chromium on the branch preview reported every one as *"invalid source … will be ignored"*: the
+    browser dropped the hashes and blocked the very inline scripts they were meant to allow. Fixed in
+    both files. `tests/csp.test.mjs` now also rejects an unquoted hash (checked: it fails on an unquoted
+    hash and passes on the quoted one).
 - **Rate limiting** (owner action): the recommended Cloudflare rule now **excludes** `/api/ai-publish`,
   `/api/news-publish` and `/api/telegram/*` — the autopilot — which is already token-protected and
   daily-capped, so an IP limit there would only risk breaking it.
-- Status: code IMPLEMENTED, all 14 test suites pass; the CSP is NOT yet verified in a live browser.
+- Status: code IMPLEMENTED, all 14 test suites pass. Browser-verified 2026-11-23 (headless Chromium
+  against the `fix/theme-font-parity` preview): the quoted-hash CSP is served on `/`, `/admin`,
+  `/search`, a band page and an article, `supabase-js` loads, the pages render, and no CSP violation is
+  logged. Still to do before production: the owner's Cloudflare rate-limit rule.
 
 ## 2026-11-23 · Theme font allow-list fix (`fix/theme-font-parity`)
 - The database token validator `ug_clean_theme_tokens()` (`supabase/themes.sql`) listed 11 fonts but

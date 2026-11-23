@@ -27,11 +27,26 @@ t("CSP is present in _headers and identical to edge.js SECURITY_HEADERS", () => 
 });
 
 const scriptSrc = (csp) => ((csp || "").match(/(?:^|;\s*)script-src ([^;]*)/) || [])[1] || "";
-const allowed = new Set(scriptSrc(cspFromHeaders).split(/\s+/).filter(Boolean));
+const rawSources = scriptSrc(cspFromHeaders).split(/\s+/).filter(Boolean);
+// A hash source is only honoured when it is single-quoted ('sha256-…'); an unquoted hash is dropped
+// by the browser as an invalid source. Keep the raw tokens for the keyword checks and also expose
+// the bare form so the computed hashes below match.
+const allowed = new Set(rawSources);
+for (const s of rawSources) allowed.add(s.replace(/^'|'$/g, ""));
 
 t("script-src does not fall back to 'unsafe-inline'", () => {
   assert.ok(!allowed.has("'unsafe-inline'"), "script-src must not contain 'unsafe-inline'");
   assert.ok(allowed.has("'self'"), "script-src must keep 'self' for the site's own files");
+});
+
+t("every hash source is single-quoted, as the browser requires", () => {
+  for (const s of rawSources) {
+    if (/^sha256-/.test(s)) assert.fail(`hash source must be quoted: '${s}' (an unquoted hash is ignored by the browser)`);
+  }
+  assert.ok(rawSources.some((s) => s.startsWith("'sha256-")), "expected at least one quoted hash source");
+  for (const s of rawSources) {
+    if (s.startsWith("'sha256-")) assert.ok(/^'sha256-[A-Za-z0-9+/]+={0,2}'$/.test(s), `malformed hash source: ${s}`);
+  }
 });
 
 // --- every inline <script> in every HTML file must be hashed ------------------------------------
