@@ -13,7 +13,7 @@ Audited 2026-11-17. Labels: **VERIFIED** (checked live, by the owner or by CI), 
 | Admin 2FA in the database | `supabase/security.sql` | VERIFIED (owner applied; Security check shows aal2) |
 | "Admins can read all articles" select policy | Supabase dashboard only | VERIFIED live, **PENDING** in repo |
 | `admin.html` hidden from non-admins | `admin.html` | IMPLEMENTED, NOT VERIFIED (mock-tested: guest, member, admin) |
-| Security headers incl. CSP + HSTS | `_headers` (static) + `functions/api/theme/edge.js` (HTML pages) | IMPLEMENTED, NOT VERIFIED live (CSP mock-tested locally, no violations) |
+| Security headers incl. CSP + HSTS | `_headers` (static) + `functions/api/theme/edge.js` (HTML pages) | IMPLEMENTED, NOT VERIFIED live (CSP mock-tested locally, no violations). `script-src` no longer uses `'unsafe-inline'` — it is hash-based and guarded by `tests/csp.test.mjs` |
 | Cloudflare Turnstile captcha | `assets/bento.js` + Supabase | PENDING (site key empty, so it is off) |
 | Rate limiting at Cloudflare | Cloudflare dashboard | PENDING (owner action) |
 | Rotate `AUTODRAFT_TOKEN` (old value appeared in a chat) | Cloudflare + GitHub | PENDING (owner action) |
@@ -95,8 +95,8 @@ the edge tests compare them.
 
 | Directive | Allowed |
 | --- | --- |
-| scripts | self, `'unsafe-inline'` (needed: inline admin script and `onerror` attributes), `cdn.jsdelivr.net` (supabase-js), `static.cloudflareinsights.com` (Web Analytics), `challenges.cloudflare.com` (Turnstile) |
-| styles | self, inline, Google Fonts CSS |
+| scripts | self, **SHA-256 hashes** for the site's own inline `<script>`s and, with `'unsafe-hashes'`, its two inline `onerror` handlers; `cdn.jsdelivr.net` (supabase-js), `static.cloudflareinsights.com` (Web Analytics), `challenges.cloudflare.com` (Turnstile). **No `'unsafe-inline'`.** Each hash is written **single-quoted** (`'sha256-…'`): an unquoted hash is dropped by the browser as an invalid source. `tests/csp.test.mjs` recomputes every hash from the files and rejects an unquoted one, so editing an inline script fails CI instead of the browser blocking it in production. |
+| styles | self, `'unsafe-inline'` (needed: the theme middleware injects a per-request `<style>` and the pages use `style="…"` attributes), Google Fonts CSS |
 | fonts | self, `fonts.gstatic.com` |
 | images | any https, data, blob |
 | media | self, https, blob (R2 via `/api/music`, Supabase Storage, Deezer previews) |
@@ -106,7 +106,9 @@ the edge tests compare them.
 
 **When you add an external service, add its host to the right directive in `_headers` and in `SECURITY_HEADERS` (`functions/api/theme/edge.js`)**, or the browser blocks it silently (look for "Content Security Policy" in the browser console).
 
-Responses produced by functions (`/a/<slug>`, `/band/<slug>`, `/api/*`) may not carry these headers. This is IMPLEMENTED, NOT VERIFIED: check with the browser's network tab.
+**Changing an inline `<script>` or an `onerror=` handler:** `script-src` allows inline code only through a SHA-256 hash. After any such edit, run `node tests/csp.test.mjs`. It passes silently when every hash still matches; otherwise it prints the missing `sha256-…` value, which must be added to the `script-src` directive in **both** files above (the edge test fails if they differ). The hash is `sha256-` plus the base64 of the script text exactly as it appears between `<script>` and `</script>` (or the attribute value for a handler). Write it **single-quoted** (`script-src … 'sha256-…'`); an unquoted hash is not a valid source and the browser ignores it, so the inline script it was meant to allow is blocked. The guard test rejects an unquoted hash for exactly this reason (2026-11-23: the first hash-based header shipped unquoted; Chromium reported every hash as "invalid source" and ignored it).
+
+Responses produced by functions (`/a/<slug>`, `/band/<slug>`, `/api/*`) may not carry these headers. **Verified in a real browser 2026-11-23** (headless Chromium against the `fix/theme-font-parity` preview): the CSP header is present on `/`, `/admin`, `/search`, a band page and an article, `supabase-js` loads, the pages render, and no CSP violation is logged.
 
 ## Turnstile captcha (PENDING)
 The code is ready in `assets/bento.js`: `TURNSTILE_SITE_KEY`, `mountCaptcha()`, and `captchaToken` passed to sign-in, sign-up and reset. Turn it on **in this order**:
@@ -116,13 +118,21 @@ The code is ready in `assets/bento.js`: `TURNSTILE_SITE_KEY`, `mountCaptcha()`, 
 
 If you do step 3 before step 2, every sign-in fails.
 
-## Rate limiting (PENDING)
+## Rate limiting (PENDING — owner action in the Cloudflare dashboard)
 - **Database:** comments 5 per minute per member, demos 3 per day per member, newsletter sign-ups 30 per minute site-wide.
-- **Edge (recommended):** Cloudflare → `mikasa.me` → Security → WAF → Rate limiting rules:
-  - match Hostname `music.mikasa.me` AND URI path starts with `/api/`
-  - limit 100 requests per 10 s per IP
-  - action Block for 10 s
+- **Edge (recommended):** Cloudflare → `mikasa.me` → Security → WAF → Rate limiting rules. Add **one** rule:
+  - **Expression** — the public `/api/` surface, but **excluding the autopilot** (see below):
+    ```
+    (http.host eq "music.mikasa.me"
+      and starts_with(http.request.uri.path, "/api/")
+      and not http.request.uri.path in {"/api/ai-publish" "/api/news-publish"}
+      and not starts_with(http.request.uri.path, "/api/telegram/"))
+    ```
+  - limit **100 requests per 10 s per IP**
+  - action **Block** for 10 s
+- **Why the exclusions matter (do not remove them):** `/api/ai-publish` is the VPS AI publisher, `/api/news-publish` is the RSS brief writer, and `/api/telegram/*` is the GitHub Actions digest plus Telegram's own webhook. Together these are the **autopilot**. They arrive in a burst when a job runs and from a single IP (the VPS or GitHub), so an IP rate limit would throttle or block them. They are already protected by a constant-time bearer-token check and their own daily caps (`AI_PUBLISH_DAILY_LIMIT`, the news `DAILY_LIMIT`), so IP rate limiting adds nothing for them and only risks breaking the autopilot.
 - **Do not** enable Bot Fight Mode: it would challenge the GitHub Actions call to `/api/telegram/digest`.
+- The rule can be tested safely: after adding it, trigger the autopilot once (or `POST /api/news-publish` with its token) and confirm it still returns 200, and that a rapid burst against a public endpoint such as `/api/news` starts returning 429/blocked.
 
 ## Secrets management
 - Secrets live only in **Cloudflare Pages → Settings → Variables and Secrets** (type *Secret*) and **GitHub → Settings → Secrets → Actions**. Full list: [DEPLOYMENT.md](DEPLOYMENT.md#environment-variables).

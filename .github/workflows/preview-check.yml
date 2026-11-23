@@ -44,6 +44,8 @@ jobs:
           node tests/bookmarks-affiliate.test.mjs
       - name: Glitch Wave branding (header, splash, launch, favicon on every page)
         run: node tests/branding.test.mjs
+      - name: Content security policy (hashes cover every inline script)
+        run: node tests/csp.test.mjs
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 15

@@ -26,9 +26,10 @@ export async function onRequestGet({ request, env, params }) {
   try {
     article = await findArticle(env, slug);
   } catch (error) {
-    const message = String(error?.message || error || "Unknown Supabase error").replace(/[<>\r\n]/g, " ").slice(0, 300);
-    console.error("[article metadata] " + message);
-    return new Response(`Article metadata lookup failed: ${message}`, {
+    // Log the technical detail for operators, but never send it to the visitor: a raw Supabase
+    // message can reveal table and column names.
+    console.error("[article metadata] " + String(error?.message || error || "Unknown Supabase error").replace(/[<>\r\n]/g, " ").slice(0, 300));
+    return new Response("Article metadata lookup failed. Please try again shortly.", {
       status: 502,
       headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" }
     });
