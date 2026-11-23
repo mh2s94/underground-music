@@ -74,7 +74,7 @@ Last audit: **2026-11-19**, against `main` @ `82afca0` (Final Audit). Update thi
 In the order of the Final Audit (2026-11-19):
 
 1. Rotate `AUTODRAFT_TOKEN` in Cloudflare **and** GitHub, then redeploy.
-2. Run the read-only base-schema export in [DATABASE.md §7](DATABASE.md#export-the-base-schema-for-supabasebasesql) and send the result. It becomes `supabase/base.sql` (includes the "Admins can read all articles" policy).
+2. ~~Run the read-only base-schema export in [DATABASE.md §7](DATABASE.md#export-the-base-schema-the-query-that-built-supabasebasesql) and send the result. It becomes `supabase/base.sql` (includes the "Admins can read all articles" policy).~~ Done 2026-11-23 (exported and committed as `supabase/base.sql`).
 3. Production checklist with one test member account (sign up, sign in, comment, save, demo, newsletter + unsubscribe, delete account) and, as admin with 2FA, R2 upload, Scene Radar batch, one Telegram button.
 4. Turnstile: create the widget, send the site key, then add the secret key in Supabase **after** the code is deployed.
 5. Cloudflare rate-limiting rule for `/api/*` (do not enable Bot Fight Mode).
@@ -92,7 +92,7 @@ Done:
 
 ## Known issues and risks
 - **Repo root is the public output directory.** `README.md`, `docs/*` and `supabase/*.sql` are downloadable from the site. They hold no secrets but reveal the architecture. Fix: move the site files into `public/` and change the Pages output directory. Needs approval.
-- **The base schema is not in the repo:** `articles`, `categories` and `admin_users` were created in the dashboard. Their columns in DATABASE.md are inferred from the code. Export the real definitions when possible.
+- **Base schema** is now in the repo: `supabase/base.sql` holds the exported `articles`, `categories` and `admin_users` definitions (2026-11-23). `base.sql` also revokes `TRUNCATE`, `REFERENCES` and `TRIGGER` from `anon`/`authenticated` on those three tables (Supabase grants them by default; the API cannot use them, and `TRUNCATE` is not filtered by RLS).
 - **New Noise** RSS blocked by captcha.
 - **The charts header comment** in `functions/api/charts.js` still describes the old genre-artist method as the default. The code uses Metal playlists first. The comment is stale; the behaviour is correct.
 - **The old admin login form** in `admin.html` is unused (sign-in now happens on the Account page).
@@ -146,3 +146,25 @@ only when pressed.
 - `bento.js` cache-bust bumped to `?v=bf1`.
 - Status: IMPLEMENTED, NOT VERIFIED live (mock-tested).
 - **Newsletter sign-up was broken for everyone** ("violates check constraint newsletter_subscribers_email_check"): the live constraint had doubled backslashes, so it demanded a literal `\` in every address (0 subscribers had ever been saved). Fixed live on 2026-11-19 (migration `fix_newsletter_email_check`, checked: valid address accepted, invalid rejected) and the repair is in `supabase/extras.sql`. VERIFIED in the database; sign-up from the site to be confirmed by the owner.
+
+## 2026-11-23 · Theme font allow-list fix (`fix/theme-font-parity`)
+- The database token validator `ug_clean_theme_tokens()` (`supabase/themes.sql`) listed 11 fonts but
+  `assets/theme/schema.js` offers 13: `anton` and `space-grotesk` were missing. Because the validator
+  drops any value not in its list and the `*_tokens_clean` CHECK constraints reject a row that differs
+  from its output, picking either font in the Theme Manager was silently ignored by the database.
+- Fix: corrected the list in `supabase/themes.sql` (for rebuilds) and added a small idempotent migration
+  `supabase/theme-font-list-fix.sql` for the owner to run once on production. No other SQL changes.
+- New test `tests/themes.test.mjs` ("database token validator accepts exactly the schema.js fonts and
+  token keys") compares the font, colour and font-key lists in **every** SQL file that defines the
+  validator against `schema.js`, so the two can never drift again. All theme tests pass (10 + 48 + 7).
+- Status: code IMPLEMENTED and committed; the SQL migration still needs to be run once in Supabase → SQL Editor (it was verified to apply cleanly inside a rolled-back transaction on production).
+
+## 2026-11-23 · Base schema exported (`supabase/base.sql`)
+- `articles`, `categories` and `admin_users` (and their dashboard policies) were never in the repo, so a
+  rebuilt database could not be reproduced and the permissive write/read rules could not be audited.
+- Added `supabase/base.sql`: the exact definition exported read-only from production on 2026-11-23
+  (columns, constraints, indexes, RLS, every policy, and a note on privileges). Run it first, before the
+  other files. Verified to apply cleanly against production inside a rolled-back transaction.
+- It also revokes `TRUNCATE`, `REFERENCES` and `TRIGGER` from `anon`/`authenticated` on the three tables:
+  Supabase grants them by default, the API cannot use them, and `TRUNCATE` is not filtered by RLS.
+- Docs updated: DATABASE.md (sections 1, 2, 6, 7) no longer call the base schema "not in the repo".

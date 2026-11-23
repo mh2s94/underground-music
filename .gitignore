@@ -2,3 +2,6 @@
 # Installed with `npx ui-ux-pro-max-cli init --ai opencode` (not hand-authored source).
 # Kept out of version control to keep the repo small; reinstall locally when needed.
 .opencode/skills/
+
+# Supabase CLI working files (linked-project ref, pooler URL, versions). Local only.
+supabase/.temp/

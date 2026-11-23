@@ -47,6 +47,32 @@ t("database theme allow-list contains only Monochrome Modular", () => {
   assert.match(sql, /select p_id = 'monochrome-modular'/);
   assert.doesNotMatch(sql, /'neon-bento'|'front-page'|'the-pit'|'scene-atlas'/);
 });
+t("database token validator accepts exactly the schema.js fonts and token keys", () => {
+  // ug_clean_theme_tokens() in the SQL silently drops any token whose value is not in its allow-lists,
+  // and the *_tokens_clean CHECK constraints reject a stored row that differs from its output. If a
+  // list here drifts from assets/theme/schema.js, the database quietly ignores a value the admin chose
+  // in the Theme Manager (this is how "anton" and "space-grotesk" were lost). Compare every SQL file
+  // that defines the validator, so a rebuild (themes.sql) and a fix migration can never disagree.
+  const listOf = (sql, name) => {
+    const m = sql.match(new RegExp(name + "\\s+constant\\s+text\\[\\]\\s*:=\\s*array\\[([\\s\\S]*?)\\]"));
+    return m ? [...m[1].matchAll(/'([^']+)'/g)].map((x) => x[1]).sort() : null;
+  };
+  const wantFonts = Object.keys(S.FONTS).sort();
+  const wantColours = Object.keys(S.TOKENS).filter((k) => S.TOKENS[k].type === "color").sort();
+  const wantFontKeys = Object.keys(S.TOKENS).filter((k) => S.TOKENS[k].type === "font").sort();
+  let checked = 0;
+  for (const f of fs.readdirSync(R + "supabase").filter((x) => x.endsWith(".sql"))) {
+    const sql = fs.readFileSync(R + "supabase/" + f, "utf8");
+    if (!sql.includes("ug_clean_theme_tokens")) continue;
+    for (const [name, want] of [["fonts", wantFonts], ["colour_keys", wantColours], ["font_keys", wantFontKeys]]) {
+      const got = listOf(sql, name);
+      assert.ok(got, f + " must define the " + name + " allow-list");
+      assert.deepStrictEqual(got, want, f + ": " + name + " list differs from assets/theme/schema.js");
+    }
+    checked++;
+  }
+  assert.ok(checked >= 1, "no SQL file defining ug_clean_theme_tokens was found");
+});
 t("default token baseline is the Monochrome Modular design system", () => {
   assert.strictEqual(S.base(S.DEFAULT_THEME).bg, "#0A0A0B");
   assert.strictEqual(S.base(S.DEFAULT_THEME).accent, "#D6FF3F");

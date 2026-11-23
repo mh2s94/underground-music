@@ -4,7 +4,7 @@
 - Postgres with Row Level Security (RLS) on every application table.
 - Audited against `supabase/*.sql` on 2026-11-17.
 
-> **Important: the base schema is not in this repository.** The tables `articles`, `categories` and `admin_users` were created in the Supabase dashboard before the SQL files existed. Their columns below are **taken from how the code uses them**, not from a schema dump. One live policy, "Admins can read all articles", was also created in the dashboard (see [section 6](#6-incident-insert-returning-blocked-by-rls-2026-11-17)). To get the real definitions, run the queries in [section 7](#7-verifying-the-database).
+> **The base schema is now in this repository** as `supabase/base.sql`. The tables `articles`, `categories` and `admin_users` were created in the Supabase dashboard before the SQL files existed; `base.sql` is the exact definition exported read-only from production on 2026-11-23 (columns, constraints, indexes, the RLS flag and every policy, including "Admins can read all articles" — see [section 6](#6-incident-insert-returning-blocked-by-rls-2026-11-17)). The prose in [section 2](#2-tables) is kept for readers; where it and `base.sql` disagree, `base.sql` wins. The export query in [section 7](#7-verifying-the-database) can be re-run at any time to re-verify.
 
 ## 1. SQL files and the order to apply them
 
@@ -12,7 +12,7 @@ Every file is idempotent ("safe to re-run"): `create … if not exists`, `create
 
 | # | File | Purpose | Depends on |
 | --- | --- | --- | --- |
-| 0 | *(dashboard, not in repo)* | `articles`, `categories`, `admin_users` and their original policies | — |
+| 0 | `supabase/base.sql` | `articles`, `categories`, `admin_users` and their original dashboard policies — the real exported definition. Run this first. | — |
 | 1 | `supabase/community.sql` | `ug_is_admin()`, `profiles` (+ sign-up trigger), `saved_articles`, `comments`, `demo_submissions`, rate-limit triggers | `articles` |
 | 2 | `supabase/music.sql` | `tracks`, storage bucket `music` (25 MB, public read), storage policies, `ug_admin_purge()` | 1 |
 | 3 | `supabase/music-v2.sql` | `tracks.album`, `tracks.release_year` + checks | 2 |
@@ -27,15 +27,16 @@ Every file is idempotent ("safe to re-run"): `create … if not exists`, `create
 
 Owner-reported state: files 6 and 7 applied on 2026-11-17 (2FA working; "Admins can read all articles" added in the dashboard); file 9 (`themes.sql`) applied and verified on 2026-11-18. The application status of files 1–5 and 8 is inferred from working features, not from a schema dump.
 
-**Rebuilding from the repo is not yet complete.** Step 0 (`articles`, `categories`, `admin_users` and their dashboard policies) is not in the repository. Files 1–9 were applied in order to an empty PostgreSQL 16 database with a stand-in for step 0 on 2026-11-19: all applied, and all re-ran without errors; RLS is on for all 15 tables. `supabase/base.sql` will be added from an export of the production schema (owner action: run the read-only export query in [section 7](#7-verifying-the-database) and send the result).
+**Rebuilding from the repo is now possible.** Step 0 (`articles`, `categories`, `admin_users` and their dashboard policies) is `supabase/base.sql`, exported read-only from production on 2026-11-23 and verified to apply cleanly against production inside a rolled-back transaction. Files 1–9 were applied in order to an empty PostgreSQL 16 database with a stand-in for step 0 on 2026-11-19: all applied, and all re-ran without errors; RLS is on for all 15 tables.
 
 ⚠️ `community.sql`, `music.sql` and `security.sql` all define `ug_is_admin()`. Since 2026-11-17 **all three contain the 2FA version**. Never re-introduce the old body (admin membership only) in any file, or a re-run would silently drop the 2FA requirement.
 
 | 12 | `supabase/20261120103205_create_ai_ingestion.sql` | VPS AI publisher idempotency and article audit trail (`ai_ingestion`); RLS on, client roles revoked, service-role only | Base `articles` table |
+| 13 | `supabase/theme-font-list-fix.sql` | Repairs the `ug_clean_theme_tokens()` font allow-list in `themes.sql`, which was missing `anton` and `space-grotesk`. Run once; safe to re-run. `themes.sql` already carries the fix for future rebuilds, and `tests/themes.test.mjs` now fails if any SQL file's font/colour/key lists drift from `assets/theme/schema.js`. | 9 |
 
 ## 2. Tables
 
-### `articles` *(base schema, not in repo)*
+### `articles` *(see `supabase/base.sql`)*
 Columns used by the code: `id` (type not documented; `community.sql` detects it at run time), `title`, `slug` (unique, so the code retries with a suffix on `23505`), `excerpt`, `content` (Markdown), `band_name`, `album_name`, `genre`, `category_id` → `categories.id`, `cover_image_url`, `tags` (array), `status` (`draft` | `review` | `published`), `published_at`, `created_at`, `updated_at`, `author_id` (auth user id), plus from `extras.sql`:
 
 - `kind` text: `Review` | `News` | `Feature` | `Interview`, or null
@@ -47,10 +48,10 @@ Conventions:
 - **AI drafts** contain a line `\n\nSource: [<site>](<link>)`. The admin "AI drafts waiting" banner and "✓ Written" in Scene Radar rely on it.
 - `published_at` may be preset to the source's original time.
 
-### `categories` *(base schema, not in repo)*
+### `categories` *(see `supabase/base.sql`)*
 Used columns: `id`, `slug`. The admin looks up `category_id` by `slug = slugify(genre)`. Not every genre has a category row; null is allowed.
 
-### `admin_users` *(base schema, not in repo)*
+### `admin_users` *(see `supabase/base.sql`)*
 Used column: `user_id` (auth user id). Membership = admin. Owner-reported RLS: a user can read only their own row. Rows are added by hand in the SQL editor (see [SECURITY.md](SECURITY.md#admin-membership)).
 
 ### `profiles` (`community.sql`)
@@ -99,7 +100,7 @@ Headlines the Telegram bot has sent: `hash` (pk, short SHA-256 of the link), `li
 - Privileges are revoked from `anon` and `service_role` on all three tables and on the history sequence; `authenticated` has only SELECT on active/history and S/I/U/D on configs, filtered by RLS (`ug_is_admin()`). `service_role` can call only `ug_active_theme()`.
 - CHECK constraints `*_tokens_clean` make every stored `tokens` value equal to `ug_clean_theme_tokens(tokens)`, also for writes made by hand in the dashboard; `ug_active_theme()` cleans again on output and returns only `theme`, `tokens`, `version`.
 - Apply uses one atomic upsert on the active row, so parallel applies get consecutive versions, also when the row was deleted.
-- Tokens are cleaned by `ug_clean_theme_tokens()` (trigger on configs, and inside every apply). It mirrors `assets/theme/schema.js`; a parity test checks both give identical output. **Change both together.**
+- Tokens are cleaned by `ug_clean_theme_tokens()` (trigger on configs, and inside every apply). It mirrors `assets/theme/schema.js`; a parity test (`tests/themes.test.mjs`) now checks the font, colour and font-key allow-lists in every SQL file that defines it, so the two can no longer drift. **Change both together.**
 - `ug_apply_theme(theme_id, tokens, config_id, note)`, `ug_restore_theme(history_id)`, `ug_reset_theme()` are SECURITY DEFINER with `search_path = ''`, check `ug_is_admin()` first, and write the active row + a history row in one transaction (`version` increases by 1 each time; parallel applies never share a version). The internal `ug_theme_write()` is not executable by any client role.
 - Theme ids are checked against the catalogue in `ug_theme_id_ok()` (keep in sync with `THEMES` in `schema.js`). Whether a theme is ready is decided by the code; the site falls back to `neon-bento` for any theme that is not.
 - Tested on PostgreSQL 16 with a Supabase-style setup (non-superuser owner, with and without BYPASSRLS; roles `anon`, `authenticated`, `service_role`), 2026-11-18: 49 security/behaviour checks (ownership, privilege matrix, RLS, 2FA, apply/restore/reset, 8 parallel applies with the row present and missing, no leaks from `ug_active_theme`, tamper attempts), validator parity on 273 inputs plus identical token and font lists, and two re-runs on a database with data (no change). Applied to production by the owner on 2026-11-18; Apply, Restore and Reset verified there (active version 5 on 2026-11-19).
@@ -177,7 +178,7 @@ Members and anonymous visitors are not affected.
 
 **Why RLS and MFA stayed on.** The failure was a missing read permission, not an over-strict rule. Disabling RLS or MFA would have hidden the real cause and exposed drafts and writes.
 
-**Pending.** The exact SQL of "Admins can read all articles" is not in the repo yet. Copy it from `pg_policies` (section 7) into a migration file so a rebuilt database gets it.
+**Resolved.** The exact SQL of "Admins can read all articles" is now in `supabase/base.sql`, together with the table definitions and the other dashboard policies, exported read-only from production on 2026-11-23.
 
 **How to avoid this with new tables or features:**
 1. For every table the admin writes with `.select()` after insert or update, make sure a **SELECT policy covers the new row** (drafts, unpublished, private rows).
@@ -208,10 +209,10 @@ select relname, relrowsecurity from pg_class
 where relnamespace = 'public'::regnamespace and relkind = 'r' order by 1;
 ```
 
-### Export the base schema (for `supabase/base.sql`)
+### Export the base schema (the query that built `supabase/base.sql`)
 Read-only. Returns one JSON value with columns, constraints, indexes, policies, triggers, RLS flag and grants of the
-three dashboard-created tables. It contains no data rows and no secrets. Copy the whole result and send it; it is
-turned into `supabase/base.sql` without guessing.
+three dashboard-created tables. It contains no data rows and no secrets. This is the query used to build
+`supabase/base.sql`; re-run it any time to check that the file still matches production.
 
 ```sql
 -- Export of the base schema (articles, categories, admin_users). Read-only: returns one JSON value.

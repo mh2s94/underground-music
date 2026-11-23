@@ -51,8 +51,8 @@ declare
     'accent2Tint','void','bg','shell','surface','surface2','surface3','line','line2','ink','inkSoft',
     'muted','faint','ok','warn'];
   font_keys constant text[] := array['fontDisplay','fontBody','fontMono'];
-  fonts constant text[] := array['bebas-neue','inter','space-mono','fraunces','archivo-black',
-    'inter-tight','big-shoulders','special-elite','system','serif','mono'];
+  fonts constant text[] := array['bebas-neue','anton','inter','space-mono','fraunces','archivo-black',
+    'inter-tight','space-grotesk','big-shoulders','special-elite','system','serif','mono'];
   clean jsonb := '{}'::jsonb;
   k text;
   v jsonb;
