@@ -77,7 +77,7 @@ flowchart LR
 
 Theme engine (Tahap 1, 2026-11-18): design tokens `--ug-*` at the top of `assets/bento.css`, theme schema and sanitizer in `assets/theme/schema.js`, browser runtime `window.UGTheme` in `assets/theme/runtime.js`, the theme contract `window.UG` + `ug:*` events in `bento.js`, and `data-ug-region` markers in `index.html`. Full description: [THEMES.md](THEMES.md).
 
-CSS: `assets/bento.css` (main layout and default theme "Neon Bento", colours from the tokens), `assets/account.css` (Amp Head account page, rack-slide auth form), `assets/launch.css`, `assets/ui.css` (toasts etc.).
+CSS: `assets/bento.css` (main layout and default theme "Monochrome Modular", colours from the tokens), `assets/account.css` (Amp Head account page, rack-slide auth form), `assets/launch.css`, `assets/ui.css` (toasts etc.).
 
 Cache busting: asset links carry `?v=` (for example `bento.js?v=ac1`). **Bump the `?v=` value in `index.html` whenever you change a CSS or JS file**, or phones keep the old file.
 
@@ -133,7 +133,7 @@ The database layer is the one that matters. The other two give good error messag
 | --- | --- | --- | --- | --- |
 | `/a/<slug>` (`functions/a/[slug].js`) | GET | public | Serves `index.html` with the article's title, description, image, NewsArticle (+ Review) JSON-LD injected with HTMLRewriter | IMPLEMENTED, NOT VERIFIED (Google indexing still pending) |
 | `/band/<slug>` (`functions/band/[slug].js`) | GET | public | Same for band pages | IMPLEMENTED, NOT VERIFIED |
-| every page (`functions/_middleware.js`) | GET | public | Reads the active theme (`ug_active_theme`, 30 s edge cache, 2 s timeout, last valid theme on failure), writes `data-theme`, token CSS and fonts into the HTML, sets security headers. Any failure → Neon Bento. Skips `/assets/*` (`_routes.json`), `/api/*`, `admin.html` (headers only) | VERIFIED (PR #49, #50) |
+| every page (`functions/_middleware.js`) | GET | public | Reads the active theme (`ug_active_theme`, 30 s edge cache, 2 s timeout, last valid theme on failure), writes `data-theme`, token CSS and fonts into the HTML, sets security headers. Any failure → Monochrome Modular (the only theme). Skips `/assets/*` (`_routes.json`), `/api/*`, `admin.html` (headers only) | VERIFIED (PR #49, #50) |
 | `/api/theme/refresh` | POST | admin + aal2 | Clears the cached active theme after Apply / Restore / Reset | VERIFIED (PR #49, #50) |
 | `/sitemap.xml` | GET | public | Home, legal pages, published articles, band pages | IMPLEMENTED, NOT VERIFIED |
 | `/unsubscribe?t=` | GET, POST | public | Calls `ug_unsubscribe(token)`; POST supports one-click unsubscribe | IMPLEMENTED, NOT VERIFIED |

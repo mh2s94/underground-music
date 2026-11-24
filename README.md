@@ -5,10 +5,11 @@ deathcore, hardcore, black and death metal and about 415 related genres. It publ
 features, runs a music library ("Basement radio") with a persistent player, community and global charts, band
 profiles, a newsletter, and a small community of members who comment, save stories and send demos.
 
-The look is "Neon Basement": dark background, neon pink `#FF2E63` + UV `#7B5CFF`, Bebas Neue / Inter / Space Mono,
-in a bento-grid layout called **Neon Bento**. That is the default theme; ten more site themes (Front Page,
-The Pit, Setlist, Mosh Grid, Control Room 2.0, Main Stage, Xerox Zine, Index, Frequency, Scene Atlas) can be
-applied from the admin Theme Manager ([THEMES.md](docs/THEMES.md#catalogue-11-themes)).
+The look is **Monochrome Modular**: industrial black, white and grayscale (void `#000000`, ink `#F4F4F4`, no
+neon, no glow), Bebas Neue / Inter / Space Mono, with a modular mark in the top bar, an icon rail on the left
+(a labelled tab bar on phones), a full-width grayscale photo hero over two dashboard columns and hairline
+panels. It is the **only** theme: `assets/theme/schema.js` keeps a single catalogue entry, and the admin Theme
+Manager applies and previews that one theme ([THEMES.md](docs/THEMES.md)).
 
 > **New here (human or AI)?** Read this file, then [docs/DEVELOPMENT-GUIDE.md](docs/DEVELOPMENT-GUIDE.md) (the
 > permanent rules), then [docs/PROJECT-STATUS.md](docs/PROJECT-STATUS.md) (what is verified, unverified and
@@ -43,7 +44,7 @@ applied from the admin Theme Manager ([THEMES.md](docs/THEMES.md#catalogue-11-th
 | Band profiles | `/band/<slug>`: stories, tracks, ratings, Deezer data, related bands |
 | Community | Accounts with email confirmation, profile, comments, saved stories, demo submissions, self-deletion |
 | Newsletter | Sign-up, admin sends via Resend, one-click unsubscribe |
-| Theme Manager | Admin switches between 11 complete site themes (layout + style) and adjusts colours/fonts for all visitors without a redeploy: preview in a new tab, Apply, Restore, Reset, history |
+| Theme Manager | Admin adjusts the site theme's colours and fonts for all visitors without a redeploy, or restores an earlier version: preview in a new tab, Apply, Restore, Reset, history. **Monochrome Modular is the only theme** (PR #69) |
 | Footer "Where our readers are" | Share of readers per country from Cloudflare Web Analytics |
 
 Not available: gigs/calendar (removed),
@@ -83,11 +84,11 @@ Browser ──► Supabase directly (supabase-js, publishable key): reads, sign-
 index.html, admin.html, privacy.html, terms.html   Pages (public app, admin panel, legal)
 _headers        Security headers for static files      _routes.json   Which URLs run Functions
 robots.txt, manifest.webmanifest
-assets/         bento.js (public app) · bento.css (design tokens + Neon Bento) · account.css · launch.* (intro motion)
+assets/         bento.js (public app) · bento.css (design tokens + layout) · account.css · launch.* (intro motion)
                 ui.* (escaping, toasts) · genres.js (taxonomy) · audiotags.js (ID3/FLAC/MP4 tags) · readers.js
   theme/        schema.js (theme catalogue + sanitizer, shared with the edge) · runtime.js (UGTheme)
                 preview.js (admin draft preview) · manager.js/.css (Theme Manager)
-  themes/<id>/  theme.css + shell.js of the ten themes 01–10 (Neon Bento needs no files)
+  themes/<id>/  theme.css + shell.js for the themes that need files (Monochrome Modular)
 functions/      _middleware.js · a/[slug].js · band/[slug].js · sitemap.xml.js · unsubscribe.js
   api/          generate · track-info · draft-lib · news · charts · preview · cover · band · readers
                 newsletter/send · music/[[path]] · telegram/{digest,webhook,lib} · theme/{edge,refresh}
@@ -118,7 +119,7 @@ docs/           Detailed documentation (table below)
 - **Theme Manager.** Admin saves drafts (`site_theme_configs`), previews them in a new tab, applies them
   (`ug_apply_theme`) → `/api/theme/refresh` clears the edge cache → every visitor sees it within 60 s. Restore
   and Reset write new versions to the history. If the database cannot be read, the edge serves the last valid
-  theme, or Neon Bento ([THEMES.md](docs/THEMES.md)).
+  theme, or the default theme ([THEMES.md](docs/THEMES.md)).
 
 ## 4. Security foundation
 

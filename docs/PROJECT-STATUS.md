@@ -45,10 +45,10 @@ Last audit: **2026-11-19**, against `main` @ `82afca0` (Final Audit). Update thi
 | Cloudflare Web Analytics | VERIFIED | enabled by owner |
 | Theme engine Tahap 1 (tokens, schema/sanitizer, `UGTheme` runtime with fallback, `window.UG` contract, regions) | IMPLEMENTED, merged (PR #48) | no visual change |
 | Theme Tahap 2: `supabase/themes.sql` (tables, RLS, `ug_active_theme`, `ug_apply_theme`, `ug_restore_theme`, `ug_reset_theme`, history) | VERIFIED | applied by owner 2026-11-18; local: 49 SQL tests, parity 273 inputs, concurrency, re-run safe |
-| Theme Manager (PR #49): edge middleware, `/api/theme/refresh`, catalogue of 11 themes, preview in new tab, save draft, Apply, Restore, Reset, history | VERIFIED | owner tested all actions on production 2026-11-18; E2E 71/71 desktop + HP; Preview check on the deployment |
-| Theme edge resilience (PR #50): 2 s RPC timeout, last valid theme on failure (`;stale`), Neon Bento only when none was ever read | VERIFIED | 48 edge tests (CI); production `neon-bento@5;rpc`/`;cache` from Indonesia, DFW and ARN on 2026-11-18 |
+| Theme Manager (PR #49): edge middleware, `/api/theme/refresh`, theme catalogue (11 then; **Monochrome Modular only** since PR #69), preview in new tab, save draft, Apply, Restore, Reset, history | VERIFIED | owner tested all actions on production 2026-11-18; E2E 71/71 desktop + HP; Preview check on the deployment |
+| Theme edge resilience (PR #50): 2 s RPC timeout, last valid theme on failure (`;stale`), the default theme only when none was ever read | VERIFIED | 48 edge tests (CI); production `neon-bento@5;rpc`/`;cache` from Indonesia, DFW and ARN on 2026-11-18 |
 | Themes 01–10 (Tahap 4): Front Page, The Pit, Setlist, Mosh Grid, Control Room 2.0, Main Stage, Xerox Zine, Index, Frequency, Scene Atlas | DROPPED 2026-11-24 | preview only, never merged; the owner settled on the current theme (**Monochrome Modular**), so branch `themes-01-10` and the other theme experiments were deleted (see the 2026-11-24 entry) |
-| Phone: genre filters on Articles and Music as one sideways-scrolling row (all themes, incl. Neon Bento) | IMPLEMENTED | owner request 2026-11-19 (30+ genre buttons filled the screen); 26 genres → one 46 px row, no page overflow |
+| Phone: genre filters on Articles and Music as one sideways-scrolling row (all themes, incl. the default) | IMPLEMENTED | owner request 2026-11-19 (30+ genre buttons filled the screen); 26 genres → one 46 px row, no page overflow |
 | supabase-js pinned to 2.119.0 with SRI (`index.html`, `admin.html`) | IMPLEMENTED (this PR) | same file that `@2` served on 2026-11-19; hash checked in CI (`tests/supabase-js-pin.test.mjs`) and in a browser on the preview |
 | Production smoke test every 6 h (`smoke-production.yml`, read-only) | IMPLEMENTED (this PR) | first scheduled run after merge |
 | Hero drummer video (C · beside buttons, neon tint, full 5 s loop; `assets/media/hero-drummer.mp4` 294 KB, Kling AI clip supplied by owner, watermark kept) | IMPLEMENTED | owner ACC 2026-11-18; loads only on screen, never for reduced motion / Save-Data |
@@ -83,7 +83,7 @@ Optional decisions (not needed to finish the project):
 
 6. Decide whether to replace or remove New Noise in Scene Radar.
 7. Decide whether to move the site into a `public/` folder so docs and SQL are no longer downloadable (see below).
-8. Delete leftover GitHub branches (`radar-audit` and merged feature branches). The **theme/appearance** branches are already gone (2026-11-24, see below); the feature/fix branches are still there.
+8. ~~Delete leftover GitHub branches (`radar-audit` and merged feature branches).~~ **Done 2026-11-24** — every branch whose PR was already merged, plus `radar-audit` (53 branches), is gone; the 7 that remain are listed in the 2026-11-24 entry.
 
 Done:
 
@@ -181,10 +181,10 @@ Follow-up to the security review, chosen so the autopilot (VPS AI publisher + RS
   music CORS change now applies to the files that were already cached. The theme redesign was dropped by the
   owner (the current look stays; drafts #82 and #83 closed).
 
-## 2026-11-24 · Theme settled; theme and appearance branches removed
-The owner confirmed the site keeps its current theme (**Monochrome Modular**), so no further redesign work
-is planned. Drafts #82 (LIVE SIGNAL) and #83 (visual overhaul + the security work, which shipped separately
-in #84) were closed, and the theme/appearance branches were deleted on GitHub:
+## 2026-11-24 · Theme settled; theme, appearance and merged branches removed
+**Theme settled.** The owner confirmed the site keeps its current theme (**Monochrome Modular**), so no
+further redesign work is planned. Drafts #82 (LIVE SIGNAL) and #83 (visual overhaul + the security work,
+which shipped separately in #84) were closed, and the theme/appearance branches were deleted on GitHub:
 
 `theme-engine`, `theme-foundation`, `theme-edge-resilience`, `themes-01-10`, `theme/live-signal-polish`,
 `fix/theme-font-parity`, `redesign/bento-dashboard`, `redesign/editorial-ui`, `redesign/neon-basement`,
@@ -192,10 +192,21 @@ in #84) were closed, and the theme/appearance branches were deleted on GitHub:
 `footer-readers`, `feat/footer`, `featured-fill`, `fix/glitch-wave-branding-all-pages`,
 `fix/glitch-wave-header-favicon-cache` — 21 remote branches, plus the local `feat/visual-overhaul`.
 
+**Merged branches cleaned up (item 8).** Every branch whose PR was already merged was deleted, plus
+`radar-audit` — 53 branches in one push. The repository now holds 7: `main`, `final-foundation`, and five that
+were **never merged**: `feat/ai-publish-hardening-v2`, `feat/basement-radio-trim`,
+`fix/autopilot-checker-omissions`, `fix/remaining-cleanup` and `public-dir` (item 7).
+
+**README made to match.** The "look" paragraph described a dropped theme ("Neon Basement", neon pink
+`#FF2E63` + UV `#7B5CFF`, "Neon Bento", "ten more site themes"). It now describes **Monochrome Modular** —
+industrial black, white and grayscale, no neon — and says it is the only theme. The same stale name was fixed
+in ARCHITECTURE.md (two rows), TROUBLESHOOTING.md (two spots) and the Theme Manager rows here.
+`assets/bento.css` still carries it in a header comment (a code file, left untouched).
+
 - `final-foundation` was **kept** on purpose: it is infrastructure/docs (supabase-js pin + SRI, smoke test,
   docs), not appearance.
-- The feature and fix branches were left alone (item 8 above).
-- Deleting a branch only drops the pointer; anything already in `main` is unaffected.
+- Deleting a branch only drops the pointer; anything already in `main` is unaffected. The 53 merged branches
+  are recoverable from their merged pull requests (GitHub keeps `refs/pull/<n>/head`).
 
 <details>
 <summary>Deleted branch tips (for recovery)</summary>
@@ -223,6 +234,7 @@ featured-fill                        2875fed19f525a246d434a1299e4c52d95ac6e7d
 fix/glitch-wave-branding-all-pages   cbc95b436f6caa94c2deca3ec0561e2b804ba874
 fix/glitch-wave-header-favicon-cache 02dfa0aea4d4f36c25cf1ecd5351ea8a7b148297
 feat/visual-overhaul (local only)    645cabb
+radar-audit (no PR)                  04fa8a15250f8dd21c6d9d869e0c65fe987655e2
 ```
 
 </details>
