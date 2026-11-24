@@ -47,7 +47,7 @@ Last audit: **2026-11-19**, against `main` @ `82afca0` (Final Audit). Update thi
 | Theme Tahap 2: `supabase/themes.sql` (tables, RLS, `ug_active_theme`, `ug_apply_theme`, `ug_restore_theme`, `ug_reset_theme`, history) | VERIFIED | applied by owner 2026-11-18; local: 49 SQL tests, parity 273 inputs, concurrency, re-run safe |
 | Theme Manager (PR #49): edge middleware, `/api/theme/refresh`, catalogue of 11 themes, preview in new tab, save draft, Apply, Restore, Reset, history | VERIFIED | owner tested all actions on production 2026-11-18; E2E 71/71 desktop + HP; Preview check on the deployment |
 | Theme edge resilience (PR #50): 2 s RPC timeout, last valid theme on failure (`;stale`), Neon Bento only when none was ever read | VERIFIED | 48 edge tests (CI); production `neon-bento@5;rpc`/`;cache` from Indonesia, DFW and ARN on 2026-11-18 |
-| Themes 01–10 (Tahap 4): Front Page, The Pit, Setlist, Mosh Grid, Control Room 2.0, Main Stage, Xerox Zine, Index, Frequency, Scene Atlas | IMPLEMENTED, preview only | branch `themes-01-10`; all `ready`; tests: themes 12, edge 51, browser check 272 (every theme × desktop/phone × every view), Theme Manager E2E 44 (preview, apply, persistence after reload, restore, reset), Neon Bento pixel diff 0 (except the phone genre filter, below). Owner ACC 2026-11-19 |
+| Themes 01–10 (Tahap 4): Front Page, The Pit, Setlist, Mosh Grid, Control Room 2.0, Main Stage, Xerox Zine, Index, Frequency, Scene Atlas | DROPPED 2026-11-24 | preview only, never merged; the owner settled on the current theme (**Monochrome Modular**), so branch `themes-01-10` and the other theme experiments were deleted (see the 2026-11-24 entry) |
 | Phone: genre filters on Articles and Music as one sideways-scrolling row (all themes, incl. Neon Bento) | IMPLEMENTED | owner request 2026-11-19 (30+ genre buttons filled the screen); 26 genres → one 46 px row, no page overflow |
 | supabase-js pinned to 2.119.0 with SRI (`index.html`, `admin.html`) | IMPLEMENTED (this PR) | same file that `@2` served on 2026-11-19; hash checked in CI (`tests/supabase-js-pin.test.mjs`) and in a browser on the preview |
 | Production smoke test every 6 h (`smoke-production.yml`, read-only) | IMPLEMENTED (this PR) | first scheduled run after merge |
@@ -83,7 +83,7 @@ Optional decisions (not needed to finish the project):
 
 6. Decide whether to replace or remove New Noise in Scene Radar.
 7. Decide whether to move the site into a `public/` folder so docs and SQL are no longer downloadable (see below).
-8. Delete leftover GitHub branches (`radar-audit` and merged feature branches).
+8. Delete leftover GitHub branches (`radar-audit` and merged feature branches). The **theme/appearance** branches are already gone (2026-11-24, see below); the feature/fix branches are still there.
 
 Done:
 
@@ -180,3 +180,20 @@ Follow-up to the security review, chosen so the autopilot (VPS AI publisher + RS
 - Closed out 2026-11-24: the Cloudflare rate-limit rule is in place, and the owner purged the cache, so the
   music CORS change now applies to the files that were already cached. The theme redesign was dropped by the
   owner (the current look stays; drafts #82 and #83 closed).
+
+## 2026-11-24 · Theme settled; theme and appearance branches removed
+The owner confirmed the site keeps its current theme (**Monochrome Modular**), so no further redesign work
+is planned. Drafts #82 (LIVE SIGNAL) and #83 (visual overhaul + the security work, which shipped separately
+in #84) were closed, and the theme/appearance branches were deleted on GitHub:
+
+`theme-engine`, `theme-foundation`, `theme-edge-resilience`, `themes-01-10`, `theme/live-signal-polish`,
+`fix/theme-font-parity`, `redesign/bento-dashboard`, `redesign/editorial-ui`, `redesign/neon-basement`,
+`visual-fx`, `visual-v2`, `account-skins`, `launch-motion`, `hero-drop`, `hero-video`, `main-stage-phone`,
+`footer-readers`, `feat/footer`, `featured-fill`, `fix/glitch-wave-branding-all-pages`,
+`fix/glitch-wave-header-favicon-cache` — 21 remote branches, plus the local `feat/visual-overhaul`.
+
+- `final-foundation` was **kept** on purpose: it is infrastructure/docs (supabase-js pin + SRI, smoke test,
+  docs), not appearance.
+- The feature and fix branches were left alone (item 8 above).
+- Deleting a branch only drops the pointer; anything already in `main` is unaffected. The deleted tips were
+  recorded before removal, in case a design is ever wanted back.
