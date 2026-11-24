@@ -195,5 +195,34 @@ in #84) were closed, and the theme/appearance branches were deleted on GitHub:
 - `final-foundation` was **kept** on purpose: it is infrastructure/docs (supabase-js pin + SRI, smoke test,
   docs), not appearance.
 - The feature and fix branches were left alone (item 8 above).
-- Deleting a branch only drops the pointer; anything already in `main` is unaffected. The deleted tips were
-  recorded before removal, in case a design is ever wanted back.
+- Deleting a branch only drops the pointer; anything already in `main` is unaffected.
+
+<details>
+<summary>Deleted branch tips (for recovery)</summary>
+
+```
+theme-engine                         1e50be3768a49add88a9a83c9f998b0f40c39e71
+theme-foundation                     99981f315856051a50d5900ecb7cdeb493bc7deb
+theme-edge-resilience                ea69c99a218a663e3809660f09207916a267cbd5
+themes-01-10                         1790ad4e419d13c57c70857d9095a02cdb150024
+theme/live-signal-polish             194f85e75ce61a3578d56d3975a80ffbca2e4136
+fix/theme-font-parity                f17e94ae72c8104238a83d464c6e0ec355ac3056
+redesign/bento-dashboard             d522466ebf493ad5fea1e58010391123b5c49148
+redesign/editorial-ui                a63d85fa7a844dfc9b09d7198c79cc178c1af5ce
+redesign/neon-basement               549cfda03541538ebc60aaf60d53877ae4c1ffe2
+visual-fx                            8a79cb99e0819c518c401737593fe93bea761c85
+visual-v2                            754f7a17366e369b16277b788f3b614622fbe28d
+account-skins                        402dbc5f3be2084150035b8490e0f41049700f9a
+launch-motion                        c2e0db6f4373062bd8b8030bc83b0c133299aa25
+hero-drop                            d734c0056c6ed5df16a36387efebc649c76f53f9
+hero-video                           5ac9583d8c5e58b9bfb450cd15d60108b1607aaa
+main-stage-phone                     8cd9cd3a506342ae694b4d808a88526fb71205f9
+footer-readers                       ec1eeb6912243a9b405902b787ed07e777c9e6e6
+feat/footer                          690471930c20de0a5c549efb40b3769f64e9516e
+featured-fill                        2875fed19f525a246d434a1299e4c52d95ac6e7d
+fix/glitch-wave-branding-all-pages   cbc95b436f6caa94c2deca3ec0561e2b804ba874
+fix/glitch-wave-header-favicon-cache 02dfa0aea4d4f36c25cf1ecd5351ea8a7b148297
+feat/visual-overhaul (local only)    645cabb
+```
+
+</details>
