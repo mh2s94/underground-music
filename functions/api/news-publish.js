@@ -6,8 +6,8 @@ import { tg, esc, SITE } from "./telegram/lib.js";
 
 const RUN_LIMIT = 3;
 const DAILY_LIMIT = 10;
-const MAX_AGE_MS = 48 * 60 * 60 * 1000;
-const MIN_SUMMARY_WORDS = 20;
+const MAX_AGE_MS = 72 * 60 * 60 * 1000;
+const MIN_SUMMARY_WORDS = 5;
 const CATEGORY_SLUGS = new Set(["metalcore", "deathcore", "hardcore", "darkcore"]);
 
 const json = (data, status = 200) => new Response(JSON.stringify(data, null, 2), {

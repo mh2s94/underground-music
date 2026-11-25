@@ -17,8 +17,8 @@ test("publisher is a POST-only, token-protected endpoint", () => {
 test("publisher applies conservative editorial and volume gates", () => {
   assert.match(source, /const RUN_LIMIT = 3/);
   assert.match(source, /const DAILY_LIMIT = 10/);
-  assert.match(source, /const MAX_AGE_MS = 48 \* 60 \* 60 \* 1000/);
-  assert.match(source, /const MIN_SUMMARY_WORDS = 20/);
+  assert.match(source, /const MAX_AGE_MS = 72 \* 60 \* 60 \* 1000/);
+  assert.match(source, /const MIN_SUMMARY_WORDS = 5/);
   assert.match(source, /function looksEnglish/);
   assert.match(source, /!isNews\(item\)/);
   assert.match(source, /!item\.genres\.length/);
