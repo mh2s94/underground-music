@@ -12,7 +12,7 @@ Last audit: **2026-11-19**, against `main` @ `82afca0` (Final Audit). Update thi
 | Feature | Status | Evidence / notes |
 | --- | --- | --- |
 | Public site on `music.mikasa.me` | VERIFIED | custom domain active; deployments succeed |
-| Redirect from `underground-music.pages.dev` | IMPLEMENTED, NOT VERIFIED | inline script |
+| Redirect from `underground-music.pages.dev` | IMPLEMENTED; VERIFIED live by the agent 2026-11-25 (`301`) | `functions/_middleware.js` matches the exact production alias and answers `301` for every path; preview hosts are untouched. The old inline script in `index.html` remains as a client-side fallback |
 | Articles, reader, `/a/<slug>` SEO pages | IMPLEMENTED, NOT VERIFIED | Google indexing not confirmed |
 | Review scores (`kind`, `score`) | IMPLEMENTED, NOT VERIFIED | needs `extras.sql`, assumed applied |
 | Admin newsroom: AI generator, Save, Publish | VERIFIED | owner, 2026-11-17 (draft saved after RLS fix) |
@@ -68,7 +68,7 @@ Last audit: **2026-11-19**, against `main` @ `82afca0` (Final Audit). Update thi
 | Turnstile captcha | PENDING | owner must create a widget and send the **site key** |
 | Cloudflare rate-limiting rule for `/api/*` | IMPLEMENTED (owner) | set in the Cloudflare dashboard; excludes `/api/ai-publish`, `/api/news-publish` and `/api/telegram/*` (autopilot). Expression and steps in SECURITY.md |
 | Rotate `AUTODRAFT_TOKEN` | PENDING | the old value appeared in a chat transcript |
-| DMARC record | PENDING confirmation | recommended value in DEPLOYMENT.md |
+| DMARC record | VERIFIED live 2026-11-25 | `_dmarc.mikasa.me` answers `v=DMARC1; p=quarantine; adkim=r; aspf=r` (checked through DNS-over-HTTPS) |
 
 ## Waiting for the owner
 In the order of the Final Audit (2026-11-19):
@@ -238,3 +238,18 @@ radar-audit (no PR)                  04fa8a15250f8dd21c6d9d869e0c65fe987655e2
 ```
 
 </details>
+
+## 2026-11-25 · Old `pages.dev` alias redirected at the edge
+The production alias `underground-music.pages.dev` used to serve a full copy of the site; only an inline script in
+`index.html` moved real browsers, and only on the home page, so crawlers saw two identical sites and deep links
+such as `/a/<slug>` never moved.
+
+- `functions/_middleware.js` now answers `301` to `https://music.mikasa.me<path><query>` when the request host is
+  **exactly** `underground-music.pages.dev`. Any other host — including preview deployments and Cloudflare's own
+  managed `robots.txt` — passes through unchanged. Verified live 2026-11-25.
+- Two checks added to `tests/theme-edge.test.mjs` (now 50): the alias redirects with the path and query kept and
+  never reaches the origin; `abc123.underground-music.pages.dev` is not redirected.
+- `docs/PROJECT-STATUS.md`: the DMARC row was stale — `_dmarc.mikasa.me` answers
+  `v=DMARC1; p=quarantine; adkim=r; aspf=r` (checked 2026-11-25), so it is now VERIFIED live.
+- Still open: Cloudflare's managed `robots.txt` is served before Functions, so it cannot be redirected here; a
+  dashboard redirect rule is the only way to cover it. Not required for indexing.

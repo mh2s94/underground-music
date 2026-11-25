@@ -2,12 +2,22 @@
 // and a few static files). For HTML pages it applies the active theme and the security headers
 // (see functions/api/theme/edge.js). Everything else passes through untouched.
 // It never breaks a page: on any error the original response is returned with the security headers.
+// It also permanently moves the old production alias (underground-music.pages.dev) to music.mikasa.me,
+// so crawlers and deep links never see two copies of the site.
 
 import { isPageRequest, isThemedPath, readActiveTheme, injectTheme, applySecurityHeaders, DEFAULT } from "./api/theme/edge.js";
 
 export async function onRequest(context) {
   const { request } = context;
   const url = new URL(request.url);
+
+  // Canonical address: music.mikasa.me. Match the exact production alias only, so preview
+  // deployments (<hash>.underground-music.pages.dev) and *.pages.dev keep working untouched.
+  if (url.hostname === "underground-music.pages.dev") {
+    url.hostname = "music.mikasa.me";
+    return Response.redirect(url.toString(), 301);
+  }
+
   if (!isPageRequest(url, request.method)) return context.next();
 
   // Ask for the full page, never a 304: the cached copy in the browser may carry an older theme.
