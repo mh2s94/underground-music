@@ -33,7 +33,7 @@ export async function onRequestGet({ request, waitUntil }) {
   const url = new URL(request.url);
   const fresh = url.searchParams.get("refresh") === "1";
   const cache = caches.default;
-  const cacheKey = new Request(url.origin + "/api/news?v=2", { method: "GET" });
+  const cacheKey = new Request(url.origin + "/api/news?v=3", { method: "GET" });
 
   if (!fresh) {
     const hit = await cache.match(cacheKey);
@@ -102,7 +102,7 @@ function parseFeed(xml, sourceName) {
     if (!title || !/^https?:\/\//i.test(link)) continue;
     const date = clean(tag(b, "pubDate") || tag(b, "published") || tag(b, "updated") || tag(b, "dc:date"));
     const rawSummary = tag(b, "description") || tag(b, "summary") || tag(b, "content:encoded") || tag(b, "content");
-    const summary = trimWords(clean(rawSummary).replace(/\s*The post .+ appeared first on .+$/i, ""), 45);
+    const summary = trimWords(clean(rawSummary).replace(/\s*The post .+ appeared first on .+$/i, ""), 120);
     const cats = [
       ...[...b.matchAll(/<category[^>]*>([\s\S]*?)<\/category>/gi)].map((m) => clean(m[1])),
       ...[...b.matchAll(/<category[^>]*term=["']([^"']+)["']/gi)].map((m) => decode(m[1]))

@@ -21,7 +21,7 @@ Last audit: **2026-11-19**, against `main` @ `82afca0` (Final Audit). Update thi
 | Scene Radar batch "Write as drafts" + Publish all | IMPLEMENTED, NOT VERIFIED | mock-tested; first live try hit the RLS bug; not re-run after the fix |
 | Scheduled AI drafts | REMOVED | Removed in PR #58 on 2026-11-19; AI generation is manual only |
 | VPS AI auto-publisher (`POST /api/ai-publish`, `ai_ingestion`, tests/docs) | IMPLEMENTED, NOT VERIFIED | Hardening migration applied and RLS verified 2026-11-20; media fields PR adds `cover_image_url` + `youtube_video_id` support; apply media migration before deploying; endpoint secrets/VPS smoke test remain owner actions |
-| RSS news publisher | IMPLEMENTED, NOT VERIFIED | PR branch `feat/rss-news-publisher`; short English RSS briefs, no AI, max 3/run and 10/day; SQL and secrets still require owner setup after PR approval |
+| RSS news publisher | LIVE (running on schedule since 2026-11-2x) | short English RSS briefs, no AI, max 3/run and 10/day; SQL and secrets are in place. It had been drafting nothing — its summary/age gates were relaxed on 2026-11-25 (see the entry at the end of this file); the first qualifying run is still to be observed |
 | Visitor accounts (sign up, sign in, reset) | IMPLEMENTED, NOT VERIFIED in this audit | Supabase dashboard settings not visible from repo |
 | Account page design (Amp Head, rack slide) | IMPLEMENTED | mock-tested at 412 px and 1280 px |
 | Comments, saved articles, demos (+ rate limits) | IMPLEMENTED, NOT VERIFIED | |
@@ -253,3 +253,19 @@ such as `/a/<slug>` never moved.
   `v=DMARC1; p=quarantine; adkim=r; aspf=r` (checked 2026-11-25), so it is now VERIFIED live.
 - Still open: Cloudflare's managed `robots.txt` is served before Functions, so it cannot be redirected here; a
   dashboard redirect rule is the only way to cover it. Not required for indexing.
+
+## 2026-11-25 · Scene Radar gates relaxed (draft ingester produced nothing)
+The scheduled `Scene Radar RSS draft ingester` had been returning `drafted: 0, skipped: 80` on every run. The RSS
+feeds themselves were healthy; the gates in front of them were too strict for feeds that publish only a headline
+and a one-line lead.
+
+- `functions/api/news.js`: the per-item `summary` cap moved from 45 to 120 words, so consumers (the VPS writer and
+  the draft ingester) get real context wherever a feed does send a description. `/api/news` serves no visible
+  `summary`, so no page changes. The edge cache key moved to `?v=3` so the old 45-word copies expire immediately.
+- `functions/api/news-publish.js`: `MIN_SUMMARY_WORDS` 20 → 5 and `MAX_AGE_MS` 48 h → 72 h. Drafts are reviewed by
+  the owner before publication, so thinner candidates are acceptable; a weekend story no longer goes stale
+  overnight.
+- `tests/news-publisher.test.mjs`: the two constant assertions were updated to match.
+- Deliberately unchanged: `RUN_LIMIT` (3) and `DAILY_LIMIT` (10) still cap volume, the genre requirement and
+  `isNews` filter still apply, and the category list was left alone — `category_id` may be `null`, so unmapped
+  genres never block a draft.
