@@ -257,5 +257,21 @@ await t("legacy theme ids are rejected and use the permanent default", async () 
   assert.strictEqual(res.headers.get("x-ug-theme"), "monochrome-modular@0;fallback");
   assert.ok(!body.includes("/assets/themes/front-page/"));
 });
+await t("old production alias is redirected to the custom domain, deep paths and query kept", async () => {
+  reset();
+  const ctx = { request: new Request("https://underground-music.pages.dev/a/some-slug?q=1"), env: {}, waitUntil: (p) => p,
+    next: async () => { throw new Error("the origin must not be reached for the old alias"); } };
+  const res = await MW.onRequest(ctx);
+  assert.strictEqual(res.status, 301);
+  assert.strictEqual(res.headers.get("location"), "https://music.mikasa.me/a/some-slug?q=1");
+});
+await t("preview deployments are not redirected", async () => {
+  reset(); rpc = { status: 200, body: { theme: "monochrome-modular", tokens: {}, version: 3 }, calls: 0 };
+  const ctx = { request: new Request("https://abc123.underground-music.pages.dev/"), env: {}, waitUntil: (p) => p,
+    next: async () => new Response(INDEX, { status: 200, headers: { "content-type": "text/html; charset=utf-8" } }) };
+  const res = await MW.onRequest(ctx);
+  assert.strictEqual(res.status, 200);
+  assert.strictEqual(res.headers.get("location"), null);
+});
 console.log(`\\n${n} edge/middleware tests passed`);
 globalThis.fetch = realFetch;
