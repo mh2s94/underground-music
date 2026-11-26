@@ -280,3 +280,20 @@ the same story.
 - `.github/workflows/news-publisher.yml`: the `*/30` schedule is removed; `workflow_dispatch` stays, so the
   ingester can still be run by hand from the Actions tab. No code changed.
 - The AI writer (VPS) is now the single producer. Run the ingester manually only while the writer is stopped.
+
+## 2026-11-26 · `/api/news?full=1`: the feed's own full text for the writer
+Measured on the live radar: 80 items, and **not one had more than 45 words of summary** (19 were under 10). The VPS
+writer must deliver 350–500 words to `/api/ai-publish`, so it was padding a ~20-word brief — the exact condition
+that produced the invented YouTube link before. WordPress feeds carry both `description` (short excerpt) and
+`content:encoded` (the article body); `parseFeed` only read `description`.
+
+- `parseFeed(xml, source, full)`: with `full`, adds `body` from `content:encoded` (cleaned, capped at 260 words),
+  only when it is at least 20 words longer than the summary. Default requests are unchanged — no `body`, same fields.
+- `onRequestGet`: `?full=1` selects the variant. The edge cache key is `?v=4`, with `&full=1` for that variant, so
+  the public radar keeps its small payload and the two copies never mix.
+- `parseFeed` is exported for tests; `tests/news-publisher.test.mjs` asserts `body` appears only with `full=true`
+  and stays ≤ 260 words.
+- Verified against the live Distorted Sound feed: 10 items, summaries 20 words, `body` 151–260 words. Metal
+  Injection and ThePRP send no `content:encoded`; the writer keeps its page-fetch fallback for those.
+
+The VPS half (append `?full=1`, prefer `body` as source) lives in `/opt/underground-ai/worker.py`, outside this repo.

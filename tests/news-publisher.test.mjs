@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { findYoutubeVideo } from "../functions/api/news.js";
+import { findYoutubeVideo, parseFeed } from "../functions/api/news.js";
 import { supabaseProjectUrl } from "../functions/api/draft-lib.js";
 
 
@@ -33,8 +33,19 @@ test("RSS parser extracts validated YouTube video URLs from feed item XML", () =
 });
 
 
-test("YouTube RSS extraction supports watch, short, embed, shorts and nocookie URLs", () => {
-  const cases = [
+test("Scene Radar returns the feed's own full text only when ?full=1 is used", () => {
+  const long = "Sentence about the album, the tour and the video. ".repeat(8);
+  const xml = `<rss><channel><item><title>Band announce album</title><link>https://x.test/a</link>`
+    + `<description><![CDATA[Short blurb only.]]></description>`
+    + `<content:encoded><![CDATA[<p>${long}</p>]]></content:encoded></item></channel></rss>`;
+  const plain = parseFeed(xml, "X");
+  const full = parseFeed(xml, "X", true);
+  assert.equal(plain[0].body, undefined);
+  assert.ok(full[0].body && full[0].body.split(" ").length >= 40);
+  assert.ok(full[0].body.split(" ").length <= 260);
+});
+
+test("YouTube RSS extraction supports watch, short, embed, shorts and nocookie URLs", () => {  const cases = [
     ['<description>https://www.youtube.com/watch?v=abcdefghijk</description>', "abcdefghijk"],
     ['<content:encoded><![CDATA[<a href="https://youtu.be/abcdefghijk">Watch</a>]]></content:encoded>', "abcdefghijk"],
     ['<description><![CDATA[<iframe src="https://www.youtube.com/embed/abcdefghijk?rel=0"></iframe>]]></description>', "abcdefghijk"],
