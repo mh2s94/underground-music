@@ -113,7 +113,7 @@ Cloudflare Web Analytics is enabled by the owner (automatic beacon). The CSP all
 - A branch `radar-audit` (a one-off read-only archive audit, not merged) may still exist on GitHub. It can be deleted. Its workflow only ran on pushes to that branch.
 
 ## Static SEO files
-- `robots.txt`: allow all, disallow `/admin.html` and `/api/`, sitemap link.
+- `robots.txt`: allow all, disallow `/admin.html`, `/api/` and `/cdn-cgi/` (Cloudflare's obfuscated email links), sitemap link.
 - `functions/sitemap.xml.js`: home, privacy, terms, published articles, band pages.
 - `manifest.webmanifest` plus the icons and `assets/og.png` share image.
 - Google Search Console: Domain property `mikasa.me` verified. Indexing of the site is not yet confirmed (PENDING).

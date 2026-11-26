@@ -239,6 +239,21 @@ radar-audit (no PR)                  04fa8a15250f8dd21c6d9d869e0c65fe987655e2
 
 </details>
 
+## 2026-11-26 · Unknown paths answer a real 404 (soft-404 cleanup)
+The Pages SPA fallback served `index.html` with status 200 for every unknown path, so Search Console filed typos
+and dead links as "alternate page with proper canonical" instead of 404. That is wanted for `/search`, but not for
+`/apa-saja`.
+
+- `functions/_middleware.js` now answers **404** for any HTML page whose path is not a known route (exact: `/`,
+  `/index.html`, `/search`, `/privacy[.html]`, `/terms[.html]`, `/admin[.html]`, `/unsubscribe`, the SEO files;
+  prefixes: `/a/`, `/band/`, `/api/`, `/assets/`, `/data/`). The page is still themed and still carries the
+  security headers, so a visitor sees the normal site — only the status code is honest. `/search` and the hash
+  routes (`#/music`, `#/charts`) are unaffected, and `/a/<unknown>` already answered 404 in its own Function.
+- `robots.txt` adds `Disallow: /cdn-cgi/`, so Google stops crawling Cloudflare's obfuscated
+  `/cdn-cgi/l/email-protection` links (reported as a 404 in Search Console). Email obfuscation itself is untouched.
+- `tests/theme-edge.test.mjs` gains a check: five unknown paths answer 404 (themed, headers kept) while thirteen
+  known routes stay 200.
+
 ## 2026-11-25 · Old `pages.dev` alias redirected at the edge
 The production alias `underground-music.pages.dev` used to serve a full copy of the site; only an inline script in
 `index.html` moved real browsers, and only on the home page, so crawlers saw two identical sites and deep links

@@ -130,6 +130,21 @@ await t("HEAD, 404 themed, 5xx and redirects headers only", async () => {
   const rd = await mw("/old", { status: 301, html: "" }); assert.ok(rd.res.headers.get("x-frame-options"));
   const post = await mw("/", { method: "POST" }); assert.strictEqual(post.res.headers.get("x-ug-theme"), null);
 });
+await t("unknown paths answer a real 404 (no soft 404), known routes stay 200", async () => {
+  reset(); rpc = { status: 200, body: { theme: "monochrome-modular", tokens: {}, version: 4 }, calls: 0 };
+  for (const p of ["/apa-saja", "/articles", "/music", "/charts", "/some/deep/typo"]) {
+    const { res, body } = await mw(p);
+    assert.strictEqual(res.status, 404, p + " must answer 404");
+    assert.match(body, /data-theme="monochrome-modular"/, p + " keeps the theme");
+    assert.ok(res.headers.get("content-security-policy"), p + " keeps the security headers");
+  }
+  for (const p of ["/", "/index.html", "/search", "/search/", "/privacy", "/privacy.html", "/terms", "/terms.html", "/admin", "/admin.html", "/unsubscribe", "/a/some-story", "/band/some-band"]) {
+    const { res } = await mw(p);
+    assert.strictEqual(res.status, 200, p + " must stay 200");
+  }
+  const head = await mw("/apa-saja", { method: "HEAD" });
+  assert.strictEqual(head.res.status, 404);
+});
 await t("existing data-theme attributes are replaced, not duplicated", () => {
   const out = E.injectTheme('<html lang="en" data-theme="x" data-theme-fallback=1 data-theme-version=\'9\'><head></head></html>', { theme: "monochrome-modular", tokens: {}, version: "3" });
   assert.strictEqual((out.match(/data-theme=/g) || []).length, 1); assert.ok(!out.includes("fallback")); assert.match(out, /data-theme-version="3"/);

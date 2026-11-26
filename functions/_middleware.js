@@ -7,6 +7,21 @@
 
 import { isPageRequest, isThemedPath, readActiveTheme, injectTheme, applySecurityHeaders, DEFAULT } from "./api/theme/edge.js";
 
+// Pages answers every path that matches no asset or Function with index.html and status 200 (the SPA
+// fallback). For /search that is wanted; for a typo it is a "soft 404" that wastes crawl budget.
+// These are the paths the site really owns — everything else gets a real 404 (still themed).
+const KNOWN_EXACT = new Set([
+  "/", "/index.html", "/search",
+  "/privacy", "/privacy.html", "/terms", "/terms.html",
+  "/admin", "/admin.html", "/unsubscribe",
+  "/sitemap.xml", "/rss.xml", "/robots.txt", "/manifest.webmanifest", "/favicon.ico"
+]);
+const KNOWN_PREFIX = ["/a/", "/band/", "/api/", "/assets/", "/data/"];
+export function isKnownPath(pathname) {
+  const p = pathname === "/" ? "/" : pathname.replace(/\/+$/, "") || "/";
+  return KNOWN_EXACT.has(p) || KNOWN_PREFIX.some((prefix) => p.startsWith(prefix));
+}
+
 export async function onRequest(context) {
   const { request } = context;
   const url = new URL(request.url);
@@ -29,13 +44,17 @@ export async function onRequest(context) {
   const type = res.headers.get("content-type") || "";
   if (!type.includes("text/html")) return res;
 
+  // The SPA fallback gives every unknown path index.html with status 200. Report it honestly as a
+  // 404 so crawlers drop typos and dead links instead of indexing the homepage under many URLs.
+  const status = res.status === 200 && !isKnownPath(url.pathname) ? 404 : res.status;
+
   const headers = new Headers(res.headers);
   applySecurityHeaders(headers);
-  const passthrough = () => new Response(res.body, { status: res.status, statusText: res.statusText, headers });
+  const passthrough = () => new Response(res.body, { status, statusText: res.statusText, headers });
 
   // Theme every real page, including "not found" pages (an unknown /a/ slug still shows the site);
   // redirects, errors from the server and admin pages are passed through with headers only.
-  const themable = res.status === 200 || (res.status >= 400 && res.status < 500);
+  const themable = status === 200 || (status >= 400 && status < 500);
   if (request.method === "HEAD" || !themable || !isThemedPath(url)) return passthrough();
 
   let html;
@@ -53,5 +72,5 @@ export async function onRequest(context) {
   // Browsers must ask again every time (no stale theme); keep no-store where a page asked for it.
   if (!/no-store/i.test(headers.get("cache-control") || "")) headers.set("cache-control", "public, max-age=0, must-revalidate");
   headers.set("x-ug-theme", `${cfg.theme}@${cfg.version};${cfg.source || "default"}`);
-  return new Response(out, { status: res.status, statusText: res.statusText, headers });
+  return new Response(out, { status, statusText: res.statusText, headers });
 }
