@@ -1,8 +1,10 @@
 // GET /api/news — "Scene Radar"
 // Collects the latest headlines from heavy-music sites' public RSS/Atom feeds,
 // tags them with UNDERGROUND's genres and returns a de-duplicated list.
-// Only headline, short summary, source name, date and the original link are
-// returned: the full articles stay on the original sites.
+// By default only the headline, short summary, source name, date and the
+// original link are returned: readers go to the original site.
+// `?full=1` additionally returns `body`, the feed's own full-text field
+// (`content:encoded`) capped at 260 words, for the server-side writer only.
 // Results are cached at the edge for 15 minutes.
 
 const SOURCES = [
@@ -32,15 +34,16 @@ const UA = "UndergroundMagazineBot/1.0 (+https://music.mikasa.me; scene radar)";
 export async function onRequestGet({ request, waitUntil }) {
   const url = new URL(request.url);
   const fresh = url.searchParams.get("refresh") === "1";
+  const full = url.searchParams.get("full") === "1";
   const cache = caches.default;
-  const cacheKey = new Request(url.origin + "/api/news?v=3", { method: "GET" });
+  const cacheKey = new Request(url.origin + "/api/news?v=4" + (full ? "&full=1" : ""), { method: "GET" });
 
   if (!fresh) {
     const hit = await cache.match(cacheKey);
     if (hit) return hit;
   }
 
-  const results = await Promise.allSettled(SOURCES.map((s) => fetchSource(s)));
+  const results = await Promise.allSettled(SOURCES.map((s) => fetchSource(s, full)));
   const sources = [];
   let items = [];
   results.forEach((r, i) => {
@@ -73,7 +76,7 @@ export async function onRequestGet({ request, waitUntil }) {
   return res;
 }
 
-async function fetchSource(source) {
+async function fetchSource(source, full = false) {
   const r = await fetch(source.url, {
     headers: { "user-agent": UA, accept: "application/rss+xml, application/atom+xml, application/xml, text/xml;q=0.9, */*;q=0.5" },
     signal: AbortSignal.timeout(8000),
@@ -81,7 +84,7 @@ async function fetchSource(source) {
   });
   if (!r.ok) throw new Error("HTTP " + r.status);
   const xml = await r.text();
-  const items = parseFeed(xml, source.name);
+  const items = parseFeed(xml, source.name, full);
   if (!items.length) throw new Error("No items in feed");
   return items;
 }
@@ -89,7 +92,7 @@ async function fetchSource(source) {
 // ---------------------------------------------------------------------------
 // Feed parsing (RSS 2.0 and Atom) without a DOM
 // ---------------------------------------------------------------------------
-function parseFeed(xml, sourceName) {
+export function parseFeed(xml, sourceName, full = false) {
   const blocks = xml.match(/<item[\s>][\s\S]*?<\/item>/gi) || xml.match(/<entry[\s>][\s\S]*?<\/entry>/gi) || [];
   const out = [];
   for (const b of blocks.slice(0, 30)) {
@@ -103,6 +106,12 @@ function parseFeed(xml, sourceName) {
     const date = clean(tag(b, "pubDate") || tag(b, "published") || tag(b, "updated") || tag(b, "dc:date"));
     const rawSummary = tag(b, "description") || tag(b, "summary") || tag(b, "content:encoded") || tag(b, "content");
     const summary = trimWords(clean(rawSummary).replace(/\s*The post .+ appeared first on .+$/i, ""), 120);
+    let body = "";
+    if (full) {
+      const text = clean(tag(b, "content:encoded") || tag(b, "content") || "")
+        .replace(/\s*The post .+ appeared first on .+$/i, "");
+      if (text.split(" ").length > summary.split(" ").length + 20) body = trimWords(text, 260);
+    }
     const cats = [
       ...[...b.matchAll(/<category[^>]*>([\s\S]*?)<\/category>/gi)].map((m) => clean(m[1])),
       ...[...b.matchAll(/<category[^>]*term=["']([^"']+)["']/gi)].map((m) => decode(m[1]))
@@ -112,6 +121,7 @@ function parseFeed(xml, sourceName) {
     const iso = date && !isNaN(Date.parse(date)) ? new Date(date).toISOString() : "";
     out.push({
       title, link: link.trim(), source: sourceName, date: iso, summary,
+      ...(body ? { body } : {}),
       image, videoUrl: video?.url || "", youtubeVideoId: video?.id || "", categories: cats,
       genres: detectGenres(title + " " + summary + " " + cats.join(" ")),
       band: guessBand(title)
