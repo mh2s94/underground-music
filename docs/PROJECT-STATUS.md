@@ -20,7 +20,7 @@ Last audit: **2026-11-19**, against `main` @ `82afca0` (Final Audit). Update thi
 | Scene Radar Auto-write (single) | VERIFIED | used by owner |
 | Scene Radar batch "Write as drafts" + Publish all | IMPLEMENTED, NOT VERIFIED | mock-tested; first live try hit the RLS bug; not re-run after the fix |
 | Scheduled AI drafts | REMOVED | Removed in PR #58 on 2026-11-19; AI generation is manual only |
-| VPS AI auto-publisher (`POST /api/ai-publish`, `ai_ingestion`, tests/docs) | IMPLEMENTED, NOT VERIFIED | Hardening migration applied and RLS verified 2026-11-20; media fields PR adds `cover_image_url` + `youtube_video_id` support; apply media migration before deploying; endpoint secrets/VPS smoke test remain owner actions |
+| VPS AI auto-publisher (`POST /api/ai-publish`, `ai_ingestion`, tests/docs) | VERIFIED live 2026-11-26 | publishes to the site and Facebook with no human review; every story must first pass a machine gate (`guard.py`) on the VPS. Cron `15 */3 * * *` runs `worker.py 1`. See the 2026-11-26 entry |
 | RSS news publisher | LIVE (running on schedule since 2026-11-2x) | short English RSS briefs, no AI, max 3/run and 10/day; SQL and secrets are in place. It had been drafting nothing — its summary/age gates were relaxed on 2026-11-25 (see the entry at the end of this file); the first qualifying run is still to be observed |
 | Visitor accounts (sign up, sign in, reset) | IMPLEMENTED, NOT VERIFIED in this audit | Supabase dashboard settings not visible from repo |
 | Account page design (Amp Head, rack slide) | IMPLEMENTED | mock-tested at 412 px and 1280 px |
@@ -297,3 +297,25 @@ that produced the invented YouTube link before. WordPress feeds carry both `desc
   Injection and ThePRP send no `content:encoded`; the writer keeps its page-fetch fallback for those.
 
 The VPS half (append `?full=1`, prefer `body` as source) lives in `/opt/underground-ai/worker.py`, outside this repo.
+
+## 2026-11-26 · Auto-publisher goes live behind a machine gate
+The VPS writer had been publishing **unverified** AI text — 52 stories live since 2026-11-20, including invented
+quotes, links, album/tour names and a few fragments. The owner does not review drafts, so safety had to come from
+the machine, not from a human. The writer now verifies every story before it POSTs; anything it cannot verify is
+skipped instead of published.
+
+- PR #89 (`?full=1`, above) supplies the feed's own body, so the writer no longer pads a one-line brief.
+- `/opt/underground-ai/guard.py` (outside this repo): `enrich()` collects page text for feeds that send no
+  `content:encoded`; `fact_problems()` rejects — deterministically — invented links, years, numbers, quotes and
+  named series, plus any "watch on YouTube" claim the source does not support; `ai_fact_check()` is one cheap model
+  call as a second opinion. Quotes compare with punctuation squashed, so `’` vs `'` is no longer a false positive.
+- `/opt/underground-ai/worker.py` (outside this repo): the source gate is 60 words; both the writer and the editor
+  prompts now forbid direct quotes; drafts under 355 words are extended before the length check; mode is
+  `AI_PUBLISH_MODE=published`.
+- Evidence (VPS, 2026-11-26): of 6 candidates, 2 passed and went live — `Sukses (HTTP 201) … "status": "published"`
+  and `[FB] Sukses! Post ID: …`; the rest were held (`[TAHAN] …`), e.g. `karangan: Watch on YouTube link`.
+- Backlog cleanup: 50 machine-written stories published before the gate were set to `draft` and then deleted. 122
+  owner-written articles and the first 2 verified AI stories remain live. `articles.author_id is null` marks
+  machine-written rows; the public anon key can read published rows only (a write attempt returns `Content-Range: */0`).
+- Not automated: the ~50 legacy Facebook posts are still on the page (their links now 404); they must be removed by
+  hand in the page's Activity Log.
