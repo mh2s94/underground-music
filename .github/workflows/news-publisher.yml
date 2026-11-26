@@ -1,8 +1,10 @@
 name: Scene Radar RSS draft ingester
 
+# Schedule paused 2026-11-26. Its drafts claim the story in `news_ingestion`, and
+# /api/ai-publish treats any `news_ingestion` row with status draft/published as a
+# duplicate — so the scheduled ingester made the VPS AI writer fail with HTTP 409 on
+# the same headlines. One producer at a time: run this by hand from the Actions tab.
 on:
-  schedule:
-    - cron: "*/30 * * * *"
   workflow_dispatch:
 
 permissions:

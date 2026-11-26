@@ -269,3 +269,14 @@ and a one-line lead.
 - Deliberately unchanged: `RUN_LIMIT` (3) and `DAILY_LIMIT` (10) still cap volume, the genre requirement and
   `isNews` filter still apply, and the category list was left alone — `category_id` may be `null`, so unmapped
   genres never block a draft.
+
+## 2026-11-26 · Scheduled RSS ingester paused (it was blocking the AI writer)
+With the gates relaxed on 2026-11-25 the ingester works again — which created a collision. `claimItem` writes a
+`news_ingestion` row per story, and `/api/ai-publish` refuses anything whose `news_ingestion` row already exists
+with status `draft` or `published` (`findDuplicate`, HTTP 409 "Duplicate article rejected"). Running every 30
+minutes, the ingester claimed headlines first, so the VPS AI writer burned two model calls and then got a 409 on
+the same story.
+
+- `.github/workflows/news-publisher.yml`: the `*/30` schedule is removed; `workflow_dispatch` stays, so the
+  ingester can still be run by hand from the Actions tab. No code changed.
+- The AI writer (VPS) is now the single producer. Run the ingester manually only while the writer is stopped.
